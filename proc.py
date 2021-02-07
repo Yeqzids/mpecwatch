@@ -16,8 +16,10 @@ TABLE MPEC: (summary of each MPEC)
 	Station		TEXT		List of observatory stations involved in the observation. Only used when MPECType is Discovery, OrbitUpdate, or DOU		
 	DiscStation	TEXT		Observatory station marked by the discovery asterisk. Only used when MPECType is Discovery.
 	FirstConf	TEXT		First observatory station to confirm. Only used when MPECType is Discovery.
-	MPECType	TEXT		Type of the MPEC: Editorial, Discovery, OrbitUpdate, DOU, ListUpdate, Other
-	ObjectType	TEXT		Type of the object: NEA, Comet, Satellite, TNO, Unusual. Only used when MPECType is Discovery or OrbitUpdate
+	MPECType	TEXT		Type of the MPEC: Editorial, Discovery, OrbitUpdate, DOU, ListUpdate, Retraction, Other
+	ObjectType	TEXT		Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk. Only used when MPECType is Discovery or OrbitUpdate
+	OrbitComp	TEXT		Orbit computer. Only used when MPECType is Discovery or OrbitUpdate
+	Issuer		TEXT		Issuer of the MPEC
 	
 TABLE XXX (observatory code):
 	Object		TEXT		Object designation in packed form
@@ -27,7 +29,7 @@ TABLE XXX (observatory code):
 	Facility	TEXT		List of telescope/instrument as published in MPEC
 	MPEC		TEXT		MPECId
 	MPECType	TEXT		Type of the MPEC: Discovery, OrbitUpdate, DOU
-	ObjectType	TEXT		Type of the object: NEA, Comet, Satellite, TNO, Unusual
+	ObjectType	TEXT		Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk
 	Discovery	INTEGER		Corresponding to discovery asterisk
 """
 
@@ -36,7 +38,7 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
 ym = sys.argv[1]
-dbFile = 'mpecwatch.db'
+dbFile = 'mpecwatch_v2.db'
 
 def month_to_letter(month):		# turn month into letter following MPC scheme
 	if month == '01':
@@ -68,6 +70,12 @@ def month_to_letter(month):		# turn month into letter following MPC scheme
 		
 # the below code is from http://stackoverflow.com/questions/1119722/base-62-conversion
 BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+# download PHA list (to check if an object is PHA)
+html = urlopen('http://cgi.minorplanetcenter.net/cgi-bin/textversion.cgi?f=lists/PHAs.html').read()
+soup = BeautifulSoup(html, features="lxml")
+pha_lst = soup.get_text()
+pha_lst = list(filter(None, pha_lst.split('\n')))
 
 def encode(num, alphabet=BASE62):
 	"""Encode a positive number in Base X
@@ -127,9 +135,21 @@ def month_string_to_number(string):
         raise ValueError('Not a month')
 
 def id_title_time(mpec_text):
-	mpecid, title = mpec_text[0].split(": ")
+	mpec_firstline = mpec_text[0].split(": ")
+	if len(mpec_firstline) == 2:
+		mpecid, title = mpec_firstline
+	else:
+		mpecid = mpec_firstline[0]
+		title = ': '.join(mpec_firstline[1:])
 	mpecid = mpecid.strip()			# MPECs before 100 has an extra space at the end
 	tt = [s for s in mpec_text if s.startswith(mpecid.replace('MPEC', 'M.P.E.C.'))][0]
+	if title == '':		# odd MPEC bug after 2019: title missing
+		title = mpec_text[[i for i, s in enumerate(mpec_text) if 'URL' in s][0]+1]
+	elif '(C)' in title:			# odd MPEC bug showing the last line of the circular
+		title = mpec_text[[i for i, s in enumerate(mpec_text) if 'URL' in s][0]+1]
+	elif mpecid in ['MPEC 2018-H54', 'MPEC 2018-N52', 'MPEC 2019-C53']:			# other odd rare bugs
+		title = mpec_text[[i for i, s in enumerate(mpec_text) if 'URL' in s][0]+1]
+	title = title.strip()
 	if mpecid == 'MPEC 2000-G02':			# weird bug in these MPECs, time has no UT
 		time = re.search('Issued (.*)', tt).group(1).split(" ")
 	else:
@@ -142,7 +162,7 @@ def id_title_time(mpec_text):
 	return([mpecid, title, datetime_string])
 	
 
-def find_mpec_type(mpec_text):
+def find_mpec_type(mpec_text, title):
 	"""
 	Determine the type of the MPEC. Can be the following:
 	---
@@ -151,10 +171,13 @@ def find_mpec_type(mpec_text):
 	* OrbitUpdate
 	* DOU
 	* ListUpdate
+	* Retraction
 	* Other
+	---
+	Note: title is required to fix some rare but weird MPEC title bug
 	"""
 	
-	if 'editorial' in mpec_text[0].lower():
+	if 'editorial' in title.lower() and not 'delet' in title.lower() and not 'retract' in title.lower():
 		return('Editorial')
 	elif any(s.startswith('Observer details:') for s in mpec_text):
 		if any(s.startswith('*', 12, 13) for s in mpec_text):
@@ -171,34 +194,44 @@ def find_mpec_type(mpec_text):
 	elif any(s in mpec_text[0].lower() for s in ['observable comets', 'distant minor planets', 'critical-list minor planets', \
 	'atens and apollos', 'amors', 'unusual minor planets', 'phas']):
 		return('ListUpdate')
+	elif any(s in mpec_text[0].lower() for s in ['retract', 'abandon', 'delet']):
+		return('Retraction')
 	else:
 		return('Other')
 		
-def find_obj_type(mpec_text):
+def find_obj_type(mpec_text, title):
 	"""
 	Determine the object type of the MPEC; MPEC type needs to be 'Discovery' or 'OrbitUpdate'. Can be the following:
 	---
-	* NEA
+	* NEAl18 (NEA with H<18)
+	* NEA1822 (NEA with 18<H<22)
+	* NEAg22 (NEA with H>22)
+	* PHAl18 (PHA with H<18)
+	* PHAg18 (PHA with H>18)
 	* Comet
 	* Satellite
 	* TNO
 	* Unusual
+	* Interstellar
+	* unk (unknown)
+	---
+	Note: title is required to fix some rare but weird MPEC title bug
 	"""
 	
-	if 'comet' in mpec_text[0].lower() or 'sungrazer' in mpec_text[0].lower() or 'c/' in mpec_text[0].lower() or 'a/' in mpec_text[0].lower():
+	if 'comet' in title.lower() or 'sungrazer' in title.lower() or 'c/' in title.lower() or 'a/' in title.lower():
 		return('Comet')
-	elif 's/' in mpec_text[0].lower():
+	elif 's/' in title.lower():
 		return('Satellite')
-	elif 'tno' in mpec_text[0].lower():
+	elif 'i/' in title.lower():
+		return('Interstellar')
+	elif 'tno' in title.lower():
 		return('TNO')
 	elif any('Outer Solar System Survey' in s for s in mpec_text):		# certain MPECs do not have 'TNO' flag in their titles, e.g. 1999-L24
 		return('TNO')
-	elif 'M.P.E.C. 1999-S18' in mpec_text[0] or 'M.P.E.C. 2000-F36' in mpec_text[0] or 'M.P.E.C. 2005-Y55' in mpec_text[0]:			# correct for weird title bug for some MPECs
-		return('Comet')
 	elif 'MPEC 2000-V09' in mpec_text[0]:			# older format MPECs, easier to do this quick fix
 		return('TNO')
-	elif 'precoveries' in mpec_text[0].lower():			# rare MPECs that does not have orbits
-		return('NEA')
+	elif 'precoveries' in title.lower():			# rare MPECs that does not have orbits; note: this will be assigned as "unk" and will be fixed manually later
+		return('unk')
 	else:
 		if len([s for s in mpec_text if 'a,e,i = ' in s]) > 0:
 			tt = [s for s in mpec_text if 'a,e,i = ' in s][0]
@@ -208,6 +241,8 @@ def find_obj_type(mpec_text):
 				tt = tt.split('a,e,i = ')[-1].split(',')
 				qq = float(tt[0]) * (1-float(tt[1]))
 		else:
+			aa = 100.00			# if it can't find a, e, it's typically a batch of multiple TNOs
+			ee = 0.00
 			for s in mpec_text:
 				if s.startswith('a '):
 					aa = float(s[2:15])
@@ -215,9 +250,42 @@ def find_obj_type(mpec_text):
 					ee = float(s[2:15])
 					break
 			qq = aa * (1 - ee)
+			
+		try:
+			obj_name = mpec_text[mpec_text.index('Orbital elements:')+1][0:20].strip()
+		except:
+			obj_name = mpec_text[mpec_text.index('Ephemeris:')+1][0:20].strip()
+			pass
+			
+		if any(obj_name in s for s in pha_lst):
+			pha = True
+		else:
+			pha = False
 		
+		for s in mpec_text:
+			if s.startswith('P '):
+				try:
+					hh = float(s[23:28])
+				except:				# sometimes there's no H
+					hh = 99.99
+					pass
+	
 		if qq < 1.3:
-			return('NEA')
+			if hh <= 18:
+				if pha:
+					return('PHAl18')
+				else:
+					return('NEAl18')
+			elif hh > 18 and hh <= 22:
+				if pha:
+					return('PHAg18')
+				else:
+					return('NEA1822')
+			elif hh > 22:
+				if pha:
+					return('PHAg18')
+				else:
+					return('NEAg22')
 		elif qq > 29.5:
 			return('TNO')
 		else:
@@ -280,6 +348,16 @@ def observer_measurer_facility(obs_details, code):
 			pass
 	
 	return([observer, measurer, facility])
+	
+def find_orb_computer(mpec_text):
+	for s in mpec_text:
+		if s.startswith('Epoch '):
+			return(s[56:].strip())
+
+def find_issuer(mpec_text):
+	for s in mpec_text:
+		if '(C)' in s:
+			return(s[0:28].strip())
 
 ########
 # main #
@@ -298,7 +376,7 @@ if os.path.isfile(dbFile):
 else:
 	db = sqlite3.connect(dbFile)
 	cursor = db.cursor()
-	cursor.execute('''CREATE TABLE MPEC(MPECId TEXT, Title TEXT, Time TEXT, Station TEXT, DiscStation TEXT, FirstConf TEXT, MPECType TEXT, ObjectType TEXT)''')
+	cursor.execute('''CREATE TABLE MPEC(MPECId TEXT, Title TEXT, Time TEXT, Station TEXT, DiscStation TEXT, FirstConf TEXT, MPECType TEXT, ObjectType TEXT, OrbitComp TEXT, Issuer TEXT)''')
 	db.commit()
 
 for halfmonth in month_to_letter(ym[4:6]):
@@ -312,148 +390,155 @@ for halfmonth in month_to_letter(ym[4:6]):
 		query_result_size = len(cursor.fetchall())
 		if query_result_size > 0:		# this MPEC exists in database
 			continue
-		
-		# TBW
 				
-		# read and parse the MPEC
-		tens_digit = encode(int(np.floor(i/10)))
-		ones_digit = i - np.floor(i/10)*10
-		url = 'https://www.minorplanetcenter.net/mpec/' + century + ym[2:4] + '/' + century + ym[2:4] + halfmonth + str(tens_digit) + str(int(ones_digit)) + '.html'
-		
 		try:
-			html = urlopen(url).read()
-		except:
-			break		# reaching the end of this halfmonth
-		else:
-			soup = BeautifulSoup(html)
-			for script in soup(["script", "style"]):
-				script.extract() 
-				
-			## collect info for TABLE MPEC
-
-			mpec_text = soup.get_text()
-			mpec_text = list(filter(None, mpec_text.split('\n')))
+			# read and parse the MPEC
+			tens_digit = encode(int(np.floor(i/10)))
+			ones_digit = i - np.floor(i/10)*10
+			url = 'https://www.minorplanetcenter.net/mpec/' + century + ym[2:4] + '/' + century + ym[2:4] + halfmonth + str(tens_digit) + str(int(ones_digit)) + '.html'
 			
-			mpec_id, mpec_title, mpec_time = id_title_time(mpec_text)
-			mpec_type = find_mpec_type(mpec_text)
-			if mpec_type == 'Discovery' or mpec_type == 'OrbitUpdate':
-				mpec_obj_type = find_obj_type(mpec_text)
+			try:
+				html = urlopen(url).read()
+			except:
+				break		# reaching the end of this halfmonth
 			else:
-				mpec_obj_type = ''
-			
-			### test output (note: recommend not commenting this out to show progress)
-			print(mpec_id, mpec_title, mpec_time, mpec_type, mpec_obj_type)
-			
-			## push observation into TABLE of individual observatory code if mpec_type is Discovery, OrbitUpdate or DOU
-			
-			if mpec_type == 'Discovery' or mpec_type == 'OrbitUpdate' or mpec_type == 'DOU':
-				obs_start = -1
-				obs_end = -1
-				if any(s.startswith('Observations:') for s in mpec_text):
-					obs_start = mpec_text.index('Observations:') + 1
-				elif any(s.startswith('Additional observations:') for s in mpec_text):
-					obs_start = mpec_text.index('Additional observations:') + 1
-				elif any(s.startswith('Additional Observations:') for s in mpec_text):
-					obs_start = mpec_text.index('Additional Observations:') + 1
-				elif any(s.startswith('Available observations:') for s in mpec_text):
-					obs_start = mpec_text.index('Available observations:') + 1
-				elif any(s.startswith('Corrected observations:') for s in mpec_text):
-					obs_start = mpec_text.index('Corrected observations:') + 1
-				elif any(s.startswith('New observations:') for s in mpec_text):
-					obs_start = mpec_text.index('New observations:') + 1
-				else:
-					pass
+				soup = BeautifulSoup(html, features="lxml")
+				for script in soup(["script", "style"]):
+					script.extract() 
 					
-				if not obs_start == -1:		# only proceed if there are observations in the MPEC
-					if any(s == 'Observer details:' for s in mpec_text):
-						obs_end = mpec_text.index('Observer details:')
-						obs_details_start = mpec_text.index('Observer details:') + 1
-						if any(s == 'Orbital elements:' for s in mpec_text):
-							obs_details_end = mpec_text.index('Orbital elements:')
-						elif any(s == 'Orbital elements' for s in mpec_text):
-							obs_details_end = mpec_text.index('Orbital elements')			# MPEC 2020-A121 does not have ":"
-						else:		# 2002-G34: no "orbital elements"; using the last line as obs_details_end
-							for i in np.arange(obs_details_start, len(mpec_text), 1):
-								if '(C) Copyright' in mpec_text[i]:
-									obs_details_end = i-1
+				## collect info for TABLE MPEC
+
+				mpec_text = soup.get_text()
+				mpec_text = list(filter(None, mpec_text.split('\n')))
+				
+				mpec_id, mpec_title, mpec_time = id_title_time(mpec_text)
+				mpec_type = find_mpec_type(mpec_text, mpec_title)
+				if mpec_type == 'Discovery' or mpec_type == 'OrbitUpdate':
+					mpec_obj_type = find_obj_type(mpec_text, mpec_title)
+					orbit_comp = find_orb_computer(mpec_text)
+					issuer = find_issuer(mpec_text)
+				else:
+					mpec_obj_type = ''
+					orbit_comp = ''
+					issuer = ''
+				
+				### test output (note: recommend not commenting this out to show progress)
+				print(mpec_id, mpec_title, mpec_time, mpec_type, mpec_obj_type)
+				
+				## push observation into TABLE of individual observatory code if mpec_type is Discovery, OrbitUpdate or DOU
+				
+				if mpec_type == 'Discovery' or mpec_type == 'OrbitUpdate' or mpec_type == 'DOU':
+					obs_start = -1
+					obs_end = -1
+					if any(s.startswith('Observations:') for s in mpec_text):
+						obs_start = mpec_text.index('Observations:') + 1
+					elif any(s.startswith('Additional observations:') for s in mpec_text):
+						obs_start = mpec_text.index('Additional observations:') + 1
+					elif any(s.startswith('Additional Observations:') for s in mpec_text):
+						obs_start = mpec_text.index('Additional Observations:') + 1
+					elif any(s.startswith('Available observations:') for s in mpec_text):
+						obs_start = mpec_text.index('Available observations:') + 1
+					elif any(s.startswith('Corrected observations:') for s in mpec_text):
+						obs_start = mpec_text.index('Corrected observations:') + 1
+					elif any(s.startswith('New observations:') for s in mpec_text):
+						obs_start = mpec_text.index('New observations:') + 1
+					else:
+						pass
+						
+					if not obs_start == -1:		# only proceed if there are observations in the MPEC
+						if any(s == 'Observer details:' for s in mpec_text):
+							obs_end = mpec_text.index('Observer details:')
+							obs_details_start = mpec_text.index('Observer details:') + 1
+							if any(s == 'Orbital elements:' for s in mpec_text):
+								obs_details_end = mpec_text.index('Orbital elements:')
+							elif any(s == 'Orbital elements' for s in mpec_text):
+								obs_details_end = mpec_text.index('Orbital elements')			# MPEC 2020-A121 does not have ":"
+							else:		# 2002-G34: no "orbital elements"; using the last line as obs_details_end
+								for i in np.arange(obs_details_start, len(mpec_text), 1):
+									if '(C) Copyright' in mpec_text[i]:
+										obs_details_end = i-1
+										break
+							obs_details = mpec_text[obs_details_start:obs_details_end]
+						else:		# DOU does not have 'Observer details'
+							obs_details = ''
+							for i in np.arange(obs_start, len(mpec_text), 1):
+								if not len(mpec_text[i]) == 80:
+									obs_end = i
 									break
-						obs_details = mpec_text[obs_details_start:obs_details_end]
-					else:		# DOU does not have 'Observer details'
-						obs_details = ''
-						for i in np.arange(obs_start, len(mpec_text), 1):
-							if not len(mpec_text[i]) == 80:
-								obs_end = i
-								break
-						
-						if mpec_text[obs_end-1].startswith('A. U. Tomatic'):	# newer MPECs has this line as ending, and it's also 80 characters long
-							obs_end -= 1
-					
-					obs = mpec_text[obs_start:obs_end]
-					
-					for line in obs:
-						if line[14:15] == 's' or line[14:15] == 'v':	# skip SAT or roving observer's location line
-							continue
-						if not len(line.rstrip()) == 80:	# skip weird problems, e.g. the notes in 1995-C07
-							continue
-						obs_obj = line[0:12].strip()
-						date = line[15:25].replace(' ', '-')
-						hours = int(float(line[25:32])*24 % 24)
-						minutes = int(float(line[25:32])*1440 % 60)
-						seconds = int(float(line[25:32])*86400 % 60)
-						obs_date_time_string = date + ' ' + str('%02i' % hours) + ':' + str('%02i' % minutes) + ':' + str('%02i' % seconds)
-						obs_code = line[77:80]
-						if obs_details == '':
-							observer = ''
-							measurer = ''
-							facility = ''
-						else:
-							observer, measurer, facility = observer_measurer_facility(obs_details, obs_code)
-						
-						obs_code_collection.append(obs_code)
-						if line[12:13] == '*':
-							discovery_asterisk = True
-							disc_obs_code.append(obs_code)
-						else:
-							discovery_asterisk = False
 							
-						### test output
-						#print('OBJECT: ', obs_obj, ' | DATETIME: ', obs_date_time_string, ' | OBSERVER:', observer, ' | MEASURER:', measurer, ' | FACILITY:', facility, ' | DISCOVERY:', discovery_asterisk)
+							if mpec_text[obs_end-1].startswith('A. U. Tomatic'):	# newer MPECs has this line as ending, and it's also 80 characters long
+								obs_end -= 1
 						
-						### write to the corresponding station TABLE (create if it does not exist)
+						obs = mpec_text[obs_start:obs_end]
 						
-						cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='station_" + obs_code + "'")
+						for line in obs:
+							if line[14:15] == 's' or line[14:15] == 'v':	# skip SAT or roving observer's location line
+								continue
+							if not len(line.rstrip()) == 80:	# skip weird problems, e.g. the notes in 1995-C07
+								continue
+							obs_obj = line[0:12].strip()
+							date = line[15:25].replace(' ', '-')
+							hours = int(float(line[25:32])*24 % 24)
+							minutes = int(float(line[25:32])*1440 % 60)
+							seconds = int(float(line[25:32])*86400 % 60)
+							obs_date_time_string = date + ' ' + str('%02i' % hours) + ':' + str('%02i' % minutes) + ':' + str('%02i' % seconds)
+							obs_code = line[77:80]
+							if obs_details == '':
+								observer = ''
+								measurer = ''
+								facility = ''
+							else:
+								observer, measurer, facility = observer_measurer_facility(obs_details, obs_code)
+							
+							obs_code_collection.append(obs_code)
+							if line[12:13] == '*':
+								discovery_asterisk = True
+								disc_obs_code.append(obs_code)
+							else:
+								discovery_asterisk = False
+								
+							### test output
+							#print('OBJECT: ', obs_obj, ' | DATETIME: ', obs_date_time_string, ' | OBSERVER:', observer, ' | MEASURER:', measurer, ' | FACILITY:', facility, ' | DISCOVERY:', discovery_asterisk)
+							
+							### write to the corresponding station TABLE (create if it does not exist)
+							
+							cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='station_" + obs_code + "'")
 
-						if cursor.fetchone()[0] == 0:
-							cursor.execute("CREATE TABLE station_" + obs_code + "(Object TEXT, Time TEXT, Observer TEXT, Measurer TEXT, Facility TEXT, MPEC TEXT, MPECType TEXT, ObjectType TEXT, Discovery INTEGER)")
+							if cursor.fetchone()[0] == 0:
+								cursor.execute("CREATE TABLE station_" + obs_code + "(Object TEXT, Time TEXT, Observer TEXT, Measurer TEXT, Facility TEXT, MPEC TEXT, MPECType TEXT, ObjectType TEXT, Discovery INTEGER)")
+								db.commit()
+							
+							cursor.execute("INSERT INTO station_" + obs_code + "(Object, Time, Observer, Measurer, Facility, MPEC, MPECType, ObjectType, Discovery) VALUES(?,?,?,?,?,?,?,?,?)", \
+							(obs_obj, obs_date_time_string, observer, measurer, facility, mpec_id, mpec_type, mpec_obj_type, int(discovery_asterisk)))
 							db.commit()
-						
-						cursor.execute("INSERT INTO station_" + obs_code + "(Object, Time, Observer, Measurer, Facility, MPEC, MPECType, ObjectType, Discovery) VALUES(?,?,?,?,?,?,?,?,?)", \
-						(obs_obj, obs_date_time_string, observer, measurer, facility, mpec_id, mpec_type, mpec_obj_type, int(discovery_asterisk)))
-						db.commit()
-			
-			indexes = np.unique(obs_code_collection, return_index=True)[1]
-			obs_code_collection_uniq = [obs_code_collection[index] for index in sorted(indexes)]
-			obs_code_collection_string = ', '.join(obs_code_collection_uniq)
-			if len(disc_obs_code) > 0:
-				disc_obs_code = disc_obs_code[0]		# in 99% case, MPECs with multiple discoveries have a single discoverer
-				### figure out first confirming station
-				firstconf = obs_code_collection_uniq.index(disc_obs_code) + 1
 				
-				if firstconf < len(obs_code_collection_uniq):	# to account for the scenario where there are only precoveries
-					firstconf = obs_code_collection_uniq[firstconf]
+				indexes = np.unique(obs_code_collection, return_index=True)[1]
+				obs_code_collection_uniq = [obs_code_collection[index] for index in sorted(indexes)]
+				obs_code_collection_string = ', '.join(obs_code_collection_uniq)
+				if len(disc_obs_code) > 0:
+					disc_obs_code = disc_obs_code[0]		# in 99% case, MPECs with multiple discoveries have a single discoverer
+					### figure out first confirming station
+					firstconf = obs_code_collection_uniq.index(disc_obs_code) + 1
+					
+					if firstconf < len(obs_code_collection_uniq):	# to account for the scenario where there are only precoveries
+						firstconf = obs_code_collection_uniq[firstconf]
+					else:
+						firstconf = ''
 				else:
+					disc_obs_code = ''
 					firstconf = ''
-			else:
-				disc_obs_code = ''
-				firstconf = ''
-			
-			### test output
-			#print('STATION:', obs_code_collection_string, ' | DISCOVERY STATION:', disc_obs_code, ' | FIRST TO CONFIRM:', firstconf)
-			#print('=========================================')
-			
-			### write to TABLE MPEC
-			cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType) VALUES(?,?,?,?,?,?,?,?)''', \
-			(mpec_id, mpec_title, mpec_time, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type))
-			db.commit()
+				
+				### test output
+				#print('STATION:', obs_code_collection_string, ' | DISCOVERY STATION:', disc_obs_code, ' | FIRST TO CONFIRM:', firstconf)
+				#print('=========================================')
+				
+				### write to TABLE MPEC
+				cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer) VALUES(?,?,?,?,?,?,?,?,?,?)''', \
+				(mpec_id, mpec_title, mpec_time, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer))
+				db.commit()
+		except Exception as e:
+			print('ERROR processing ' + this_mpec + ': ')
+			print(e)
+			pass
 
 db.close()
