@@ -1,6 +1,0 @@
-*.ipynb
-test.py
-*.db
-makepages/*.txt
-makepages/*.html
-www/
