@@ -1,0 +1,9 @@
+*.pyc
+*.ipynb
+test.py
+makepages/*.html
+makepages/*.txt
+*.db
+www/
+mpccode_trim.txt
+proc_loop.*
