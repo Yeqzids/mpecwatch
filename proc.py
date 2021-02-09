@@ -12,7 +12,7 @@ Database structure
 TABLE MPEC: (summary of each MPEC)
 	MPECId		TEXT		MPEC Number
 	Title		TEXT		MPEC Title
-	Time		TEXT		Publication datetime
+	Time		INTEGER  	Publication Unix timestamp
 	Station		TEXT		List of observatory stations involved in the observation. Only used when MPECType is Discovery, OrbitUpdate, or DOU		
 	DiscStation	TEXT		Observatory station marked by the discovery asterisk. Only used when MPECType is Discovery.
 	FirstConf	TEXT		First observatory station to confirm. Only used when MPECType is Discovery.
@@ -23,7 +23,7 @@ TABLE MPEC: (summary of each MPEC)
 	
 TABLE XXX (observatory code):
 	Object		TEXT		Object designation in packed form
-	Time		TEXT		Time of the observation
+	Time		INTEGER		Time of the observation (Unix timestamp)
 	Observer	TEXT		List of observers as published in MPEC
 	Measurer	TEXT		List of measurers as published in MPEC
 	Facility	TEXT		List of telescope/instrument as published in MPEC
@@ -38,7 +38,7 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
 ym = sys.argv[1]
-dbFile = 'mpecwatch_v2.db'
+dbFile = 'mpecwatch_v3.db'
 
 def month_to_letter(month):		# turn month into letter following MPC scheme
 	if month == '01':
@@ -376,7 +376,7 @@ if os.path.isfile(dbFile):
 else:
 	db = sqlite3.connect(dbFile)
 	cursor = db.cursor()
-	cursor.execute('''CREATE TABLE MPEC(MPECId TEXT, Title TEXT, Time TEXT, Station TEXT, DiscStation TEXT, FirstConf TEXT, MPECType TEXT, ObjectType TEXT, OrbitComp TEXT, Issuer TEXT)''')
+	cursor.execute('''CREATE TABLE MPEC(MPECId TEXT, Title TEXT, Time INTEGER, Station TEXT, DiscStation TEXT, FirstConf TEXT, MPECType TEXT, ObjectType TEXT, OrbitComp TEXT, Issuer TEXT)''')
 	db.commit()
 
 for halfmonth in month_to_letter(ym[4:6]):
@@ -412,6 +412,7 @@ for halfmonth in month_to_letter(ym[4:6]):
 				mpec_text = list(filter(None, mpec_text.split('\n')))
 				
 				mpec_id, mpec_title, mpec_time = id_title_time(mpec_text)
+				mpec_timestamp = dt.datetime(int(mpec_time[0:4]), int(mpec_time[5:7]), int(mpec_time[8:10]), int(mpec_time[11:13]), int(mpec_time[14:16]), int(mpec_time[17:19])).timestamp()
 				mpec_type = find_mpec_type(mpec_text, mpec_title)
 				if mpec_type == 'Discovery' or mpec_type == 'OrbitUpdate':
 					mpec_obj_type = find_obj_type(mpec_text, mpec_title)
@@ -482,6 +483,7 @@ for halfmonth in month_to_letter(ym[4:6]):
 							minutes = int(float(line[25:32])*1440 % 60)
 							seconds = int(float(line[25:32])*86400 % 60)
 							obs_date_time_string = date + ' ' + str('%02i' % hours) + ':' + str('%02i' % minutes) + ':' + str('%02i' % seconds)
+							obs_date_timestamp = dt.datetime(int(date[0:4]), int(date[5:7]), int(date[8:10]), int(hours), int(minutes), int(seconds)).timestamp()
 							obs_code = line[77:80]
 							if obs_details == '':
 								observer = ''
@@ -505,11 +507,11 @@ for halfmonth in month_to_letter(ym[4:6]):
 							cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='station_" + obs_code + "'")
 
 							if cursor.fetchone()[0] == 0:
-								cursor.execute("CREATE TABLE station_" + obs_code + "(Object TEXT, Time TEXT, Observer TEXT, Measurer TEXT, Facility TEXT, MPEC TEXT, MPECType TEXT, ObjectType TEXT, Discovery INTEGER)")
+								cursor.execute("CREATE TABLE station_" + obs_code + "(Object TEXT, Time INTEGER, Observer TEXT, Measurer TEXT, Facility TEXT, MPEC TEXT, MPECType TEXT, ObjectType TEXT, Discovery INTEGER)")
 								db.commit()
 							
 							cursor.execute("INSERT INTO station_" + obs_code + "(Object, Time, Observer, Measurer, Facility, MPEC, MPECType, ObjectType, Discovery) VALUES(?,?,?,?,?,?,?,?,?)", \
-							(obs_obj, obs_date_time_string, observer, measurer, facility, mpec_id, mpec_type, mpec_obj_type, int(discovery_asterisk)))
+							(obs_obj, obs_date_timestamp, observer, measurer, facility, mpec_id, mpec_type, mpec_obj_type, int(discovery_asterisk)))
 							db.commit()
 				
 				indexes = np.unique(obs_code_collection, return_index=True)[1]
@@ -534,7 +536,7 @@ for halfmonth in month_to_letter(ym[4:6]):
 				
 				### write to TABLE MPEC
 				cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer) VALUES(?,?,?,?,?,?,?,?,?,?)''', \
-				(mpec_id, mpec_title, mpec_time, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer))
+				(mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer))
 				db.commit()
 		except Exception as e:
 			print('ERROR processing ' + this_mpec + ': ')
