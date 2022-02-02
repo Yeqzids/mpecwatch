@@ -92,8 +92,9 @@ o = """
 
       <!-- Main jumbotron for a primary marketing message or call to action -->
       <div class="jumbotron">
-        <h1>Welcome to MPEC Watch!</h1>
-        <p>MPEC Watch provides various statistics and plots derived from <a href="https://minorplanetcenter.net/">Minor Planet Center</a>'s <a href="https://www.minorplanetcenter.net/mpec/RecentMPECs.html">Minor Planet Electronic Circular</a> service. This website is created and maintained by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>. Tables and plots are automatically updated at mid-night UTC.</p>
+        <h2>Welcome to MPEC Watch!</h2>
+        <p><b>Note: This site is still under development. Currently, none of the links in the top bar work.</b></p>
+        <p>MPEC Watch provides various statistical metrics and plots derived from <a href="https://minorplanetcenter.net/">Minor Planet Center</a>'s <a href="https://www.minorplanetcenter.net/mpec/RecentMPECs.html">Minor Planet Electronic Circular</a> service. This website is created and maintained by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>. Tables and plots are automatically updated at midnight US Eastern Time.</p>
         <p>Last update: UTC %s</p>
       </div>
 """ % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -105,7 +106,7 @@ o += """
         <h1>At a glance</h1>
       </div>
       <p>
-        <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="file:///home/tomy/Sync/sbn/mpec/makepages/MPECTally_ByYear_Fig.html" height="525" width="100%"></iframe>
+        <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByYear_Fig.html" height="525" width="100%"></iframe>
       </p>
       
       <table class="table table-striped">
@@ -284,6 +285,11 @@ for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', dis
 		  </div> <!-- /container -->"""
 
 o += """
+	<footer class="pt-5 my-5 text-muted border-top">
+    Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>. Powered by <a href="https://getbootstrap.com">Bootstrap</a>.
+    <a href="https://pdssbn.astro.umd.edu/"><img src="sbn_logo5_v0.png" width="100"></a>
+  </footer>
+
     <!-- Bootstrap core JavaScript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
