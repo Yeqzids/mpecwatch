@@ -10,8 +10,8 @@
 
 ### Home page
 
-[x] Figure/table - break-down of number and type of MPECs
-[ ] Table - top 10 of various categories
+- [x] Figure/table - break-down of number and type of MPECs
+- [x] Table - top 10 of various categories
 
 ## Acknowledgment
 
