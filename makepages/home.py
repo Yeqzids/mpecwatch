@@ -8,23 +8,18 @@
  
 """
 
-import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np
+import sqlite3, pandas as pd, datetime, numpy as np, json
 
 page = '../www/index.html'
 dbFile = '../mpecwatch_v3.db'
 mpec_count = 'mpec_count.txt'
-mpccode = '../mpccode_trim.txt'
-
-def code_to_name(code):			# return observatory name and country/region given an MPC code
-	for i in mpccode:
-		if i[0:3] == code:
-			return i[26:].strip(), i[4:26].strip()
+mpccode = '../mpccode.json'
 
 db = sqlite3.connect(dbFile)
 cursor = db.cursor()
 
-with open(mpccode) as f:
-	mpccode = f.readlines()
+with open(mpccode) as mpccode:
+    mpccode = json.load(mpccode)
 
 o = """
 <!doctype html>
@@ -77,12 +72,10 @@ o = """
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
-            <li class="active"><a href="#">Home</a></li>
-            <li><a href="#">Statistics by Year</a></li>
-            <li><a href="#">Statistics by Observatory</a></li>
-            <li><a href="#">NEA Discovery Statistics</a></li>
-            <li><a href="#">Comet Discovery Statistics</a></li>
-            <li><a href="#">Service History</a></li>
+            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Statistics by Observatory</a></li>
+            <li><a href="#">Statistics by Object Type</a></li>
+            <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
           </ul>
         </div><!--/.nav-collapse -->
       </div>
@@ -94,7 +87,7 @@ o = """
       <div class="jumbotron">
         <h2>Welcome to MPEC Watch!</h2>
         <p><b>Note: This site is still under development. Currently, none of the links in the top bar work.</b></p>
-        <p>MPEC Watch provides various statistical metrics and plots derived from <a href="https://minorplanetcenter.net/">Minor Planet Center</a>'s <a href="https://www.minorplanetcenter.net/mpec/RecentMPECs.html">Minor Planet Electronic Circular</a> service. This website is created and maintained by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>. Tables and plots are automatically updated at midnight US Eastern Time.</p>
+        <p>MPEC Watch provides various statistical metrics and plots derived from <a href="https://minorplanetcenter.net/">Minor Planet Center</a>'s <a href="https://www.minorplanetcenter.net/mpec/RecentMPECs.html">Minor Planet Electronic Circular</a> service. This website is created and maintained by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>. Tables and plots are automatically updated at midnight US Eastern Time. </p>
         <p>Last update: UTC %s</p>
       </div>
 """ % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -148,7 +141,7 @@ for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
 	
 	o += """
           <tr>
-            <td>%i</td>
+            <td><a href="https://sbnmpc.astro.umd.edu/mpecwatch/byYear/%s.html">%i</a></td>
             <td>%i</td>
             <td>%i</td>
             <td>%i</td>
@@ -158,7 +151,7 @@ for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             <td>%i</td>
             <td>%i</td>
           </tr>
-	""" % (year, sum([editorial, discovery, orbitupdate, dou, listupdate, retraction, other]), editorial, discovery, orbitupdate, dou, listupdate, retraction, other)
+	""" % (str(year), year, sum([editorial, discovery, orbitupdate, dou, listupdate, retraction, other]), editorial, discovery, orbitupdate, dou, listupdate, retraction, other)
 
 o += """
         </tbody>
@@ -206,7 +199,7 @@ for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', dis
 						<td>%s</td>
 						<td>%s</td>
 					  </tr>
-		""" % (str(i+1), s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + code_to_name(s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i])[0], s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['count1y'][i])
+		""" % (str(i+1), s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['count1y'][i])
 
 	o += """                
 					</tbody>
@@ -241,7 +234,7 @@ for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', dis
 						<td>%s</td>
 						<td>%s</td>
 					  </tr>
-		""" % (str(i+1), s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + code_to_name(s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i])[0], s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['count5y'][i])
+		""" % (str(i+1), s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['count5y'][i])
 
 	o += """                
 					</tbody>
@@ -274,7 +267,7 @@ for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', dis
 						<td>%s</td>
 						<td>%s</td>
 					  </tr>
-		""" % (str(i+1), s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + code_to_name(s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i])[0], s[1].sort_values('countall', ascending=False).reset_index(drop=True)['countall'][i])
+		""" % (str(i+1), s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('countall', ascending=False).reset_index(drop=True)['countall'][i])
 
 	o += """                
 					</tbody>
@@ -286,8 +279,14 @@ for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', dis
 
 o += """
 	<footer class="pt-5 my-5 text-muted border-top">
-    Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>. Powered by <a href="https://getbootstrap.com">Bootstrap</a>.
-    <a href="https://pdssbn.astro.umd.edu/"><img src="sbn_logo5_v0.png" width="100"></a>
+    Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
+  <path d="M6.375 7.125V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/>
+  <path d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12V3.545h3.399c1.587 0 2.543.809 2.543 2.11 0 .884-.65 1.675-1.483 1.816v.1c1.143.117 1.904.931 1.904 2.033 0 1.488-1.084 2.396-2.888 2.396H5.062z"/>
+</svg> Bootstrap</a> and <a href="https://bootstrap-table.com">Bootstrap Table</a>.
+        <a href="https://pdssbn.astro.umd.edu/"><img src="sbn_logo5_v0.png" width="100" style="vertical-align:bottom"></a>
+        <a href="https://github.com/Small-Bodies-Node/mpecwatch"><svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
+  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+</svg></a>
   </footer>
 
     <!-- Bootstrap core JavaScript

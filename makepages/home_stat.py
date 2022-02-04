@@ -8,16 +8,16 @@
  
 """
 
-import sqlite3, datetime, re
+import sqlite3, datetime, re, json
 
 dbFile = '../mpecwatch_v3.db'
-mpccode = '../mpccode_trim.txt'
+mpccode = '../mpccode.json'
 
 db = sqlite3.connect(dbFile)
 cursor = db.cursor()
 
-with open(mpccode) as f:
-	mpccode = f.readlines()
+with open(mpccode) as mpccode:
+    mpccode = json.load(mpccode)
 
 mpec_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 'countall')
 disc_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 'countall')
@@ -28,7 +28,6 @@ pc_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 'c
 for s in mpccode:
     t_1y = datetime.datetime.utcnow() - datetime.timedelta(days=365)
     t_5y = datetime.datetime.utcnow() - datetime.timedelta(days=365*5)
-    s = s[0:3]
     
     # Count numbers of MPECs for each station for last 1, 5 year and all time
     
