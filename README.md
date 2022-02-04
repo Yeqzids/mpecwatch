@@ -6,4 +6,17 @@
 
 * 2022 Jan 25: alpha version is now accessible from [SBN-MPC Annex](https://sbnmpc.astro.umd.edu)!
 
-[Quanzhi Ye](https://www.astro.umd.edu/~qye/)
+## Development stage
+
+### Home page
+
+[x] Figure/table - break-down of number and type of MPECs
+[ ] Table - top 10 of various categories
+
+## Acknowledgment
+
+This project makes use of [Bootstrap](https://getbootstrap.com/), [Bootstrap Table](https://bootstrap-table.com/), data provided by the [International Astronomical Union's Minor Planet Center](https://minorplanetcenter.net/), and a [revised list of the MPC observatory code by Bill Gray](https://www.projectpluto.com/mpc_stat.htm).
+
+## Author
+
+* [Quanzhi Ye](https://www.astro.umd.edu/~qye/)
