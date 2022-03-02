@@ -84,9 +84,9 @@ for p in pages:
             </div>
             <div id="navbar" class="navbar-collapse collapse">
               <ul class="nav navbar-nav">
-                <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/objtype.html">Statistics by Object Type</a></li>
+                <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
+            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/objtype.html">Statistics by Object Type (under development)</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
               </ul>
@@ -95,6 +95,12 @@ for p in pages:
         </nav>
     
         <div class="container theme-showcase" role="main">
+        
+        <!-- Main jumbotron for a primary marketing message or call to action -->
+      <div class="jumbotron">
+        <h2>This page is still under development!</h2>
+        <p>Please note that this page is still under active development. When complete, each observatory will get its own metric page that can be accessed from this page. Please check again later. Quanzhi, Mar 2, 2022.</p>
+      </div>
     """
     
     # Table of MPECs by year and type
@@ -105,7 +111,7 @@ for p in pages:
             <p><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">All time</a> """ % str(p)
             
     for pp in pages[:-1]:
-        o += """ | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/byYear/%s.html">%s</a>""" % (str(pp), str(pp))
+        o += """ | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs-%s.html">%s</a>""" % (str(pp), str(pp))
         
     o += """
             </p>
@@ -205,7 +211,7 @@ for p in pages:
     
     o += """
     	<footer class="pt-5 my-5 text-muted border-top">
-        Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
+        Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
   <path d="M6.375 7.125V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/>
   <path d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12V3.545h3.399c1.587 0 2.543.809 2.543 2.11 0 .884-.65 1.675-1.483 1.816v.1c1.143.117 1.904.931 1.904 2.033 0 1.488-1.084 2.396-2.888 2.396H5.062z"/>
 </svg> Bootstrap</a> and <a href="https://bootstrap-table.com">Bootstrap Table</a>.
@@ -236,5 +242,5 @@ for p in pages:
         with open('../www/obs.html', 'w') as f:
         	f.write(o)
     else:
-        with open('../www/byYear/%s.html' % str(p), 'w') as f:
+        with open('../www/obs-%s.html' % str(p), 'w') as f:
         	f.write(o)
