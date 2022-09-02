@@ -74,9 +74,10 @@ o = """
           <ul class="nav navbar-nav">
             <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/objtype.html">Statistics by Object Type (under development)</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
           </ul>
         </div><!--/.nav-collapse -->
       </div>

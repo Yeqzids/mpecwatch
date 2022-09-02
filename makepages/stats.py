@@ -2,7 +2,7 @@
 
 """
  PROJECT:		MPEC Watch
- PURPOSE:		Produces figures and stats on a number of MPC-related metrics.
+ PURPOSE:		Display figures and stats on a number of metrics.
 
  (C) Quanzhi Ye
  
@@ -301,8 +301,8 @@ o = """
           <ul class="nav navbar-nav">
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
+            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
           </ul>
@@ -311,9 +311,13 @@ o = """
     </nav>
 
     <div class="container theme-showcase" role="main">
+    <!-- Main jumbotron for a primary marketing message or call to action -->
+      <div class="jumbotron">
+        <p>This page is under active development. More plots and statistics are being added! Quanzhi 09/02/22</p>
+      </div>
           <div class="page-header">
-            <h1>MPC Stuff</h1>
-            <p>Miscellaneous statistics and plots related to MPC's operation.</p>
+            <h1>Various Statistics</h1>
+            <p>Various statistics and plots.</p>
           </div>
           <p>
             Last update: UTC %s
@@ -321,45 +325,31 @@ o = """
           
 o += """
           <div class="page-header">
-          <h2>Number of MPECs by orbital computer and issuer</h2>
+          <h2>Fraction of each observer groups among all MPECs</h2>
           <p>
-            <iframe id="igraph1" scrolling="no" style="border:none;" seamless="seamless" src="Computer_ByYear_Fig.html" height="525" width="100%"></iframe>
-            <iframe id="igraph2" scrolling="no" style="border:none;" seamless="seamless" src="Issuer_ByYear_Fig.html" height="525" width="100%"></iframe>
+            <iframe id="igraph1" scrolling="no" style="border:none;" seamless="seamless" src="stats/Fraction_of_each_observer_groups_among_all_MPECs+O.html" height="525" width="100%"></iframe>
           </p>
           
-          <h2>Number of Discovery MPECs by orbital computer and issuer</h2>
+          <h2>Fraction of each measurer groups among all MPECs</h2>
           <p>
-            <iframe id="igraph3" scrolling="no" style="border:none;" seamless="seamless" src="Computer_Discovery_ByYear_Fig.html" height="525" width="100%"></iframe>
-            <iframe id="igraph4" scrolling="no" style="border:none;" seamless="seamless" src="Issuer_Discovery_ByYear_Fig.html" height="525" width="100%"></iframe>
+            <iframe id="igraph2" scrolling="no" style="border:none;" seamless="seamless" src="stats/Fraction_of_each_measurer_groups_among_all_MPECs+O.html" height="525" width="100%"></iframe>
+          </p>
+          </div>
+          
+          <h2>Fraction of each observatory code among all MPECs</h2>
+          <p>
+            <iframe id="igraph3" scrolling="no" style="border:none;" seamless="seamless" src="stats/Fraction_of_each_observatory_code_among_all_MPECs+O.html" height="525" width="100%"></iframe>
           </p>
           
-          <h2>Number of Orbit Update MPECs by orbital computer and issuer</h2>
+          <h2>Fraction of each observed object among all MPECs</h2>
           <p>
-            <iframe id="igraph5" scrolling="no" style="border:none;" seamless="seamless" src="Computer_OrbitUpdate_ByYear_Fig.html" height="525" width="100%"></iframe>
-            <iframe id="igraph6" scrolling="no" style="border:none;" seamless="seamless" src="Issuer_OrbitUpdate_ByYear_Fig.html" height="525" width="100%"></iframe>
-          </p>
-          
-          <h2>MPEC post time by the hour, in the last 1-year period, 2015, 2005 and 1995</h2>
-          <p>Hours, weekdays are all in US/Eastern time (where MPC is located).</p>
-          <p>
-            <iframe id="igraph7" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByHour_Fig_Last1Yr.html" height="525" width="100%"></iframe>
-            <iframe id="igraph8" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByHour_Fig_2015.html" height="525" width="100%"></iframe>
-            <iframe id="igraph9" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByHour_Fig_2005.html" height="525" width="100%"></iframe>
-            <iframe id="igraph10" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByHour_Fig_1995.html" height="525" width="100%"></iframe>
-          </p>
-          
-          <h2>MPEC post time by weekdays, in the last 1-year period, 2015, 2005 and 1995</h2>
-          <p>
-            <iframe id="igraph11" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByWeekday_Fig_Last1Yr.html" height="525" width="100%"></iframe>
-            <iframe id="igraph12" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByWeekday_Fig_2015.html" height="525" width="100%"></iframe>
-            <iframe id="igraph13" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByWeekday_Fig_2005.html" height="525" width="100%"></iframe>
-            <iframe id="igraph14" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByWeekday_Fig_1995.html" height="525" width="100%"></iframe>
+            <iframe id="igraph4" scrolling="no" style="border:none;" seamless="seamless" src="stats/T10Objects+Other.html" height="525" width="100%"></iframe>
           </p>
           </div>"""
     
 o += """
     	<footer class="pt-5 my-5 text-muted border-top">
-        Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a>, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
+        Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
   <path d="M6.375 7.125V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/>
   <path d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12V3.545h3.399c1.587 0 2.543.809 2.543 2.11 0 .884-.65 1.675-1.483 1.816v.1c1.143.117 1.904.931 1.904 2.033 0 1.488-1.084 2.396-2.888 2.396H5.062z"/>
 </svg> Bootstrap</a> and <a href="https://bootstrap-table.com">Bootstrap Table</a>.
@@ -386,5 +376,5 @@ o += """
       </body>
     </html>"""
     
-with open('../www/mpc_stuff.html', 'w') as f:
+with open('../www/stats.html', 'w') as f:
     f.write(o)
