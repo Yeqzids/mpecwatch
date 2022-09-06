@@ -1,4 +1,4 @@
-import sqlite3, plotly.express as px, pandas as pd
+import sqlite3, plotly.express as px, pandas as pd, copy
 
 mpecconn = sqlite3.connect("mpecwatch_v3.db")
 cursor = mpecconn.cursor()
@@ -11,25 +11,29 @@ def tableNames():
     sql = '''SELECT name FROM sqlite_master WHERE type='table';'''
     cursor = mpecconn.execute(sql)
     results = cursor.fetchall()
-    return(results[1:2])
+    return(results[12:13])
 
 #creating and writing Pie chart to html
 def topN(someDictionary, graphTitle, station, includeNA = False):
+    allObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True))
+    
+    titleNA=""
     if includeNA:
-        NA = 0
         titleNA = "+NA"
+        if '' in allObjects:     #check observation type
+            allObjects['N/A'] = allObjects['']
+            del allObjects['']
     else:
-        NA = 1
-        titleNA = ""
-        
-    if len(someDictionary) > N: #if more than 10 data points DO top 10 + other
-        topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[NA:N+NA])
-        topObjects.update({"Others":sum(someDictionary.values())-sum(topObjects.values())})
+        if '' in allObjects:
+            del allObjects['']
+    
+    if len(allObjects) > N: #if more than N data points DO top 10 + other
+        topObjects = dict(sorted(allObjects.items(), key=lambda x:x[1], reverse = True)[:N])
+        topObjects.update({"Others":sum(allObjects.values())-sum(topObjects.values())})
     else: #otherwise show all data points
-        topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[NA::])
+        topObjects = dict(sorted(allObjects.items(), key=lambda x:x[1], reverse = True))    
     
     printDict(topObjects)
-    
     df = pd.DataFrame(list(topObjects.items()), columns=['Objects', 'Count'])
     fig1 = px.pie(df, values='Count', names='Objects', title=station + " | " + graphTitle)
     fig1.write_html("OMF(Ind)/"+station+"_"+graphTitle+"{}.html".format(titleNA))
@@ -48,9 +52,10 @@ for station in tables:
         facilities[observation[4]] = facilities.get(observation[4],0)+1
     
     #doesnt include NA
-    topN(observers, "Top {} Observers".format(N), station[0])
+    #topN(observers, "Top {} Observers".format(N), station[0])
     topN(measurers, "Top {} Measurers".format(N), station[0])
-    topN(facilities, "Top {} Facilities".format(N), station[0])
+    topN(measurers, "Top {} Measurers".format(N), station[0], True)
+    #topN(facilities, "Top {} Facilities".format(N), station[0])
     
     #includes NA
     #topN(observers, "Top {} Observers".format(N), station[0], True)
