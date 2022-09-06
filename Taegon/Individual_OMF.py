@@ -11,7 +11,7 @@ def tableNames():
     sql = '''SELECT name FROM sqlite_master WHERE type='table';'''
     cursor = mpecconn.execute(sql)
     results = cursor.fetchall()
-    return(results[12:13])
+    return(results[1::])
 
 #creating and writing Pie chart to html
 def topN(someDictionary, graphTitle, station, includeNA = False):

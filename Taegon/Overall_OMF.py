@@ -42,31 +42,25 @@ def topN(someDictionary, graphTitle, includeNA = False, includeOther = True):
     NA=""
     if includeNA:
         NA = "+NA"
-        if '' in objects11:     #check observation type
-            objects11['N/A'] = objects11['']
-            del objects11['']
+        if '' in someDictionary:     #check observation type
+            someDictionary['N/A'] = someDictionary['']
+            del someDictionary['']
     else:
         if '' in someDictionary:
             del someDictionary['']
     
     objects11 = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[:N])
     
-    #If NA is not included, NA will be congregated in other
     O=""
     if includeOther:
         Other = "+O"
-        objects11.update({"Other":sum(someDictionary.values())-sum(objects11.values())})
+        objects11.update({"Others":sum(someDictionary.values())-sum(objects11.values())})
         
     printDict(objects11)
     df = pd.DataFrame(list(objects11.items()), columns=['Objects', 'Count'])
     fig1 = px.pie(df, values='Count', names='Objects', title=graphTitle)
-    fig1.write_html(graphTitle+"{}{}.html".format(NA, Other))
-    
-    '''
-    plt.figure(graphTitle)
-    plt.pie(list(objects11.values()), labels = list(objects11.keys()))
-    plt.title(graphTitle)
-    '''
+    #fig1.write_html(graphTitle+"{}{}.html".format(NA, Other))
+    fig1.show()
 
 
 ''' testing the contents of measurers and observers
@@ -79,9 +73,7 @@ print(res2)
 
 topN(observers, "Top {} Observers".format(N))
 topN(measurers, "Top {} Measurers".format(N))
-topN(stations, "Top {} Facilities".format(N))
-
-#plt.show()
+topN(stations, "Top {} Facilities".format(N), includeOther = False)
 
 print('finished')
 mpecconn.close()
