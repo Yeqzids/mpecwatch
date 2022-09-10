@@ -47,7 +47,7 @@ def tableNames():
     sql = '''SELECT name FROM sqlite_master WHERE type='table';'''
     cursor = mpecconn.execute(sql)
     results = cursor.fetchall()
-    return(results[1::])
+    return(results[4:5])
     
 #create a graph of one station 
 def createGraph(station_name):
@@ -189,8 +189,10 @@ def createWEB():
             
 def main():
     for station_name in tableNames():
+        totalMPEC = 0
         df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
-        station = station_name[0]
+        #station = station_name[0]
+        station = "station_J95"
         editorials = set()
         discoveries = set()
         orbitupdates = set()
@@ -284,6 +286,9 @@ def main():
             retractions.clear()
             others.clear()
             
+            totalMPEC += sum([editorial, discovery, orbitupdate, dou, listupdate, retraction, other])
+        
+        print(totalMPEC)    
         fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station.capitalize()+" | Number and type of MPECs by year")
         fig.write_html("WEB_Stations/Graphs/"+station+".html")
         
@@ -293,7 +298,6 @@ def main():
         """
 
         with open(page, 'w') as f:
-            
             f.write(o)
 
 main()    

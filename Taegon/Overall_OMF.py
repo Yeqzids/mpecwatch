@@ -35,9 +35,7 @@ for station in tableNames():
         #if observation[2] == '' or observation[3] =='':
             #print(observation[6])
 
-N=10
-#sum of table values = 4396944. total entries
-       
+N=10       
 def topN(someDictionary, graphTitle, includeNA = False, includeOther = True):
     NA=""
     if includeNA:
@@ -51,16 +49,16 @@ def topN(someDictionary, graphTitle, includeNA = False, includeOther = True):
     
     objects11 = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[:N])
     
-    O=""
+    Other=""
     if includeOther:
         Other = "+O"
         objects11.update({"Others":sum(someDictionary.values())-sum(objects11.values())})
         
-    printDict(objects11)
+    #printDict(objects11)
     df = pd.DataFrame(list(objects11.items()), columns=['Objects', 'Count'])
     fig1 = px.pie(df, values='Count', names='Objects', title=graphTitle)
-    #fig1.write_html(graphTitle+"{}{}.html".format(NA, Other))
-    fig1.show()
+    fig1.write_html(graphTitle+"{}{}.html".format(NA, Other))
+    #fig1.show()
 
 
 ''' testing the contents of measurers and observers
