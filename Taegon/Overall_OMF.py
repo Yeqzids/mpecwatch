@@ -4,10 +4,12 @@ Created on Jul 27, 2022
 Pie/bar chart + break down table of the occurrence of each "observer", "measurer" and "facility"
 '''
 
-import sqlite3, matplotlib.pyplot as plt, plotly.express as px, pandas as pd
+import sqlite3, plotly.express as px, pandas as pd, textwrap, copy
 
-mpecconn = sqlite3.connect("mpecwatch_v3.db")
+mpecconn = sqlite3.connect("C:\\Users\\taega\\OneDrive\\Documents\\mpec_files\\mpecwatch_v3.db")
 cursor = mpecconn.cursor()
+
+MAX_CHAR_LEN = 30 
 
 def tableNames():
     sql = '''SELECT name FROM sqlite_master WHERE type='table';'''
@@ -48,7 +50,13 @@ def topN(someDictionary, graphTitle, includeNA = False, includeOther = True):
             del someDictionary['']
     
     objects11 = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[:N])
-    
+    for key in copy.copy(list(objects11.keys())):
+        if len(key) > MAX_CHAR_LEN:
+            new_key = key[:MAX_CHAR_LEN]
+            objects11[new_key] = objects11.pop(key)
+    objects11 = dict(sorted(objects11.items(), key=lambda x:x[1], reverse = True))
+    #printDict(objects11)
+
     Other=""
     if includeOther:
         Other = "+O"
@@ -57,7 +65,8 @@ def topN(someDictionary, graphTitle, includeNA = False, includeOther = True):
     #printDict(objects11)
     df = pd.DataFrame(list(objects11.items()), columns=['Objects', 'Count'])
     fig1 = px.pie(df, values='Count', names='Objects', title=graphTitle)
-    fig1.write_html(graphTitle+"{}{}.html".format(NA, Other))
+    #fig1.update_layout(legend_itemwidth = 300)
+    fig1.write_html("C:\\Users\\taega\\OneDrive\\Documents\\mpec_files\\"+graphTitle+"{}{}.html".format(NA, Other))
     #fig1.show()
 
 

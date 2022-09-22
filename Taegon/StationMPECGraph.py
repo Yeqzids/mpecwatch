@@ -33,7 +33,7 @@ TABLE XXX (observatory code):
 
 import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np
 
-mpecconn = sqlite3.connect("mpecwatch_v3.db")
+mpecconn = sqlite3.connect("C:\\Users\\taega\\OneDrive\\Documents\\mpec_files\\mpecwatch_v3.db")
 cursor = mpecconn.cursor()
 
 #prints the contents of a table w/ output limit
@@ -103,7 +103,7 @@ def createGraph(station_name):
     
     print(df)  
     fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station.capitalize()+" | Number and type of MPECs by year")
-    fig.write_html("WEB_Stations/Graphs/"+station+".html")
+    fig.write_html("C:\\Users\\taega\\OneDrive\\Documents\\mpec_files\\WEB_Stations\\Graphs\\"+station+".html")
     #fig.show()
 
 # prints columns headers of a table
@@ -188,7 +188,8 @@ def createWEB():
             f.write(o)
             
 def main():
-    for station_name in tableNames():
+    #for station_name in tableNames():
+    for station_name in range(1):
         totalMPEC = 0
         df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
         #station = station_name[0]
@@ -200,7 +201,7 @@ def main():
         listupdates = set()
         retractions = set()
         others = set()
-        page = "WEB_Stations/WEB_" + str(station) + ".html"
+        page = "C:\\Users\\taega\\OneDrive\\Documents\\mpec_files\\WEB_Stations\\WEB_" + str(station) + ".html"
         o = """
         <div class="jumbotron text-center">
           <h1>{}</h1>
@@ -231,6 +232,8 @@ def main():
             </table>
         """.format(station.capitalize(), station)
         
+        
+        '''
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             year_start = datetime.datetime(year, 1, 1, 0, 0, 0).timestamp()
             year_end = datetime.datetime(year, 12, 31, 23, 59, 59).timestamp()
@@ -261,7 +264,25 @@ def main():
             cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Other'))
             for i in cursor.fetchall():
                 others.add(i[5])
-            other = len(others)
+            other = len(others) 
+        '''
+        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1)):
+            year_start = datetime.datetime(year, 1, 1, 0, 0, 0).timestamp()
+            year_end = datetime.datetime(year, 12, 31, 23, 59, 59).timestamp()
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Editorial'))
+            editorial = len(cursor.fetchall())
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Discovery'))
+            discovery = len(cursor.fetchall())
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'OrbitUpdate'))
+            orbitupdate = len(cursor.fetchall())
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'DOU'))
+            dou = len(cursor.fetchall())
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'ListUpdate'))
+            listupdate = len(cursor.fetchall())
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Retraction'))
+            retraction = len(cursor.fetchall())
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Other'))
+            other = len(cursor.fetchall())
             df = df.append(pd.DataFrame({"Year": [year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]}), ignore_index = True)
             
             o += """
@@ -290,7 +311,7 @@ def main():
         
         print(totalMPEC)    
         fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station.capitalize()+" | Number and type of MPECs by year")
-        fig.write_html("WEB_Stations/Graphs/"+station+".html")
+        fig.write_html("C:\\Users\\taega\\OneDrive\\Documents\\mpec_files\\WEB_Stations\\Graphs\\"+station+".html")
         
         o += """    
           </div>
