@@ -30,7 +30,7 @@ stations = {}
 for station in tableNames():
     cursor.execute("select * from {}".format(station[0]))
     observations = cursor.fetchall()
-    stations.update({station[0]: len(observations)})
+    stations.update({station[0][8::]: len(observations)})
     for observation in observations:
         observers[observation[2]] = observers.get(observation[2],0)+1
         measurers[observation[3]] = measurers.get(observation[3],0)+1
@@ -78,8 +78,8 @@ print(res1)
 print(res2)
 '''
 
-topN(observers, "Top {} Observers".format(N))
-topN(measurers, "Top {} Measurers".format(N))
+#topN(observers, "Top {} Observers".format(N))
+#topN(measurers, "Top {} Measurers".format(N))
 topN(stations, "Top {} Facilities".format(N), includeOther = False)
 
 print('finished')
