@@ -55,6 +55,8 @@ for p in pages:
         <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
         <!--[if lt IE 9]><script src="assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
         <script src="assets/js/ie-emulation-modes-warning.js"></script>
+        <script src="extensions/export/tableExport.min.js"></script>
+        <script src="extensions/export/tableExport.js"></script>
     
         <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -86,9 +88,10 @@ for p in pages:
               <ul class="nav navbar-nav">
                 <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/objtype.html">Statistics by Object Type (under development)</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
               </ul>
             </div><!--/.nav-collapse -->
           </div>
@@ -98,8 +101,7 @@ for p in pages:
         
         <!-- Main jumbotron for a primary marketing message or call to action -->
       <div class="jumbotron">
-        <h2>This page is still under development!</h2>
-        <p>Please note that this page is still under active development. When complete, each observatory will get its own metric page that can be accessed from this page. Please check again later. Quanzhi, Mar 2, 2022.</p>
+        <p>The pages here are still under active development and testing. Comments, suggestions and bug reports are welcome (via Issue Tracker or by email). Quanzhi 09/02/22</p>
       </div>
     """
     
@@ -125,6 +127,7 @@ for p in pages:
           <table class="table table-striped"
               data-toggle="table"
               data-search="true"
+              data-show-export="true"
               data-show-columns="true">
               <thead>
                 <tr class="tr-class-1">
@@ -170,12 +173,9 @@ for p in pages:
             <tr>
                 <td>%s</td>""" % s
                 
-        if s in ['244', '245', '247', '248', '249', '250', '258', '270', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
-            o += """
-                <td>%s</td>""" % (mpccode[s]['name'])
-        else:
-            o += """
-                <td><a href="http://maps.google.com/maps?q=%s,%s">%s</a></td>""" % (mpccode[s]['lat'], mpccode[s]['lon'], mpccode[s]['name'])
+        #if s in ['244', '245', '247', '248', '249', '250', '258', '270', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
+        o += """
+                <td><a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s</a></td>""" % (str(s), mpccode[s]['name'])
                 
         o += """
                 <td>%s</td>

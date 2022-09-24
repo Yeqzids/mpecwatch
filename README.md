@@ -5,6 +5,7 @@
 ## Change log
 
 * 2022 Jan 25: alpha version is now accessible from [SBN-MPC Annex](https://sbnmpc.astro.umd.edu)!
+* 2022 Sep 2: adding statistics and graphs for indivdiual sites,
 
 ## Development stage
 
