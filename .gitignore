@@ -7,3 +7,4 @@ makepages/*.txt
 www/
 mpccode_trim.txt
 proc_loop.*
+/.metadata/

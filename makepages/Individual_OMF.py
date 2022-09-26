@@ -18,19 +18,25 @@ def tableNames():
     return(results[1::])
 
 #creating and writing Pie chart to html
-def topN(someDictionary, graphTitle, station, includeNA = False):
+def topN(someDictionary, graphTitle, station, includeNA = False):    
     if includeNA:
-        NA = 0
         titleNA = "+NA"
+        if '' in someDictionary:     #check observation type
+            someDictionary['N/A'] = someDictionary['']
+            del someDictionary['']
     else:
-        NA = 1
-        titleNA = ""
-        
-    if len(someDictionary) > N: #if more than 10 data points DO top 10 + other
-        topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[NA:N+NA])
+        titleNA=""
+        if '' in someDictionary:
+            del someDictionary['']
+
+    if 0 in someDictionary:
+        del someDictionary[0]
+    
+    if len(someDictionary) > N: #if more than N data points DO top 10 + other
+        topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[:N])
         topObjects.update({"Others":sum(someDictionary.values())-sum(topObjects.values())})
     else: #otherwise show all data points
-        topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[NA::])
+        topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True))
     
     printDict(topObjects)
     

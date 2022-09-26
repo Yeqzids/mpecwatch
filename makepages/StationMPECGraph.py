@@ -45,224 +45,18 @@ def printTableContent(table):
     rows = cursor.execute("SELECT * FROM {} WHERE Object = 'J99M00L' LIMIT 100".format(table)).fetchall()
     print(rows)
 
-
 #List of table names
 def tableNames():
     sql = '''SELECT name FROM sqlite_master WHERE type='table';'''
     cursor = mpecconn.execute(sql)
     results = cursor.fetchall()
     return(results[1::])
-    
-#create a graph of one station 
-def createGraph(station_name):
-    df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
-    editorials = set()
-    discoveries = set()
-    orbitupdates = set()
-    dous = set()
-    listupdates = set()
-    retractions = set()
-    others = set()
-    station = str(station_name[0])
-    for year in list(np.arange(1993, datetime.datetime.now().year+1, 1)):
-        year_start = datetime.datetime(year, 1, 1, 0, 0, 0).timestamp()
-        year_end = datetime.datetime(year, 12, 31, 23, 59, 59).timestamp()
-        cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Editorial'))
-        for i in cursor.fetchall():
-            editorials.add(i[5])
-        editorial = len(editorials)
-        cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Discovery'))
-        for i in cursor.fetchall():
-            discoveries.add(i[5])
-        discovery = len(discoveries)
-        cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'OrbitUpdate'))
-        for i in cursor.fetchall():
-            orbitupdates.add(i[5])
-        orbitupdate = len(orbitupdates)
-        cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'DOU'))
-        for i in cursor.fetchall():
-            dous.add(i[5])
-        dou = len(dous)
-        cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'ListUpdate'))
-        for i in cursor.fetchall():
-            listupdates.add(i[5])
-        listupdate = len(listupdates)
-        cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Retraction'))
-        for i in cursor.fetchall():
-            retractions.add(i[5])
-        retraction = len(retractions)
-        cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Other'))
-        for i in cursor.fetchall():
-            others.add(i[5])
-        other = len(others)
-           
-        df = df.append(pd.DataFrame({"Year": [year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]}), ignore_index = True)
-        editorials = set()
-        discoveries = set()
-        orbitupdates = set()
-        dous = set()
-        listupdates = set()
-        retractions = set()
-        others = set()
-    
-    print(df) 
-    fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name'] + " | Number and type of MPECs by year")
-    fig.write_html("../www/byStation/Graphs/"+station[-3:]+".html")
-    #fig.show()
 
 # prints columns headers of a table
 def printColumns(table):
     cursor.execute("select * from {}".format(table))
     results = list(map(lambda x: x[0], cursor.description))
     print(results)
-
-#MAIN    
-def createWEB():
-    for station in tableNames():
-        createGraph(station)    
-        page = "../www/byStation/" + str(station[0]) + ".html"
-        o = """
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel="icon" href="favicon.ico">
-
-    <title>MPEC Watch</title>
-
-    <!-- Bootstrap core CSS -->
-    <link href="dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap theme -->
-    <link href="dist/css/bootstrap-theme.min.css" rel="stylesheet">
-    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <link href="../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
-
-    <!-- Custom styles for this template -->
-    <link href="../theme.css" rel="stylesheet">
-
-    <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
-    <!--[if lt IE 9]><script src="../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
-    <script src="../assets/js/ie-emulation-modes-warning.js"></script>
-    <script src="../dist/extensions/export/tableExport.min.js"></script>
-        <script src="../dist/extensions/export/tableExport.js"></script>
-
-    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-    <!--[if lt IE 9]>
-      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
-      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-    <![endif]-->
-  </head>
-
-  <body>
-
-    <!-- Fixed navbar -->
-    <nav class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container">
-        <div class="navbar-header">
-          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-            <span class="sr-only">Toggle navigation</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="navbar-brand" href="#">MPEC Watch</a>
-        </div>
-        <div id="navbar" class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
-            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
-            <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
-          </ul>
-        </div><!--/.nav-collapse -->
-      </div>
-    </nav>
-
-    <div class="container theme-showcase" role="main">
-
-      <!-- Main jumbotron for a primary marketing message or call to action -->
-      <div class="jumbotron">
-        <p>The pages here are still under active development and testing. Comments, suggestions and bug reports are welcome (via Issue Tracker or by email). Quanzhi 09/02/22</p>
-      </div>"""
-		
-        o += """<div class="row">
-              <h2>{} {}</h2>""".format(station[-3:], mpccode[station[-3:]]['name'])
-              
-        if mpccode[station[-3:]] not in ['244', '245', '247', '248', '249', '250', '258', '270', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
-            if mpccode[station[-3:]]['lon'] > 180:
-                lon = mpccode[station[-3:]]['lon'] - 360
-            else:
-                lon = mpccode[station[-3:]]['lon']
-            o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this place?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
-              
-        o += """<p>
-                  <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
-                  <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
-                  <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
-                  <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
-              </p>
-            </div>
-            <div class="container">
-            <table class="table table-striped" data-toggle="table" data-search="true" data-show-export="true" data-show-columns="true">
-                <tr>
-                    <th>Year</th>
-                    <th>Total MPECs</th>
-                    <th>Editorial</th>
-                    <th>Discovery</th>
-                    <th>P/R/FU</th>
-                    <th>DOU</th>
-                    <th>List Update</th>
-                    <th>Retraction</th>
-                    <th>Other</th>
-                </tr>
-        """.format(str(station[0]), str(station[0]), str(station[0]), str(station[0]))
-        
-        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-            year_start = datetime.datetime(year, 1, 1, 0, 0, 0).timestamp()
-            year_end = datetime.datetime(year, 12, 31, 23, 59, 59).timestamp()
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station[0], year_start, year_end, 'Editorial'))
-            editorial = len(cursor.fetchall())
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station[0], year_start, year_end, 'Discovery'))
-            discovery = len(cursor.fetchall())
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station[0], year_start, year_end, 'OrbitUpdate'))
-            orbitupdate = len(cursor.fetchall())
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station[0], year_start, year_end, 'DOU'))
-            dou = len(cursor.fetchall())
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station[0], year_start, year_end, 'ListUpdate'))
-            listupdate = len(cursor.fetchall())
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station[0], year_start, year_end, 'Retraction'))
-            retraction = len(cursor.fetchall())
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station[0], year_start, year_end, 'Other'))
-            other = len(cursor.fetchall())
-            
-            o += """
-              <tr>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-              </tr>
-            """ % (year, sum([editorial, discovery, orbitupdate, dou, listupdate, retraction, other]), editorial, discovery, orbitupdate, dou, listupdate, retraction, other)
-        
-        o += """    
-          </div>
-        </div>
-        """
-
-        with open(page, 'w') as f:
-            f.write(o)
             
 def main():
     for station_name in tableNames():
@@ -389,6 +183,7 @@ def main():
             for i in cursor.fetchall():
                 editorials.add(i[5])
             editorial = len(editorials)
+            #NEED TO UPDATE DISCOVERIES
             cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Discovery'))
             for i in cursor.fetchall():
                 discoveries.add(i[5])
@@ -479,8 +274,3 @@ def main():
 main()    
 mpecconn.close()
 print('finished')
-
-
-
-
-
