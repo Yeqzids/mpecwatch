@@ -25,6 +25,14 @@ o = """
 <!doctype html>
 <html lang="en">
   <head>
+          <!-- Google tag (gtag.js) -->
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTXHKC28G9"></script>
+          <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-WTXHKC28G9');
+          </script>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -198,10 +206,10 @@ for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', dis
 		o += """
 					  <tr>
 						<td>%s</td>
-						<td>%s</td>
+						<td><a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s</td>
 						<td>%s</td>
 					  </tr>
-		""" % (str(i+1), s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['count1y'][i])
+		""" % (str(i+1), s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i], s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('count1y', ascending=False).reset_index(drop=True)['count1y'][i])
 
 	o += """                
 					</tbody>
@@ -233,10 +241,10 @@ for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', dis
 		o += """
 					  <tr>
 						<td>%s</td>
-						<td>%s</td>
+						<td><a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s</td>
 						<td>%s</td>
 					  </tr>
-		""" % (str(i+1), s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['count5y'][i])
+		""" % (str(i+1), s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i], s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('count5y', ascending=False).reset_index(drop=True)['count5y'][i])
 
 	o += """                
 					</tbody>
@@ -266,10 +274,10 @@ for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', dis
 		o += """
 					  <tr>
 						<td>%s</td>
-						<td>%s</td>
+						<td><a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s</td>
 						<td>%s</td>
 					  </tr>
-		""" % (str(i+1), s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('countall', ascending=False).reset_index(drop=True)['countall'][i])
+		""" % (str(i+1), s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i], s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i] + ' ' + mpccode[s[1].sort_values('countall', ascending=False).reset_index(drop=True)['cod'][i]]['name'], s[1].sort_values('countall', ascending=False).reset_index(drop=True)['countall'][i])
 
 	o += """                
 					</tbody>
