@@ -191,15 +191,16 @@ def main():
             for i in cursor.fetchall():
                 editorials.add(i[5])
             editorial = len(editorials)
-            #NEED TO UPDATE DISCOVERIES
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Discovery'))
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and Discovery == 1".format(station, year_start, year_end))
             for i in cursor.fetchall():
                 discoveries.add(i[5])
             discovery = len(discoveries)
+            #NEED TO UPDATE
             cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'OrbitUpdate'))
             for i in cursor.fetchall():
                 orbitupdates.add(i[5])
             orbitupdate = len(orbitupdates)
+            #NEED TO UPDATE
             cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'DOU'))
             for i in cursor.fetchall():
                 dous.add(i[5])
