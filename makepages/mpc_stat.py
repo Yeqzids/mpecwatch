@@ -247,6 +247,14 @@ o = """
 <!doctype html>
 <html lang="en">
   <head>
+          <!-- Google tag (gtag.js) -->
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTXHKC28G9"></script>
+          <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-WTXHKC28G9');
+          </script>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -354,8 +362,7 @@ o += """
             <iframe id="igraph12" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByWeekday_Fig_2015.html" height="525" width="100%"></iframe>
             <iframe id="igraph13" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByWeekday_Fig_2005.html" height="525" width="100%"></iframe>
             <iframe id="igraph14" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByWeekday_Fig_1995.html" height="525" width="100%"></iframe>
-          </p>
-          </div>"""
+          </p>"""
     
 o += """
     	<footer class="pt-5 my-5 text-muted border-top">

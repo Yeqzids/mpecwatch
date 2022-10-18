@@ -247,6 +247,14 @@ o = """
 <!doctype html>
 <html lang="en">
   <head>
+          <!-- Google tag (gtag.js) -->
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTXHKC28G9"></script>
+          <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-WTXHKC28G9');
+          </script>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -344,8 +352,7 @@ o += """
           <h2>Fraction of each observed object among all MPECs</h2>
           <p>
             <iframe id="igraph4" scrolling="no" style="border:none;" seamless="seamless" src="stats/T10Objects+Other.html" height="525" width="100%"></iframe>
-          </p>
-          </div>"""
+          </p>"""
     
 o += """
     	<footer class="pt-5 my-5 text-muted border-top">
