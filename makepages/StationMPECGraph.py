@@ -32,7 +32,9 @@ TABLE XXX (observatory code):
 """
 
 import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json
+from datetime import date
 
+d=dict()
 mpecconn = sqlite3.connect("../mpecwatch_v3.db")
 cursor = mpecconn.cursor()
 
@@ -57,8 +59,36 @@ def printColumns(table):
     cursor.execute("select * from {}".format(table))
     results = list(map(lambda x: x[0], cursor.description))
     print(results)
-            
+
+def calcObs():
+    cursor.execute("select * from MPEC")
+    for mpec in cursor.fetchall():
+        year = date.fromtimestamp(mpec[2]).year
+        for station in mpec[3].split(', '):
+            if station not in d:
+                d[station] = {}
+                d[station]['mpec_followup'] = {}
+                d[station]['mpec_1st_followup'] = {}
+            #MPECType = 'Discovery' and DiscStation != '{}'
+            if mpec[6] == 'Discovery' and station != mpec[4]:
+                try:
+                    #attempts to increment dict value by 1
+                    d[station]['mpec_followup'][year] = d[station]['mpec_followup'].get(year,0)+1
+                except:
+                    #creates dict key and adds 1
+                    d[station]['mpec_followup'][year] = 1
+
+            #MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
+            if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
+                try:
+                    d[station]['mpec_1st_followup'][year] = d[station]['mpec_1st_followup'].get(year,0)+1
+                except:
+                    d[station]['mpec_1st_followup'][year] = 1
+
+
 def main():
+    calcObs()
+    includeFirstFU = True #include first-followup in graph or just use FU
     for station_name in tableNames():
         try:
             mpccode[station_name[0][-3:]]
@@ -191,8 +221,7 @@ def main():
             for i in cursor.fetchall():
                 editorials.add(i[5])
             editorial = len(editorials)
-            #NEED TO UPDATE DISCOVERIES
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Discovery'))
+            cursor.execute("select * from {} where Time >= {} and Time <= {} and Discovery == 1".format(station, year_start, year_end))
             for i in cursor.fetchall():
                 discoveries.add(i[5])
             discovery = len(discoveries)
@@ -216,7 +245,19 @@ def main():
             for i in cursor.fetchall():
                 others.add(i[5])
             other = len(others)
-            df = df.append(pd.DataFrame({"Year": [year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]}), ignore_index = True)
+
+            try:
+                mpec_followup = d[station[8::]]['mpec_followup'][int(year)]
+                mpec_1st_followup = d[station[8::]]['mpec_1st_followup'][int(year)]
+                if includeFirstFU:
+                    mpec_followup -= mpec_1st_followup
+                else:
+                    mpec_1st_followup = 0
+            except:
+                mpec_followup = 0
+                mpec_1st_followup = 0
+            
+            df = df.append(pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "mpec_followup", "mpec_1st_followup"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other, mpec_followup, mpec_1st_followup]}), ignore_index = True)
             
             o += """
               <tr>
@@ -229,8 +270,10 @@ def main():
                 <td>%i</td>
                 <td>%i</td>
                 <td>%i</td>
+                <td>%i</td>
+                <td>%i</td>
               </tr>
-            """ % (year, sum([editorial, discovery, orbitupdate, dou, listupdate, retraction, other]), editorial, discovery, orbitupdate, dou, listupdate, retraction, other)
+            """ % (year, sum([editorial, discovery, orbitupdate, dou, listupdate, retraction, other, mpec_followup, mpec_1st_followup]), editorial, discovery, orbitupdate, dou, listupdate, retraction, other, mpec_followup, mpec_1st_followup)
         
             editorials.clear()
             discoveries.clear()
