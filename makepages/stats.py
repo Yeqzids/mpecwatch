@@ -263,7 +263,7 @@ o = """
     <meta name="author" content="">
     <link rel="icon" href="favicon.ico">
 
-    <title>MPEC Watch</title>
+    <title>MPEC Watch | Various Statistics</title>
 
     <!-- Bootstrap core CSS -->
     <link href="dist/css/bootstrap.min.css" rel="stylesheet">

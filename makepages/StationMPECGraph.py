@@ -97,7 +97,7 @@ def main():
     <meta name="author" content="">
     <link rel="icon" href="../favicon.ico">
 
-    <title>MPEC Watch</title>
+    <title>MPEC Watch | Station Statistics %s</title>
 
     <!-- Bootstrap core CSS -->
     <link href="../dist/css/bootstrap.min.css" rel="stylesheet">
@@ -151,7 +151,7 @@ def main():
 
     <div class="container theme-showcase" role="main">
 
-      <!-- Main jumbotron for a primary marketing message or call to action -->"""
+      <!-- Main jumbotron for a primary marketing message or call to action -->""" % str(station[-3:])
         o += """<div class="row">
               <h2>{} {}</h2>""".format(station[-3:], mpccode[station[-3:]]['name'])
               
