@@ -67,23 +67,23 @@ def calcObs():
         for station in mpec[3].split(', '):
             if station not in d:
                 d[station] = {}
-                d[station]['mpec_followup'] = {}
-                d[station]['mpec_1st_followup'] = {}
+                d[station]['Followup'] = {}
+                d[station]['FirstFollowup'] = {}
             #MPECType = 'Discovery' and DiscStation != '{}'
             if mpec[6] == 'Discovery' and station != mpec[4]:
                 try:
                     #attempts to increment dict value by 1
-                    d[station]['mpec_followup'][year] = d[station]['mpec_followup'].get(year,0)+1
+                    d[station]['Followup'][year] = d[station]['Followup'].get(year,0)+1
                 except:
                     #creates dict key and adds 1
-                    d[station]['mpec_followup'][year] = 1
+                    d[station]['Followup'][year] = 1
 
             #MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
             if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
                 try:
-                    d[station]['mpec_1st_followup'][year] = d[station]['mpec_1st_followup'].get(year,0)+1
+                    d[station]['FirstFollowup'][year] = d[station]['FirstFollowup'].get(year,0)+1
                 except:
-                    d[station]['mpec_1st_followup'][year] = 1
+                    d[station]['FirstFollowup'][year] = 1
 
 
 def main():
@@ -247,8 +247,8 @@ def main():
             other = len(others)
 
             try:
-                mpec_followup = d[station[8::]]['mpec_followup'][int(year)]
-                mpec_1st_followup = d[station[8::]]['mpec_1st_followup'][int(year)]
+                mpec_followup = d[station[8::]]['Followup'][int(year)]
+                mpec_1st_followup = d[station[8::]]['FirstFollowup'][int(year)]
                 if includeFirstFU:
                     mpec_followup -= mpec_1st_followup
                 else:
@@ -257,7 +257,7 @@ def main():
                 mpec_followup = 0
                 mpec_1st_followup = 0
             
-            df = df.append(pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "mpec_followup", "mpec_1st_followup"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other, mpec_followup, mpec_1st_followup]}), ignore_index = True)
+            df = df.append(pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other, mpec_followup, mpec_1st_followup]}), ignore_index = True)
             
             o += """
               <tr>
