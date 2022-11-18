@@ -211,6 +211,8 @@ def main():
                     <th>List Update</th>
                     <th>Retraction</th>
                     <th>Other</th>
+                    <th>Follow-up</th>
+                    <th>First Follow-up</th>
                 </tr>
         """.format(str(station), str(station), str(station), str(station))
         
