@@ -48,7 +48,7 @@ for p in pages:
         <meta name="author" content="">
         <link rel="icon" href="favicon.ico">
     
-        <title>MPEC Watch</title>
+        <title>MPEC Watch | Global Statistics %s</title>
     
         <!-- Bootstrap core CSS -->
         <link href="dist/css/bootstrap.min.css" rel="stylesheet">
@@ -111,7 +111,7 @@ for p in pages:
       <div class="jumbotron">
         <p>The pages here are still under active development and testing. Comments, suggestions and bug reports are welcome (via Issue Tracker or by email). Quanzhi 09/02/22</p>
       </div>
-    """
+    """ % str(p)
     
     # Table of MPECs by year and type
     
