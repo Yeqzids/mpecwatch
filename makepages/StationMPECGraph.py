@@ -61,8 +61,6 @@ def calcObs():
         for station in mpec[3].split(', '):
             if station not in d:
                 d[station] = {}
-                d[station]['mpec_followup'] = {}
-                d[station]['mpec_1st_followup'] = {}
                 d[station]['Discovery'] = {}
                 d[station]['Editorial'] = {}
                 d[station]['OrbitUpdate'] = {}
@@ -70,21 +68,23 @@ def calcObs():
                 d[station]['ListUpdate'] = {}
                 d[station]['Retraction'] = {}
                 d[station]['Other'] = {}
+                d[station]['Followup'] = {}
+                d[station]['FirstFollowup'] = {}
             #MPECType = 'Discovery' and DiscStation != '{}'
             if mpec[6] == 'Discovery' and station != mpec[4]:
                 try:
                     #attempts to increment dict value by 1
-                    d[station]['mpec_followup'][year] = d[station]['mpec_followup'].get(year,0)+1
+                    d[station]['Followup'][year] = d[station]['Followup'].get(year,0)+1
                 except:
                     #creates dict key and adds 1
-                    d[station]['mpec_followup'][year] = 1
+                    d[station]['Followup'][year] = 1
 
             #MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
             if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
                 try:
-                    d[station]['mpec_1st_followup'][year] = d[station]['mpec_1st_followup'].get(year,0)+1
+                    d[station]['FirstFollowup'][year] = d[station]['FirstFollowup'].get(year,0)+1
                 except:
-                    d[station]['mpec_1st_followup'][year] = 1
+                    d[station]['FirstFollowup'][year] = 1
 
             #if station = discovery station
             if station == mpec[4]:
@@ -137,7 +137,7 @@ def main():
     <meta name="author" content="">
     <link rel="icon" href="../favicon.ico">
 
-    <title>MPEC Watch</title>
+    <title>MPEC Watch | Station Statistics %s</title>
 
     <!-- Bootstrap core CSS -->
     <link href="../dist/css/bootstrap.min.css" rel="stylesheet">
@@ -191,7 +191,7 @@ def main():
 
     <div class="container theme-showcase" role="main">
 
-      <!-- Main jumbotron for a primary marketing message or call to action -->"""
+      <!-- Main jumbotron for a primary marketing message or call to action -->""" % str(station[-3:])
         o += """<div class="row">
               <h2>{} {}</h2>""".format(station[-3:], mpccode[station[-3:]]['name'])
               
@@ -222,19 +222,19 @@ def main():
                     <th>Retraction</th>
                     <th>Other</th>
                     <th>Follow-Up</th>
-                    <th>1st follow-up</th>
+                    <th>First Follow-Up</th>
                 </tr>
         """.format(str(station), str(station), str(station), str(station))
         
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-            obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "mpec_followup", "mpec_1st_followup"]
+            obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
             mpec_counts = list(map(lambda func: func(), [lambda mpecType=x: d[station[8::]][mpecType][year] if year in d[station[8::]][mpecType].keys() else 0 for x in obs_types]))
             if includeFirstFU:
                 mpec_counts[7] -= mpec_counts[8]
             else:
                 mpec_counts[8] = 0
             
-            df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "mpec_followup", "mpec_1st_followup"], "#MPECs": mpec_counts})])
+            df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": mpec_counts})])
             
             o += """
               <tr>
