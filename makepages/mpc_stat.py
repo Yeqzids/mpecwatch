@@ -310,7 +310,7 @@ o = """
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
+            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (private)</a></li>
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
           </ul>
@@ -320,8 +320,8 @@ o = """
 
     <div class="container theme-showcase" role="main">
           <div class="page-header">
-            <h1>MPC Stuff</h1>
-            <p>Miscellaneous statistics and plots related to MPC's operation.</p>
+            <h1>MPC Stuff (private)</h1>
+            <p>Miscellaneous statistics and plots related to MPC's operation. As of 12/02/2022, this is not accessible through links on the public website.</p>
           </div>
           <p>
             Last update: UTC %s
