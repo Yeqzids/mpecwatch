@@ -54,12 +54,6 @@ def tableNames():
     results = cursor.fetchall()
     return(results[1::])
 
-# prints columns headers of a table
-def printColumns(table):
-    cursor.execute("select * from {}".format(table))
-    results = list(map(lambda x: x[0], cursor.description))
-    print(results)
-
 def calcObs():
     cursor.execute("select * from MPEC")
     for mpec in cursor.fetchall():
@@ -67,6 +61,13 @@ def calcObs():
         for station in mpec[3].split(', '):
             if station not in d:
                 d[station] = {}
+                d[station]['Discovery'] = {}
+                d[station]['Editorial'] = {}
+                d[station]['OrbitUpdate'] = {}
+                d[station]['DOU'] = {}
+                d[station]['ListUpdate'] = {}
+                d[station]['Retraction'] = {}
+                d[station]['Other'] = {}
                 d[station]['Followup'] = {}
                 d[station]['FirstFollowup'] = {}
             #MPECType = 'Discovery' and DiscStation != '{}'
@@ -85,6 +86,22 @@ def calcObs():
                 except:
                     d[station]['FirstFollowup'][year] = 1
 
+            #if station = discovery station
+            if station == mpec[4]:
+                try:
+                    d[station]['Discovery'][year] = d[station]['Discovery'].get(year,0)+1
+                except:
+                    d[station]['Discovery'][year] = 1
+            
+            for mpecType in ["Editorial", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
+                if mpec[6] == mpecType:
+                    try:
+                        #attempts to increment dict value by 1
+                        d[station][mpecType][year] = d[station][mpecType].get(year,0)+1
+                    except:
+                        #creates dict key and adds 1
+                        d[station][mpecType][year] = 1
+
 
 def main():
     calcObs()
@@ -98,13 +115,6 @@ def main():
 		
         df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
         station = station_name[0]
-        editorials = set()
-        discoveries = set()
-        orbitupdates = set()
-        dous = set()
-        listupdates = set()
-        retractions = set()
-        others = set()
         page = "../www/byStation/" + str(station) + ".html"
 
         o = """
@@ -211,55 +221,20 @@ def main():
                     <th>List Update</th>
                     <th>Retraction</th>
                     <th>Other</th>
-                    <th>Follow-up</th>
-                    <th>First Follow-up</th>
+                    <th>Follow-Up</th>
+                    <th>First Follow-Up</th>
                 </tr>
         """.format(str(station), str(station), str(station), str(station))
         
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-            year_start = datetime.datetime(year, 1, 1, 0, 0, 0).timestamp()
-            year_end = datetime.datetime(year, 12, 31, 23, 59, 59).timestamp()
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Editorial'))
-            for i in cursor.fetchall():
-                editorials.add(i[5])
-            editorial = len(editorials)
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and Discovery == 1".format(station, year_start, year_end))
-            for i in cursor.fetchall():
-                discoveries.add(i[5])
-            discovery = len(discoveries)
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'OrbitUpdate'))
-            for i in cursor.fetchall():
-                orbitupdates.add(i[5])
-            orbitupdate = len(orbitupdates)
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'DOU'))
-            for i in cursor.fetchall():
-                dous.add(i[5])
-            dou = len(dous)
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'ListUpdate'))
-            for i in cursor.fetchall():
-                listupdates.add(i[5])
-            listupdate = len(listupdates)
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Retraction'))
-            for i in cursor.fetchall():
-                retractions.add(i[5])
-            retraction = len(retractions)
-            cursor.execute("select * from {} where Time >= {} and Time <= {} and MPECType = '{}'".format(station, year_start, year_end, 'Other'))
-            for i in cursor.fetchall():
-                others.add(i[5])
-            other = len(others)
-
-            try:
-                mpec_followup = d[station[8::]]['Followup'][int(year)]
-                mpec_1st_followup = d[station[8::]]['FirstFollowup'][int(year)]
-                if includeFirstFU:
-                    mpec_followup -= mpec_1st_followup
-                else:
-                    mpec_1st_followup = 0
-            except:
-                mpec_followup = 0
-                mpec_1st_followup = 0
+            obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+            mpec_counts = list(map(lambda func: func(), [lambda mpecType=x: d[station[8::]][mpecType][year] if year in d[station[8::]][mpecType].keys() else 0 for x in obs_types]))
+            if includeFirstFU:
+                mpec_counts[7] -= mpec_counts[8]
+            else:
+                mpec_counts[8] = 0
             
-            df = df.append(pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other, mpec_followup, mpec_1st_followup]}), ignore_index = True)
+            df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": mpec_counts})])
             
             o += """
               <tr>
@@ -275,15 +250,7 @@ def main():
                 <td>%i</td>
                 <td>%i</td>
               </tr>
-            """ % (year, sum([editorial, discovery, orbitupdate, dou, listupdate, retraction, other, mpec_followup, mpec_1st_followup]), editorial, discovery, orbitupdate, dou, listupdate, retraction, other, mpec_followup, mpec_1st_followup)
-        
-            editorials.clear()
-            discoveries.clear()
-            orbitupdates.clear()
-            dous.clear()
-            listupdates.clear()
-            retractions.clear()
-            others.clear()
+            """ % (year, sum(mpec_counts), mpec_counts[0], mpec_counts[1], mpec_counts[2], mpec_counts[3], mpec_counts[4], mpec_counts[5], mpec_counts[6], mpec_counts[7], mpec_counts[8])
             
         try:
             fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
