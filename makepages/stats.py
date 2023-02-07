@@ -310,7 +310,7 @@ o = """
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
             <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
+            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li> -->
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
           </ul>
@@ -321,7 +321,7 @@ o = """
     <div class="container theme-showcase" role="main">
     <!-- Main jumbotron for a primary marketing message or call to action -->
       <div class="jumbotron">
-        <p>This page is under active development. More plots and statistics are being added! Quanzhi 09/02/22</p>
+        <p>This page is under active development. More plots and statistics are being added. Quanzhi 09/02/22</p>
       </div>
           <div class="page-header">
             <h1>Various Statistics</h1>

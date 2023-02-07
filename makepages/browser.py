@@ -97,7 +97,7 @@ for p in pages:
                 <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li>
+            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li> -->
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
               </ul>
@@ -126,6 +126,12 @@ for p in pages:
     o += """
             </p>
           </div>
+          <p>
+          Disc. - MPECs associated with discovery made by this station.<br>
+          F/U - MPECs associated with follow-up observations made by this station to an object discovered elsewhere.<br>
+          1st F/U - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
+          Prec. - MPECs associated with precovery observations made by this station to an object discovered elsewhere.
+          </p>
           <p>
             Last update: UTC %s
           </p>""" % (datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
