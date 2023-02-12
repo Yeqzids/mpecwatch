@@ -283,12 +283,7 @@ def main():
         o += """
               </tbody>
             </table>    
-          </div>
         </div>
-        """
-        
-        o += """    </table>
-          </div>
         """
         
         o += """
