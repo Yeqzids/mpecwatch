@@ -70,6 +70,11 @@ def calcObs():
                 d[station]['Other'] = {}
                 d[station]['Followup'] = {}
                 d[station]['FirstFollowup'] = {}
+                d[station]['MPECs'] = set()
+
+            #listing all the MPECs from one station: USING TITLE (from MPEC table)
+            d[station]['MPECs'].add(mpec[0] + "\t" + mpec[1])
+
             #MPECType = 'Discovery' and DiscStation != '{}'
             if mpec[6] == 'Discovery' and station != mpec[4]:
                 try:
@@ -257,9 +262,28 @@ def main():
             fig.write_html("../www/byStation/Graphs/"+station+".html")
         except Exception as e:
             print(e)
+
+        o += """
+        <table>
+            <thead>
+                <tr>
+                    <th class="th-sm">Observed MPECs</th>
+                </tr>
+            </thead>
+            <tbody> 
+        """
+        for MPEC in d[station[-3::]]['MPECs']:
+            o += """
+            
+                <td>%s</td>
+            
+            """ % (MPEC)
         
-        o += """    </table>
-          </div>
+
+        o += """
+              </tbody>
+            </table>    
+        </div>
         """
         
         o += """
