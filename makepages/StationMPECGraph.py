@@ -34,7 +34,7 @@ TABLE XXX (observatory code):
 import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json
 from datetime import date
 
-d=dict()
+mpec_data=dict()
 mpecconn = sqlite3.connect("../mpecwatch_v3.db")
 cursor = mpecconn.cursor()
 
@@ -54,58 +54,117 @@ def tableNames():
     results = cursor.fetchall()
     return(results[1::])
 
+BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+def encode(num, alphabet=BASE62):
+    """Encode a positive number in Base X
+    Arguments:
+    - `num`: The number to encode
+    - `alphabet`: The alphabet to use for encoding
+    """
+    if num == 0:
+        return alphabet[0]
+    arr = []
+    base = len(alphabet)
+    while num:
+        num, rem = divmod(num, base)
+        arr.append(alphabet[rem])
+    arr.reverse()
+    return ''.join(arr)
+
 def calcObs():
     cursor.execute("select * from MPEC")
     for mpec in cursor.fetchall():
         year = date.fromtimestamp(mpec[2]).year
         for station in mpec[3].split(', '):
-            if station not in d:
-                d[station] = {}
-                d[station]['Discovery'] = {}
-                d[station]['Editorial'] = {}
-                d[station]['OrbitUpdate'] = {}
-                d[station]['DOU'] = {}
-                d[station]['ListUpdate'] = {}
-                d[station]['Retraction'] = {}
-                d[station]['Other'] = {}
-                d[station]['Followup'] = {}
-                d[station]['FirstFollowup'] = {}
-                d[station]['MPECs'] = set()
+            if station not in mpec_data:
+                mpec_data[station] = {}
+                mpec_data[station]['Discovery'] = {}
+                mpec_data[station]['Editorial'] = {}
+                mpec_data[station]['OrbitUpdate'] = {}
+                mpec_data[station]['DOU'] = {}
+                mpec_data[station]['ListUpdate'] = {}
+                mpec_data[station]['Retraction'] = {}
+                mpec_data[station]['Other'] = {}
+                mpec_data[station]['Followup'] = {}
+                mpec_data[station]['FirstFollowup'] = {}
+                mpec_data[station]['MPECs'] = []
 
             #listing all the MPECs from one station: USING TITLE (from MPEC table)
-            d[station]['MPECs'].add(mpec[0] + "\t" + mpec[1])
+            mpec_data[station]['MPECs'].add(mpec[0] + "\t" + mpec[1])
 
             #MPECType = 'Discovery' and DiscStation != '{}'
             if mpec[6] == 'Discovery' and station != mpec[4]:
                 try:
                     #attempts to increment dict value by 1
-                    d[station]['Followup'][year] = d[station]['Followup'].get(year,0)+1
+                    mpec_data[station]['Followup'][year] = mpec_data[station]['Followup'].get(year,0)+1
                 except:
                     #creates dict key and adds 1
-                    d[station]['Followup'][year] = 1
+                    mpec_data[station]['Followup'][year] = 1
 
             #MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
             if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
                 try:
-                    d[station]['FirstFollowup'][year] = d[station]['FirstFollowup'].get(year,0)+1
+                    mpec_data[station]['FirstFollowup'][year] = mpec_data[station]['FirstFollowup'].get(year,0)+1
                 except:
-                    d[station]['FirstFollowup'][year] = 1
+                    mpec_data[station]['FirstFollowup'][year] = 1
 
             #if station = discovery station
             if station == mpec[4]:
                 try:
-                    d[station]['Discovery'][year] = d[station]['Discovery'].get(year,0)+1
+                    mpec_data[station]['Discovery'][year] = mpec_data[station]['Discovery'].get(year,0)+1
                 except:
-                    d[station]['Discovery'][year] = 1
+                    mpec_data[station]['Discovery'][year] = 1
             
             for mpecType in ["Editorial", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
                 if mpec[6] == mpecType:
                     try:
                         #attempts to increment dict value by 1
-                        d[station][mpecType][year] = d[station][mpecType].get(year,0)+1
+                        mpec_data[station][mpecType][year] = mpec_data[station][mpecType].get(year,0)+1
                     except:
                         #creates dict key and adds 1
-                        d[station][mpecType][year] = 1
+                        mpec_data[station][mpecType][year] = 1
+
+            #listing all the MPECs from one station: USING TITLE (from MPEC table)
+            temp = []
+            name = mpec[0] + "\t" + mpec[1]
+            if name not in mpec_data[station]['MPECs']: #prevents duplication of the same MPEC object
+                temp.append(name) #
+                temp.append(datetime.datetime.fromtimestamp(mpec[2])) #time: date and time
+                #if station = discovery station
+                if station == mpec[4]:
+                    temp.append("&#x2713") #check mark
+                else:
+                    temp.append("")
+                #if station = FirstFU
+                if station == mpec[5]:
+                    temp.append("&#x2713") #check mark
+                else:
+                    temp.append("")
+                
+                obj_type = mpec[7]
+                temp.append(obj_type)
+                id = mpec[0][5::]
+                packed_front = ""
+                packed_back = ""
+
+                #packed front
+                if id[0:2] == "18":
+                    packed_front = "I" + id[2:4]
+                elif id[0:2] == "19":
+                    packed_front = "J" + id[2:4]
+                elif id[0:2] == "20":
+                    packed_front = "K" + id[2:4]
+                    
+                #packed_back
+                if len(id) == 8:
+                    packed_back = packed_front + id[-3::]
+                elif len(id) == 9:
+                    packed_back = packed_front + id[5] + encode(int(id[6:8])) + id[-1]
+                
+                url1 = "\"https://www.minorplanetcenter.net/mpec/{}/{}.html\"".format(packed_front, packed_back)
+                mpec_url = "<a href={}>Details</a>".format(url1)
+                temp.append(mpec_url)
+                mpec_data[station]['MPECs'].append((temp))
 
 
 def main():
@@ -214,7 +273,7 @@ def main():
                   <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
               </p>
             </div>
-            <div class="container">
+        <div class="container">
             <table class="table table-striped" data-toggle="table" data-search="true" data-show-export="true" data-show-columns="true">
                 <tr>
                     <th>Year</th>
@@ -233,7 +292,7 @@ def main():
         
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
-            mpec_counts = list(map(lambda func: func(), [lambda mpecType=x: d[station[8::]][mpecType][year] if year in d[station[8::]][mpecType].keys() else 0 for x in obs_types]))
+            mpec_counts = list(map(lambda func: func(), [lambda mpecType=x: mpec_data[station[8::]][mpecType][year] if year in mpec_data[station[8::]][mpecType].keys() else 0 for x in obs_types]))
             if includeFirstFU:
                 mpec_counts[7] -= mpec_counts[8]
             else:
@@ -242,49 +301,119 @@ def main():
             df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": mpec_counts})])
             
             o += """
-              <tr>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-                <td>%i</td>
-              </tr>
+                <tr>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                </tr>
             """ % (year, sum(mpec_counts), mpec_counts[0], mpec_counts[1], mpec_counts[2], mpec_counts[3], mpec_counts[4], mpec_counts[5], mpec_counts[6], mpec_counts[7], mpec_counts[8])
             
+        o += """
+            </table>
+        </div>
+        <div class="toolbar">
+            <button id="load" class="btn btn-secondary">Load 10000 Rows</button>
+            <button id="append" class="btn btn-secondary">Append 10000 Rows</button>
+            Total rows: <span id="total"></span>
+        </div>
+            <table id="table" 
+                class="table table-striped table-bordered table-sm"
+                data-toolbar=".toolbar"
+                data-virtual-scroll="true"
+                data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="name">Name
+
+                        </th>
+                        <th class="th-sm" data-field="date">Date/Time
+
+                        </th>
+                        <th class="th-sm" data-field="ds">DiscStation
+
+                        </th>
+                        <th class="th-sm" data-field="fs">FirstConf
+
+                        </th>
+                        <th class="th-sm" data-field="obj">Object
+
+                        </th>
+                        <th class="th-sm" data-field="url">URL
+
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for i in mpec_data[station[-3::]]['MPECs']:
+            o += """
+                    <tr>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                    </tr>
+            """.format(i[0],i[1],i[2],i[3],i[4],i[5])
+
         try:
             fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
             fig.write_html("../www/byStation/Graphs/"+station+".html")
         except Exception as e:
             print(e)
 
-        o += """
-        <table>
-            <thead>
-                <tr>
-                    <th class="th-sm">Observed MPECs</th>
-                </tr>
-            </thead>
-            <tbody> 
-        """
-        for MPEC in d[station[-3::]]['MPECs']:
-            o += """
-            
-                <td>%s</td>
-            
-            """ % (MPEC)
-        
+        o += """    
+                </tbody>
+            </table>
+            <script>
+                var $table = $('#table')
+                var total = 0
 
-        o += """
-              </tbody>
-            </table>    
-        </div>
-        """
+                function getData(number, isAppend) {
+                    if (!isAppend) {
+                    total = 0
+                    }
+                    var data = []
+                    for (var i = total; i < total + number; i++) {
+                    data.push({
+                        'name': i,
+                        'date': i,
+                        'ds': i,
+                        'fs': i,
+                        'obj': i,
+                        'url': i
+                    })
+                    }
+                    if (isAppend) {
+                    total += number
+                    } else {
+                    total = number
+                    }
+                    $('#total').text(total)
+                    return data
+                }
+
+                $(function() {
+                    $table.bootstrapTable({data: getData(20)})
+
+                    $('#load').click(function () {
+                    $table.bootstrapTable('load', getData(10000))
+                    })
+
+                    $('#append').click(function () {
+                    $table.bootstrapTable('append', getData(10000, true))
+                    })
+                })
+            </script>"""
         
         o += """
 	<footer class="pt-5 my-5 text-muted border-top">
