@@ -89,9 +89,6 @@ def calcObs():
                 mpec_data[station]['FirstFollowup'] = {}
                 mpec_data[station]['MPECs'] = []
 
-            #listing all the MPECs from one station: USING TITLE (from MPEC table)
-            mpec_data[station]['MPECs'].add(mpec[0] + "\t" + mpec[1])
-
             #MPECType = 'Discovery' and DiscStation != '{}'
             if mpec[6] == 'Discovery' and station != mpec[4]:
                 try:
