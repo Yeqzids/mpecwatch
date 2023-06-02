@@ -271,7 +271,7 @@ def main():
               </p>
             </div>
         <div class="container">
-            <table class="table table-striped" data-toggle="table" data-search="true" data-show-export="true" data-show-columns="true">
+            <table class="table table-striped table-sm">
                 <tr>
                     <th>Year</th>
                     <th>Total MPECs</th>
@@ -316,16 +316,12 @@ def main():
         o += """
             </table>
         </div>
-        <div class="toolbar">
-            <button id="load" class="btn btn-secondary">Load 10000 Rows</button>
-            <button id="append" class="btn btn-secondary">Append 10000 Rows</button>
-            Total rows: <span id="total"></span>
-        </div>
+        <div class="containter">
             <table id="table" 
                 class="table table-striped table-bordered table-sm"
-                data-toolbar=".toolbar"
-                data-virtual-scroll="true"
-                data-show-columns="true">
+                data-toggle="table"
+                data-height="460"
+                data-pagination="true">
                 <thead>
                     <tr>
                         <th class="th-sm" data-field="name">Name
@@ -371,46 +367,7 @@ def main():
         o += """    
                 </tbody>
             </table>
-            <script>
-                var $table = $('#table')
-                var total = 0
-
-                function getData(number, isAppend) {
-                    if (!isAppend) {
-                    total = 0
-                    }
-                    var data = []
-                    for (var i = total; i < total + number; i++) {
-                    data.push({
-                        'name': i,
-                        'date': i,
-                        'ds': i,
-                        'fs': i,
-                        'obj': i,
-                        'url': i
-                    })
-                    }
-                    if (isAppend) {
-                    total += number
-                    } else {
-                    total = number
-                    }
-                    $('#total').text(total)
-                    return data
-                }
-
-                $(function() {
-                    $table.bootstrapTable({data: getData(20)})
-
-                    $('#load').click(function () {
-                    $table.bootstrapTable('load', getData(10000))
-                    })
-
-                    $('#append').click(function () {
-                    $table.bootstrapTable('append', getData(10000, true))
-                    })
-                })
-            </script>"""
+            """
         
         o += """
 	<footer class="pt-5 my-5 text-muted border-top">
@@ -433,6 +390,7 @@ def main():
     <script src="../assets/js/docs.min.js"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
+    </div>
   </body>
 </html>"""
 
