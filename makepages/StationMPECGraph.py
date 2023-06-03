@@ -159,7 +159,7 @@ def calcObs():
                     packed_back = packed_front + id[5] + encode(int(id[6:8])) + id[-1]
                 
                 url1 = "\"https://www.minorplanetcenter.net/mpec/{}/{}.html\"".format(packed_front, packed_back)
-                mpec_url = "<a href={}>Details</a>".format(url1)
+                mpec_url = "<a href={}>MPEC</a>".format(url1)
                 temp.append(mpec_url)
                 mpec_data[station]['MPECs'].append((temp))
 

@@ -21,7 +21,7 @@ mpccode = soup.get_text()
 mpccode = list(filter(None, mpccode.split('\n')))
 o = ""
 
-geolocator = Nominatim(user_agent="geoapiExercises")
+geolocator = Nominatim(user_agent="MPECWatch")
 
 d = dict()
 
