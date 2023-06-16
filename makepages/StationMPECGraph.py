@@ -301,7 +301,7 @@ def main():
                 mpec_counts[8] = 0
             
             df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": mpec_counts})])
-            
+
             o += """
                 <tr>
                     <td>%i</td>
@@ -317,9 +317,13 @@ def main():
                     <td>%i</td>
                 </tr>
             """ % (year, sum(mpec_counts), mpec_counts[0], mpec_counts[1], mpec_counts[2], mpec_counts[3], mpec_counts[4], mpec_counts[5], mpec_counts[6], mpec_counts[7], mpec_counts[8])
-            
+        df.to_csv("../www/byStation/csv/{}.csv".format(station), index=False)
+
         o += """
             </table>
+            <a href="csv/{}.csv" download="{}">
+                <p style="padding-bottom: 30px;">Download as csv</p>
+            </a>
         </div>
         <div class="containter">
             <table id="table" 
@@ -347,7 +351,7 @@ def main():
                     </tr>
                 </thead>
                 <tbody>
-        """
+        """.format(str(station), str(station))
         for i in mpec_data[station[-3::]]['MPECs']:
             o += """
                     <tr>
