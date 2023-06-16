@@ -125,21 +125,6 @@ def calcObs():
             temp = []
             name = mpec[0] + "\t" + mpec[1]
             if name not in mpec_data[station]['MPECs']: #prevents duplication of the same MPEC object
-                temp.append(name) #
-                temp.append(datetime.datetime.fromtimestamp(mpec[2])) #time: date and time
-                #if station = discovery station
-                if station == mpec[4]:
-                    temp.append("&#x2713") #check mark
-                else:
-                    temp.append("")
-                #if station = FirstFU
-                if station == mpec[5]:
-                    temp.append("&#x2713") #check mark
-                else:
-                    temp.append("")
-                
-                obj_type = mpec[7]
-                temp.append(obj_type)
                 id = mpec[0][5::]
                 packed_front = ""
                 packed_back = ""
@@ -159,23 +144,40 @@ def calcObs():
                     packed_back = packed_front + id[5] + encode(int(id[6:8])) + id[-1]
                 
                 url1 = "\"https://www.minorplanetcenter.net/mpec/{}/{}.html\"".format(packed_front, packed_back)
-                mpec_url = "<a href={}>MPEC</a>".format(url1)
-                temp.append(mpec_url)
+                mpec_url = "<a href={}>{}</a>".format(url1, name)
+
+                temp.append(mpec_url) #
+                temp.append(datetime.datetime.fromtimestamp(mpec[2])) #time: date and time
+                #if station = discovery station
+                if station == mpec[4]:
+                    temp.append("&#x2713") #check mark
+                else:
+                    temp.append("")
+                #if station = FirstFU
+                if station == mpec[5]:
+                    temp.append("&#x2713") #check mark
+                else:
+                    temp.append("")
+                
+                obj_type = mpec[7]
+                temp.append(obj_type)              
                 mpec_data[station]['MPECs'].append((temp))
 
 
 def main():
     calcObs()
     includeFirstFU = True #include first-followup in graph or just use FU
-    for station_name in tableNames():
-        try:
-            mpccode[station_name[0][-3:]]
-        except Exception as e:
-            print(e)
-            continue
-		
+    # for station_name in tableNames():
+    #     try:
+    #         mpccode[station_name[0][-3:]]
+    #     except Exception as e:
+    #         print(e)
+    #         continue
+	
+    for i in range(1):
         df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
-        station = station_name[0]
+        #station = station_name[0]
+        station = "station_J95"
         page = "../www/byStation/" + str(station) + ".html"
 
         o = """
@@ -209,7 +211,10 @@ def main():
 
     <!-- Custom styles for this template -->
     <link href="../theme.css" rel="stylesheet">
-
+    <!-- Table pagination -->
+    <link href="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
+    
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]><script src="../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
     <script src="../assets/js/ie-emulation-modes-warning.js"></script>
@@ -296,7 +301,7 @@ def main():
                 mpec_counts[8] = 0
             
             df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": mpec_counts})])
-            
+
             o += """
                 <tr>
                     <td>%i</td>
@@ -312,9 +317,13 @@ def main():
                     <td>%i</td>
                 </tr>
             """ % (year, sum(mpec_counts), mpec_counts[0], mpec_counts[1], mpec_counts[2], mpec_counts[3], mpec_counts[4], mpec_counts[5], mpec_counts[6], mpec_counts[7], mpec_counts[8])
-            
+        df.to_csv("../www/byStation/csv/{}.csv".format(station), index=False)
+
         o += """
             </table>
+            <a href="csv/{}.csv" download="{}">
+                <p style="padding-bottom: 30px;">Download as csv</p>
+            </a>
         </div>
         <div class="containter">
             <table id="table" 
@@ -339,13 +348,10 @@ def main():
                         <th class="th-sm" data-field="obj">Object
 
                         </th>
-                        <th class="th-sm" data-field="url">URL
-
-                        </th>
                     </tr>
                 </thead>
                 <tbody>
-        """
+        """.format(str(station), str(station))
         for i in mpec_data[station[-3::]]['MPECs']:
             o += """
                     <tr>
@@ -354,9 +360,8 @@ def main():
                         <td>{}</td>
                         <td>{}</td>
                         <td>{}</td>
-                        <td>{}</td>
                     </tr>
-            """.format(i[0],i[1],i[2],i[3],i[4],i[5])
+            """.format(i[0],i[1],i[2],i[3],i[4])
 
         try:
             fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
@@ -367,7 +372,10 @@ def main():
         o += """    
                 </tbody>
             </table>
-            """
+            <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+            <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
+        </div>"""
         
         o += """
 	<footer class="pt-5 my-5 text-muted border-top">
