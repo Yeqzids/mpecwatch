@@ -323,6 +323,7 @@ def main():
                 mpec_counts[8] = 0
             
             df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": mpec_counts})])
+            
 
             o += """
                 <tr>
@@ -339,7 +340,19 @@ def main():
                     <td>%i</td>
                 </tr>
             """ % (year, sum(mpec_counts), mpec_counts[0], mpec_counts[1], mpec_counts[2], mpec_counts[3], mpec_counts[4], mpec_counts[5], mpec_counts[6], mpec_counts[7], mpec_counts[8])
-        df.to_csv("../www/byStation/csv/{}.csv".format(station), index=False)
+        try:
+            fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
+            fig.write_html("../www/byStation/Graphs/"+station+".html")
+        except Exception as e:
+            print(e)
+        
+        #df_csv = pd.DataFrame({"Year": [], "Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
+        df_csv = pd.DataFrame()
+        df_csv["Year"] = df["Year"].unique()
+        for mpecType in df["MPECType"].unique():
+            df_csv[mpecType] = df[df["MPECType"] == mpecType]["#MPECs"].values
+
+        df_csv.to_csv("../www/byStation/csv/{}.csv".format(station), index=False)
 
         o += """
             </table>
@@ -448,12 +461,6 @@ def main():
                     </tr>
         """.format(i)
 
-        try:
-            fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
-            fig.write_html("../www/byStation/Graphs/"+station+".html")
-        except Exception as e:
-            print(e)
-
         o += """
                 </tbody>
             </table>
@@ -486,9 +493,8 @@ def main():
     </div>
   </body>
 </html>"""
-
-        with open(page, 'w') as f:
-            
+        print(station)
+        with open(page, 'w', encoding='utf-8') as f:
             f.write(o)
 
 main()    
