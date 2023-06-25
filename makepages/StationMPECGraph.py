@@ -374,7 +374,7 @@ def main():
                 </thead>
                 <tbody>
         """.format(str(station), str(station))
-        for i in mpec_data[station[-3::]]['MPECs']:
+        for i in reversed(mpec_data[station[-3::]]['MPECs']):
             o += """
                     <tr>
                         <td>{}</td>
