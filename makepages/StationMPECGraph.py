@@ -72,22 +72,45 @@ def encode(num, alphabet=BASE62):
     return ''.join(arr)
 
 def calcObs():
+    for station in tableNames():
+        station = station[0][-3::]
+        #initialize dict
+        mpec_data[station] = {}
+        mpec_data[station]['Discovery'] = {}
+        mpec_data[station]['Editorial'] = {}
+        mpec_data[station]['OrbitUpdate'] = {}
+        mpec_data[station]['DOU'] = {}
+        mpec_data[station]['ListUpdate'] = {}
+        mpec_data[station]['Retraction'] = {}
+        mpec_data[station]['Other'] = {}
+        mpec_data[station]['Followup'] = {}
+        mpec_data[station]['FirstFollowup'] = {}
+        mpec_data[station]['MPECs'] = []
+        mpec_data[station]['OBS'] = []
+        mpec_data[station]['MEA'] = []
+        mpec_data[station]['Facilities'] = []
+
+        #observers per station
+        for observer in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
+            if observer[0] not in mpec_data[station]['OBS'] and observer[0] != '':
+                mpec_data[station]['OBS'].append(observer[0])
+
+        #measurers per station
+        for measurer in mpecconn.execute("SELECT Measurer FROM station_{}".format(station)).fetchall():
+            if measurer[0] not in mpec_data[station]['MEA'] and measurer[0] != '':
+                mpec_data[station]['MEA'].append(measurer[0])
+
+        #facilities per station
+        for facility in mpecconn.execute("SELECT Facility FROM station_{}".format(station)).fetchall():
+            if facility[0] not in mpec_data[station]['Facilities'] and facility[0] != '':
+                mpec_data[station]['Facilities'].append(facility[0])
+
     cursor.execute("select * from MPEC")
     for mpec in cursor.fetchall():
         year = date.fromtimestamp(mpec[2]).year
         for station in mpec[3].split(', '):
-            if station not in mpec_data:
-                mpec_data[station] = {}
-                mpec_data[station]['Discovery'] = {}
-                mpec_data[station]['Editorial'] = {}
-                mpec_data[station]['OrbitUpdate'] = {}
-                mpec_data[station]['DOU'] = {}
-                mpec_data[station]['ListUpdate'] = {}
-                mpec_data[station]['Retraction'] = {}
-                mpec_data[station]['Other'] = {}
-                mpec_data[station]['Followup'] = {}
-                mpec_data[station]['FirstFollowup'] = {}
-                mpec_data[station]['MPECs'] = []
+            if station == '':
+                continue
 
             #MPECType = 'Discovery' and DiscStation != '{}'
             if mpec[6] == 'Discovery' and station != mpec[4]:
@@ -162,7 +185,6 @@ def calcObs():
                 obj_type = mpec[7]
                 temp.append(obj_type)              
                 mpec_data[station]['MPECs'].append((temp))
-
 
 def main():
     calcObs()
@@ -326,7 +348,7 @@ def main():
             </a>
         </div>
         <div class="containter">
-            <table id="table" 
+            <table id="mpec_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
                 data-height="460"
@@ -363,13 +385,76 @@ def main():
                     </tr>
             """.format(i[0],i[1],i[2],i[3],i[4])
 
+        o += """
+                </tbody>
+            </table>
+            <table id="OBS_table" 
+                class="table table-striped table-bordered table-sm"
+                data-toggle="table"
+                data-height="460"
+                data-pagination="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="name">Observers</th>
+                    </tr>
+                </thead>
+                <tbody>"""
+        for i in mpec_data[station[-3::]]['OBS']:
+            o += """
+                    <tr>
+                        <td>{}</td>
+                    </tr>
+        """.format(i)
+            
+        o += """
+                </tbody>
+            </table>
+            <table id="MEA_table" 
+                class="table table-striped table-bordered table-sm"
+                data-toggle="table"
+                data-height="460"
+                data-pagination="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="name">Measurers</th>
+                    </tr>
+                </thead>
+                <tbody>"""
+        for i in mpec_data[station[-3::]]['MEA']:
+            o += """
+                    <tr>
+                        <td>{}</td>
+                    </tr>
+        """.format(i)
+            
+        o += """
+                </tbody>
+            </table>
+            <table id="FAC_table" 
+                class="table table-striped table-bordered table-sm"
+                data-toggle="table"
+                data-height="460"
+                data-pagination="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="name">Facilities</th>
+                    </tr>
+                </thead>
+                <tbody>"""
+        for i in mpec_data[station[-3::]]['Facilities']:
+            o += """
+                    <tr>
+                        <td>{}</td>
+                    </tr>
+        """.format(i)
+
         try:
             fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
             fig.write_html("../www/byStation/Graphs/"+station+".html")
         except Exception as e:
             print(e)
 
-        o += """    
+        o += """
                 </tbody>
             </table>
             <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
