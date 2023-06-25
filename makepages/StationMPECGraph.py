@@ -189,17 +189,17 @@ def calcObs():
 def main():
     calcObs()
     includeFirstFU = True #include first-followup in graph or just use FU
-    # for station_name in tableNames():
-    #     try:
-    #         mpccode[station_name[0][-3:]]
-    #     except Exception as e:
-    #         print(e)
-    #         continue
+    for station_name in tableNames():
+        try:
+            mpccode[station_name[0][-3:]]
+        except Exception as e:
+            print(e)
+            continue
 	
-    for i in range(1):
+    #for i in range(1):
         df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
-        #station = station_name[0]
-        station = "station_J95"
+        station = station_name[0]
+        #station = "station_J95"
         page = "../www/byStation/" + str(station) + ".html"
 
         o = """
