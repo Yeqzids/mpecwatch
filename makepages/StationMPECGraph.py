@@ -374,13 +374,13 @@ def main():
                         <th class="th-sm" data-field="date">Date/Time
 
                         </th>
-                        <th class="th-sm" data-field="ds">DiscStation
+                        <th class="th-sm" data-field="ds">Discoverer
 
                         </th>
-                        <th class="th-sm" data-field="fs">FirstConf
+                        <th class="th-sm" data-field="fs">First-responding Confirmer
 
                         </th>
-                        <th class="th-sm" data-field="obj">Object
+                        <th class="th-sm" data-field="obj">Object Type
 
                         </th>
                     </tr>
