@@ -85,10 +85,10 @@ def calcObs():
         mpec_data[station]['Other'] = {}
         mpec_data[station]['Followup'] = {}
         mpec_data[station]['FirstFollowup'] = {}
-        mpec_data[station]['MPECs'] = []
-        mpec_data[station]['OBS'] = []
-        mpec_data[station]['MEA'] = []
-        mpec_data[station]['Facilities'] = []
+        mpec_data[station]['MPECs'] = [] #contains all MPECs for each station
+        mpec_data[station]['OBS'] = [] #contains all observers for each station
+        mpec_data[station]['MEA'] = [] #contains all measurers for each station
+        mpec_data[station]['Facilities'] = [] #contains all facilities for each station
 
         #observers per station
         for observer in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
@@ -145,7 +145,7 @@ def calcObs():
                         mpec_data[station][mpecType][year] = 1
 
             #listing all the MPECs from one station: USING TITLE (from MPEC table)
-            temp = []
+            temp = [] #[Name, Date, Discovery?, First Conf?, Object Type]
             name = mpec[0] + "\t" + mpec[1]
             if name not in mpec_data[station]['MPECs']: #prevents duplication of the same MPEC object
                 id = mpec[0][5::]
@@ -183,6 +183,18 @@ def calcObs():
                     temp.append("")
                 
                 obj_type = mpec[7]
+                if obj_type == "Unk":
+                    obj_type = "Unknown"
+                elif obj_type == "NEAg22":
+                    obj_type = "NEA (H>22)"
+                elif obj_type == "NEA1822":
+                    obj_type = "NEA (18>H>22)"
+                elif obj_type == "NEAI18":
+                    obj_type = "NEA (H<18)"
+                elif obj_type == "PHAI18":
+                    obj_type = "PHA (H<18)"
+                elif obj_type == "PHAg18":
+                    obj_type == "PHA (H>18)"
                 temp.append(obj_type)              
                 mpec_data[station]['MPECs'].append((temp))
 
@@ -374,19 +386,20 @@ def main():
                         <th class="th-sm" data-field="date">Date/Time
 
                         </th>
-                        <th class="th-sm" data-field="ds">DiscStation
+                        <th class="th-sm" data-field="ds">Discoverer
 
                         </th>
-                        <th class="th-sm" data-field="fs">FirstConf
+                        <th class="th-sm" data-field="fs">First-responding Confirmer
 
                         </th>
-                        <th class="th-sm" data-field="obj">Object
+                        <th class="th-sm" data-field="obj">Object Type
 
                         </th>
                     </tr>
                 </thead>
                 <tbody>
         """.format(str(station), str(station))
+        
         for i in reversed(mpec_data[station[-3::]]['MPECs']):
             o += """
                     <tr>
@@ -408,16 +421,21 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="name">Observers</th>
+                        <th class="th-sm" data-field="index">Index</th>
+                        <th class="th-sm" data-field="observer">Observers</th>
                     </tr>
                 </thead>
                 <tbody>"""
+        
+        index = 1
         for i in mpec_data[station[-3::]]['OBS']:
             o += """
                     <tr>
                         <td>{}</td>
+                        <td>{}</td>
                     </tr>
-        """.format(i)
+        """.format(index, i)
+            index += 1
             
         o += """
                 </tbody>
@@ -429,16 +447,21 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="name">Measurers</th>
+                        <th class="th-sm" data-field="index">Index</th>
+                        <th class="th-sm" data-field="measurer">Measurers</th>
                     </tr>
                 </thead>
                 <tbody>"""
+        
+        index = 1
         for i in mpec_data[station[-3::]]['MEA']:
             o += """
                     <tr>
                         <td>{}</td>
+                        <td>{}</td>
                     </tr>
-        """.format(i)
+        """.format(index, i)
+            index += 1
             
         o += """
                 </tbody>
@@ -450,16 +473,21 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="name">Facilities</th>
+                        <th class="th-sm" data-field="index">Index</th>
+                        <th class="th-sm" data-field="facility">Facilities</th>
                     </tr>
                 </thead>
                 <tbody>"""
+        
+        index = 1
         for i in mpec_data[station[-3::]]['Facilities']:
             o += """
                     <tr>
                         <td>{}</td>
+                        <td>{}</td>
                     </tr>
-        """.format(i)
+        """.format(index, i)
+            index += 1
 
         o += """
                 </tbody>
