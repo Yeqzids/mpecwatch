@@ -86,24 +86,33 @@ def calcObs():
         mpec_data[station]['Followup'] = {}
         mpec_data[station]['FirstFollowup'] = {}
         mpec_data[station]['MPECs'] = [] #contains all MPECs for each station
-        mpec_data[station]['OBS'] = [] #contains all observers for each station
-        mpec_data[station]['MEA'] = [] #contains all measurers for each station
-        mpec_data[station]['Facilities'] = [] #contains all facilities for each station
+        mpec_data[station]['OBS'] = {} #contains all observers for each station
+        mpec_data[station]['MEA'] = {} #contains all measurers for each station
+        mpec_data[station]['Facilities'] = {} #contains all facilities for each station
 
         #observers per station
         for observer in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
-            if observer[0] not in mpec_data[station]['OBS'] and observer[0] != '':
-                mpec_data[station]['OBS'].append(observer[0])
+            if observer[0] != '':
+                try:
+                    mpec_data[station]['OBS'][observer[0]] = mpec_data[station]['OBS'].get(observer[0],0)+1
+                except:
+                    mpec_data[station]['OBS'][observer[0]] = 1
 
         #measurers per station
         for measurer in mpecconn.execute("SELECT Measurer FROM station_{}".format(station)).fetchall():
-            if measurer[0] not in mpec_data[station]['MEA'] and measurer[0] != '':
-                mpec_data[station]['MEA'].append(measurer[0])
+            if measurer[0] != '':
+                try:
+                    mpec_data[station]['MEA'][measurer[0]] = mpec_data[station]['MEA'].get(measurer[0],0)+1
+                except:
+                    mpec_data[station]['MEA'][measurer[0]] = 1
 
         #facilities per station
         for facility in mpecconn.execute("SELECT Facility FROM station_{}".format(station)).fetchall():
-            if facility[0] not in mpec_data[station]['Facilities'] and facility[0] != '':
-                mpec_data[station]['Facilities'].append(facility[0])
+            if facility[0] != '':
+                try:
+                    mpec_data[station]['Facilities'][facility[0]] = mpec_data[station]['Facilities'].get(facility[0],0)+1
+                except:
+                    mpec_data[station]['Facilities'][facility[0]] = 1
 
     cursor.execute("select * from MPEC")
     for mpec in cursor.fetchall():
@@ -201,17 +210,17 @@ def calcObs():
 def main():
     calcObs()
     includeFirstFU = True #include first-followup in graph or just use FU
-    for station_name in tableNames():
-        try:
-            mpccode[station_name[0][-3:]]
-        except Exception as e:
-            print(e)
-            continue
+    # for station_name in tableNames():
+    #     try:
+    #         mpccode[station_name[0][-3:]]
+    #     except Exception as e:
+    #         print(e)
+    #         continue
 	
-    #for i in range(1):
+    for i in range(1):
         df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
-        station = station_name[0]
-        #station = "station_J95"
+        #station = station_name[0]
+        station = "station_J95"
         page = "../www/byStation/" + str(station) + ".html"
 
         o = """
@@ -421,21 +430,19 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="index">Index</th>
-                        <th class="th-sm" data-field="observer">Observers</th>
+                        <th class="th-sm" data-field="observer" data-sortable="true">Observers</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
                     </tr>
                 </thead>
                 <tbody>"""
         
-        index = 1
-        for i in mpec_data[station[-3::]]['OBS']:
+        for observer, count in mpec_data[station[-3::]]['OBS'].items():
             o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(index, i)
-            index += 1
+        """.format(observer, count)
             
         o += """
                 </tbody>
@@ -447,21 +454,19 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="index">Index</th>
-                        <th class="th-sm" data-field="measurer">Measurers</th>
+                        <th class="th-sm" data-field="measurer" data-sortable="true">Measurers</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
                     </tr>
                 </thead>
                 <tbody>"""
         
-        index = 1
-        for i in mpec_data[station[-3::]]['MEA']:
+        for measurer, count in mpec_data[station[-3::]]['MEA'].items():
             o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(index, i)
-            index += 1
+        """.format(measurer, count)
             
         o += """
                 </tbody>
@@ -473,21 +478,19 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="index">Index</th>
-                        <th class="th-sm" data-field="facility">Facilities</th>
+                        <th class="th-sm" data-field="facility" data-sortable="true">Facilities</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
                     </tr>
                 </thead>
                 <tbody>"""
         
-        index = 1
-        for i in mpec_data[station[-3::]]['Facilities']:
+        for facility, count in mpec_data[station[-3::]]['Facilities'].items():
             o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(index, i)
-            index += 1
+        """.format(facility, count)
 
         o += """
                 </tbody>
@@ -495,6 +498,22 @@ def main():
             <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
             <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
+            <script>
+                function customSort(sortName, sortOrder, data) {
+                    var order = sortOrder === 'desc' ? -1 : 1
+                    data.sort(function (a, b) {
+                        var aa = +((a[sortName] + '').replace(/[^\d]/g, ''))
+                        var bb = +((b[sortName] + '').replace(/[^\d]/g, ''))
+                        if (aa < bb) {
+                            return order * -1
+                        }
+                        if (aa > bb) {
+                            return order
+                        }
+                        return 0
+                    })
+                }
+            </script>
         </div>"""
         
         o += """

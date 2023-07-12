@@ -38,35 +38,41 @@ def topN(someDictionary, graphTitle, station, includeNA = False):
     else: #otherwise show all data points
         topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True))
     
-    printDict(topObjects)
-    
+    #printDict(topObjects)
     df = pd.DataFrame(list(topObjects.items()), columns=['Objects', 'Count'])
     fig1 = px.pie(df, values='Count', names='Objects', title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + graphTitle)
+    if len(topObjects) == 0:
+       fig1.add_annotation(text="No Data Available",
+                  xref="paper", yref="paper",
+                  x=0.3, y=0.3, showarrow=False)
+
     fig1.write_html("../www/byStation/OMF/"+station+"_"+graphTitle.replace(' ', '_')+"{}.html".format(titleNA))
-    
+
 N = 10 #Top limit of objects to show individually
-tables = tableNames()
-for station in tables:
+for station in tableNames():
+    station = station[0]
     observers = {}
     measurers = {}
     facilities = {}
-    cursor.execute("select * from {}".format(station[0]))
+    cursor.execute("select * from {}".format(station))
     observations = cursor.fetchall()
     for observation in observations:
         observers[observation[2]] = observers.get(observation[2],0)+1
         measurers[observation[3]] = measurers.get(observation[3],0)+1
         facilities[observation[4]] = facilities.get(observation[4],0)+1
     
-    #doesnt include NA
+    #doesnt include NA:
     try:
-        topN(observers, "Top {} Observers".format(N), station[0])
-        topN(measurers, "Top {} Measurers".format(N), station[0])
-        topN(facilities, "Top {} Facilities".format(N), station[0])
+        topN(observers, "Top {} Observers".format(N), station)
+        topN(measurers, "Top {} Measurers".format(N), station)
+        topN(facilities, "Top {} Facilities".format(N), station)
     except Exception as e:
         print(e)
     
-    #includes NA
+    #includes NA:
     #topN(observers, "Top {} Observers".format(N), station[0], True)
+    
+    print(station + " done")
     
 mpecconn.close()
 print('finished')
