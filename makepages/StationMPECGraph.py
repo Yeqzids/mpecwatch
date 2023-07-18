@@ -85,25 +85,25 @@ def calcObs():
         mpec_data[station]['Other'] = {}
         mpec_data[station]['Followup'] = {}
         mpec_data[station]['FirstFollowup'] = {}
-        mpec_data[station]['MPECs'] = [] #contains all MPECs for each station
-        mpec_data[station]['OBS'] = [] #contains all observers for each station
-        mpec_data[station]['MEA'] = [] #contains all measurers for each station
-        mpec_data[station]['Facilities'] = [] #contains all facilities for each station
+        mpec_data[station]['MPECs'] = [] #[Name, Date, Discovery?, First Conf?, Object Type, CATCH]
+        mpec_data[station]['OBS'] = {} #contains all observers for each station
+        mpec_data[station]['MEA'] = {} #contains all measurers for each station
+        mpec_data[station]['Facilities'] = {} #contains all facilities for each station
 
         #observers per station
         for observer in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
-            if observer[0] not in mpec_data[station]['OBS'] and observer[0] != '':
-                mpec_data[station]['OBS'].append(observer[0])
+            if observer[0] != '':
+                mpec_data[station]['OBS'][observer[0]] = mpec_data[station]['OBS'].get(observer[0],0)+1
 
         #measurers per station
         for measurer in mpecconn.execute("SELECT Measurer FROM station_{}".format(station)).fetchall():
-            if measurer[0] not in mpec_data[station]['MEA'] and measurer[0] != '':
-                mpec_data[station]['MEA'].append(measurer[0])
+            if measurer[0] != '':
+                mpec_data[station]['MEA'][measurer[0]] = mpec_data[station]['MEA'].get(measurer[0],0)+1
 
         #facilities per station
         for facility in mpecconn.execute("SELECT Facility FROM station_{}".format(station)).fetchall():
-            if facility[0] not in mpec_data[station]['Facilities'] and facility[0] != '':
-                mpec_data[station]['Facilities'].append(facility[0])
+            if facility[0] != '':
+                mpec_data[station]['Facilities'][facility[0]] = mpec_data[station]['Facilities'].get(facility[0],0)+1
 
     cursor.execute("select * from MPEC")
     for mpec in cursor.fetchall():
@@ -114,38 +114,23 @@ def calcObs():
 
             #MPECType = 'Discovery' and DiscStation != '{}'
             if mpec[6] == 'Discovery' and station != mpec[4]:
-                try:
-                    #attempts to increment dict value by 1
-                    mpec_data[station]['Followup'][year] = mpec_data[station]['Followup'].get(year,0)+1
-                except:
-                    #creates dict key and adds 1
-                    mpec_data[station]['Followup'][year] = 1
+                #increment dict value by 1
+                mpec_data[station]['Followup'][year] = mpec_data[station]['Followup'].get(year,0)+1
 
             #MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
             if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
-                try:
-                    mpec_data[station]['FirstFollowup'][year] = mpec_data[station]['FirstFollowup'].get(year,0)+1
-                except:
-                    mpec_data[station]['FirstFollowup'][year] = 1
+                mpec_data[station]['FirstFollowup'][year] = mpec_data[station]['FirstFollowup'].get(year,0)+1
 
             #if station = discovery station
             if station == mpec[4]:
-                try:
-                    mpec_data[station]['Discovery'][year] = mpec_data[station]['Discovery'].get(year,0)+1
-                except:
-                    mpec_data[station]['Discovery'][year] = 1
+                mpec_data[station]['Discovery'][year] = mpec_data[station]['Discovery'].get(year,0)+1
             
             for mpecType in ["Editorial", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
                 if mpec[6] == mpecType:
-                    try:
-                        #attempts to increment dict value by 1
-                        mpec_data[station][mpecType][year] = mpec_data[station][mpecType].get(year,0)+1
-                    except:
-                        #creates dict key and adds 1
-                        mpec_data[station][mpecType][year] = 1
+                    mpec_data[station][mpecType][year] = mpec_data[station][mpecType].get(year,0)+1
 
             #listing all the MPECs from one station: USING TITLE (from MPEC table)
-            temp = [] #[Name, Date, Discovery?, First Conf?, Object Type]
+            temp = [] 
             name = mpec[0] + "\t" + mpec[1]
             if name not in mpec_data[station]['MPECs']: #prevents duplication of the same MPEC object
                 id = mpec[0][5::]
@@ -195,8 +180,16 @@ def calcObs():
                     obj_type = "PHA (H<18)"
                 elif obj_type == "PHAg18":
                     obj_type == "PHA (H>18)"
-                temp.append(obj_type)              
+                temp.append(obj_type)
+
+                if mpec[3] == station and len(mpec[1].split())==2: 
+                    catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[1].split()[0], mpec[1].split()[1])
+                    temp.append(catch_url)
+                else:
+                    temp.append("")
+
                 mpec_data[station]['MPECs'].append((temp))
+
 
 def main():
     calcObs()
@@ -211,7 +204,7 @@ def main():
     #for i in range(1):
         df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
         station = station_name[0]
-        #station = "station_J95"
+        #station = "station_413"
         page = "../www/byStation/" + str(station) + ".html"
 
         o = """
@@ -380,21 +373,12 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="name">Name
-
-                        </th>
-                        <th class="th-sm" data-field="date">Date/Time
-
-                        </th>
-                        <th class="th-sm" data-field="ds">Discoverer
-
-                        </th>
-                        <th class="th-sm" data-field="fs">First-responding Confirmer
-
-                        </th>
-                        <th class="th-sm" data-field="obj">Object Type
-
-                        </th>
+                        <th class="th-sm" data-field="name">Name</th>
+                        <th class="th-sm" data-field="date">Date/Time</th>
+                        <th class="th-sm" data-field="ds">Discoverer</th>
+                        <th class="th-sm" data-field="fs">First-responding Confirmer</th>
+                        <th class="th-sm" data-field="obj">Object Type</th>
+                        <th class="th-sm" data-field="catch">Search Archival Image</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -408,8 +392,9 @@ def main():
                         <td>{}</td>
                         <td>{}</td>
                         <td>{}</td>
+                        <td>{}</td>
                     </tr>
-            """.format(i[0],i[1],i[2],i[3],i[4])
+            """.format(i[0],i[1],i[2],i[3],i[4],i[5])
 
         o += """
                 </tbody>
@@ -421,21 +406,19 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="index">Index</th>
-                        <th class="th-sm" data-field="observer">Observers</th>
+                        <th class="th-sm" data-field="observer" data-sortable="true">Observers</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
                     </tr>
                 </thead>
                 <tbody>"""
         
-        index = 1
-        for i in mpec_data[station[-3::]]['OBS']:
+        for observer, count in mpec_data[station[-3::]]['OBS'].items():
             o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(index, i)
-            index += 1
+        """.format(observer, count)
             
         o += """
                 </tbody>
@@ -447,21 +430,19 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="index">Index</th>
-                        <th class="th-sm" data-field="measurer">Measurers</th>
+                        <th class="th-sm" data-field="measurer" data-sortable="true">Measurers</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
                     </tr>
                 </thead>
                 <tbody>"""
         
-        index = 1
-        for i in mpec_data[station[-3::]]['MEA']:
+        for measurer, count in mpec_data[station[-3::]]['MEA'].items():
             o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(index, i)
-            index += 1
+        """.format(measurer, count)
             
         o += """
                 </tbody>
@@ -473,21 +454,19 @@ def main():
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="index">Index</th>
-                        <th class="th-sm" data-field="facility">Facilities</th>
+                        <th class="th-sm" data-field="facility" data-sortable="true">Facilities</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
                     </tr>
                 </thead>
                 <tbody>"""
         
-        index = 1
-        for i in mpec_data[station[-3::]]['Facilities']:
+        for facility, count in mpec_data[station[-3::]]['Facilities'].items():
             o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(index, i)
-            index += 1
+        """.format(facility, count)
 
         o += """
                 </tbody>
@@ -495,6 +474,22 @@ def main():
             <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
             <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
+            <script>
+                function customSort(sortName, sortOrder, data) {
+                    var order = sortOrder === 'desc' ? -1 : 1
+                    data.sort(function (a, b) {
+                        var aa = +((a[sortName] + '').replace(/[^\d]/g, ''))
+                        var bb = +((b[sortName] + '').replace(/[^\d]/g, ''))
+                        if (aa < bb) {
+                            return order * -1
+                        }
+                        if (aa > bb) {
+                            return order
+                        }
+                        return 0
+                    })
+                }
+            </script>
         </div>"""
         
         o += """
