@@ -199,6 +199,7 @@ def calcObs():
                     obj_type == "PHA (H>18)"
                 temp.append(obj_type)
 
+                
                 if mpec[7]: 
                     catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[0].split()[1][:4], mpec[0].split()[1][5::])
                     temp.append(catch_url)
@@ -211,18 +212,18 @@ def calcObs():
 def main():
     calcObs()
     includeFirstFU = True #include first-followup in graph or just use FU
-    # for station_name in tableNames():
-    #     try:
-    #         mpccode[station_name[0][-3:]]
-    #     except Exception as e:
-    #         print(e)
-    #         continue
+    for station_name in tableNames():
+        try:
+            mpccode[station_name[0][-3:]]
+        except Exception as e:
+            print(e)
+            continue
 	
-    for i in range(1):
+    #for i in range(1):
         df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        #station = station_name[0]
-        station = "station_J95"
+        station = station_name[0]
+        #station = "station_J95"
         page = "../www/byStation/" + str(station) + ".html"
 
         o = """
