@@ -85,6 +85,17 @@ def calcObs():
         mpec_data[station]['Other'] = {}
         mpec_data[station]['Followup'] = {}
         mpec_data[station]['FirstFollowup'] = {}
+        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+            mpec_data[station]['Discovery'][year] = {'total':0}
+            mpec_data[station]['Editorial'][year] = {'total':0}
+            mpec_data[station]['OrbitUpdate'][year] = {'total':0}
+            mpec_data[station]['DOU'][year] = {'total':0}
+            mpec_data[station]['ListUpdate'][year] = {'total':0}
+            mpec_data[station]['Retraction'][year] = {'total':0}
+            mpec_data[station]['Other'][year] = {'total':0}
+            mpec_data[station]['Followup'][year] = {'total':0}
+            mpec_data[station]['FirstFollowup'][year] = {'total':0}
+
         mpec_data[station]['MPECs'] = [] #[Name, Date, Discovery?, First Conf?, Object Type, CATCH]
         mpec_data[station]['OBS'] = {} #contains all observers for each station
         mpec_data[station]['MEA'] = {} #contains all measurers for each station
@@ -108,6 +119,8 @@ def calcObs():
     cursor.execute("select * from MPEC")
     for mpec in cursor.fetchall():
         year = date.fromtimestamp(mpec[2]).year
+        month = date.fromtimestamp(mpec[2]).month
+
         for station in mpec[3].split(', '):
             if station == '':
                 continue
@@ -115,19 +128,23 @@ def calcObs():
             #MPECType = 'Discovery' and DiscStation != '{}'
             if mpec[6] == 'Discovery' and station != mpec[4]:
                 #increment dict value by 1
-                mpec_data[station]['Followup'][year] = mpec_data[station]['Followup'].get(year,0)+1
+                mpec_data[station]['Followup'][year]['total'] = mpec_data[station]['Followup'][year].get('total',0)+1
+                mpec_data[station]['Followup'][year][month] = mpec_data[station]['Followup'][year].get(month,0)+1
 
             #MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
             if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
-                mpec_data[station]['FirstFollowup'][year] = mpec_data[station]['FirstFollowup'].get(year,0)+1
+                mpec_data[station]['FirstFollowup'][year]['total'] = mpec_data[station]['FirstFollowup'][year].get('total',0)+1
+                mpec_data[station]['FirstFollowup'][year][month] = mpec_data[station]['FirstFollowup'][year].get(month,0)+1
 
             #if station = discovery station
             if station == mpec[4]:
-                mpec_data[station]['Discovery'][year] = mpec_data[station]['Discovery'].get(year,0)+1
+                mpec_data[station]['Discovery'][year]['total'] = mpec_data[station]['Discovery'][year].get('total',0)+1
+                mpec_data[station]['Discovery'][year][month] = mpec_data[station]['Discovery'][year].get(month,0)+1
             
             for mpecType in ["Editorial", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
                 if mpec[6] == mpecType:
-                    mpec_data[station][mpecType][year] = mpec_data[station][mpecType].get(year,0)+1
+                    mpec_data[station][mpecType][year]['total'] = mpec_data[station][mpecType][year].get('total',0)+1
+                    mpec_data[station][mpecType][year][month] = mpec_data[station][mpecType][year].get(month,0)+1
 
             #listing all the MPECs from one station: USING TITLE (from MPEC table)
             temp = [] 
@@ -182,8 +199,9 @@ def calcObs():
                     obj_type == "PHA (H>18)"
                 temp.append(obj_type)
 
-                if mpec[3] == station and len(mpec[1].split())==2: 
-                    catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[1].split()[0], mpec[1].split()[1])
+                
+                if mpec[7]: 
+                    catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[0].split()[1][:4], mpec[0].split()[1][5::])
                     temp.append(catch_url)
                 else:
                     temp.append("")
@@ -202,9 +220,10 @@ def main():
             continue
 	
     #for i in range(1):
-        df = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
+        df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         station = station_name[0]
-        #station = "station_413"
+        #station = "station_J95"
         page = "../www/byStation/" + str(station) + ".html"
 
         o = """
@@ -320,19 +339,36 @@ def main():
         """.format(str(station), str(station), str(station), str(station))
         
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+            df_monthly = pd.DataFrame({"Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
             obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
-            mpec_counts = list(map(lambda func: func(), [lambda mpecType=x: mpec_data[station[8::]][mpecType][year] if year in mpec_data[station[8::]][mpecType].keys() else 0 for x in obs_types]))
+            year_counts = list(map(lambda func: func(), [lambda mpecType=x: mpec_data[station[8::]][mpecType][year]['total'] if year in mpec_data[station[8::]][mpecType].keys() else 0 for x in obs_types]))
+            #month_counts = 
+
             if includeFirstFU:
-                mpec_counts[7] -= mpec_counts[8]
+                year_counts[7] -= year_counts[8]
             else:
-                mpec_counts[8] = 0
+                year_counts[8] = 0
             
-            df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": mpec_counts})])
+            df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
             
+            month_index = 1
+            for month in months:
+                new_row = []
+                for mpecType in obs_types:
+                    #if year in mpec_data[station[8::]][mpecType].keys():
+                    if month_index in mpec_data[station[-3:]][mpecType][year].keys():
+                        new_row.append(mpec_data[station[-3:]][mpecType][year][month_index])
+                    else:
+                        new_row.append(0)
+                month_index+=1
+                df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=obs_types)])
+            
+            #print(df_monthly)
+            monthly(station, year, df_monthly)
 
             o += """
                 <tr>
-                    <td>%i</td>
+                    <td><a href="monthly/%s_%i.html">%i</a></td>
                     <td>%i</td>
                     <td>%i</td>
                     <td>%i</td>
@@ -344,18 +380,18 @@ def main():
                     <td>%i</td>
                     <td>%i</td>
                 </tr>
-            """ % (year, sum(mpec_counts), mpec_counts[0], mpec_counts[1], mpec_counts[2], mpec_counts[3], mpec_counts[4], mpec_counts[5], mpec_counts[6], mpec_counts[7], mpec_counts[8])
+            """ % (station, year, year, sum(year_counts), year_counts[0], year_counts[1], year_counts[2], year_counts[3], year_counts[4], year_counts[5], year_counts[6], year_counts[7], year_counts[8])
         try:
-            fig = px.bar(df, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
+            fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
             fig.write_html("../www/byStation/Graphs/"+station+".html")
         except Exception as e:
             print(e)
         
         #df_csv = pd.DataFrame({"Year": [], "Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
         df_csv = pd.DataFrame()
-        df_csv["Year"] = df["Year"].unique()
-        for mpecType in df["MPECType"].unique():
-            df_csv[mpecType] = df[df["MPECType"] == mpecType]["#MPECs"].values
+        df_csv["Year"] = df_yearly["Year"].unique()
+        for mpecType in df_yearly["MPECType"].unique():
+            df_csv[mpecType] = df_yearly[df_yearly["MPECType"] == mpecType]["#MPECs"].values
 
         df_csv.to_csv("../www/byStation/csv/{}.csv".format(station), index=False)
 
@@ -519,6 +555,74 @@ def main():
         print(station)
         with open(page, 'w', encoding='utf-8') as f:
             f.write(o)
+
+
+def monthly(station, year, df_monthly):
+    page = '../www/byStation/monthly/{}.html'.format(station+"_"+str(year))
+    o = """
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>MPECWatch: Monthly Summary | {}</title>
+
+        <!-- Bootstrap core CSS -->
+        <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Bootstrap theme -->
+        <link href="../../dist/css/bootstrap-theme.min.css" rel="stylesheet">
+        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+        <link href="../../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container" theme-showcase" role="main">
+            <h2>{} {} | {}</h2>
+            <table class="table table-striped table-hover table-condensed table-responsive">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Editorial</th>
+                        <th>Discovery</th>
+                        <th>P/R/FU</th>
+                        <th>DOU</th>
+                        <th>List Update</th>
+                        <th>Retraction</th>
+                        <th>Other</th>
+                        <th>Follow-Up</th>
+                        <th>First Follow-Up</th>
+                    </tr>
+            </thead>""".format(year, station[-3:], mpccode[station[-3:]]['name'], year)
+    
+    for month in ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
+        o += """
+                <tbody>
+                    <tr>
+                        <td>%s</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                    </tr>""" % (month, df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
+        
+    df_monthly.to_csv("../www/byStation/monthly/csv/{}.csv".format(station+"_"+str(year)))
+    o += """      
+                </tbody>
+            </table>
+            <a href="csv/{}.csv" download="{}">
+                <p style="padding-bottom: 30px;">Download as csv</p>
+            </a>
+        </div>
+    </body>
+</html>""".format(station+"_"+str(year), station+"_"+str(year))
+    
+    with open(page, 'w', encoding='utf-8') as f:
+            f.write(o)    
 
 main()    
 mpecconn.close()

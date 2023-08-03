@@ -45,21 +45,15 @@ def topN(someDictionary, graphTitle, station, includeNA = False):
        fig1.add_annotation(text="No Data Available",
                   xref="paper", yref="paper",
                   x=0.3, y=0.3, showarrow=False)
-    else:
-        fig1.update_traces(textposition='inside', textinfo='percent')
-        fig1.update_layout(hoverlabel=dict(
-            font=dict(size=10),
-            max_length=10,
-        )
-    )
+    
 
     fig1.write_html("../www/byStation/OMF/"+station+"_"+graphTitle.replace(' ', '_')+"{}.html".format(titleNA))
 
 N = 10 #Top limit of objects to show individually
-#for station in tableNames():
-for i in range(1):
-    #station = station[0]
-    station = "station_010"
+for station in tableNames():
+#for i in range(1):
+    station = station[0]
+    #station = "station_010"
     observers = {}
     measurers = {}
     facilities = {}
