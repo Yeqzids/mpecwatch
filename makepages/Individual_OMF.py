@@ -41,6 +41,8 @@ def topN(someDictionary, graphTitle, station, includeNA = False):
     #printDict(topObjects)
     df = pd.DataFrame(list(topObjects.items()), columns=['Objects', 'Count'])
     fig1 = px.pie(df, values='Count', names='Objects', title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + graphTitle)
+    
+    #if there are no data points, add annotation
     if len(topObjects) == 0:
        fig1.add_annotation(text="No Data Available",
                   xref="paper", yref="paper",
@@ -50,19 +52,26 @@ def topN(someDictionary, graphTitle, station, includeNA = False):
     fig1.write_html("../www/byStation/OMF/"+station+"_"+graphTitle.replace(' ', '_')+"{}.html".format(titleNA))
 
 N = 10 #Top limit of objects to show individually
-for station in tableNames():
+for station in mpccode.keys():
 #for i in range(1):
-    station = station[0]
     #station = "station_010"
+    station = "station_" + station
     observers = {}
     measurers = {}
     facilities = {}
-    cursor.execute("select * from {}".format(station))
-    observations = cursor.fetchall()
-    for observation in observations:
-        observers[observation[2]] = observers.get(observation[2],0)+1
-        measurers[observation[3]] = measurers.get(observation[3],0)+1
-        facilities[observation[4]] = facilities.get(observation[4],0)+1
+    try:
+        cursor.execute("select Observer, Measurer, Facility from {}".format(station))
+    except:
+        print("Table {} does not exist".format(station))
+        pass
+    for mpec in cursor.fetchall():
+        if (len(mpec[0]) > 30):
+            observer = mpec[0][:30] + "..."
+            observers[observer] = observers.get(observer,0)+1
+        else:
+            observers[mpec[0]] = observers.get(mpec[0],0)+1
+        measurers[mpec[1]] = measurers.get(mpec[1],0)+1
+        facilities[mpec[2]] = facilities.get(mpec[2],0)+1
     
     #doesnt include NA:
     try:
