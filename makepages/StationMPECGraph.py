@@ -47,13 +47,6 @@ def printTableContent(table):
     rows = cursor.execute("SELECT * FROM {} WHERE Object = 'J99M00L' LIMIT 100".format(table)).fetchall()
     print(rows)
 
-#List of table names
-def tableNames():
-    sql = '''SELECT name FROM sqlite_master WHERE type='table';'''
-    cursor = mpecconn.execute(sql)
-    results = cursor.fetchall()
-    return(results[1::])
-
 BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 def encode(num, alphabet=BASE62):
     """Encode a positive number in Base X
@@ -72,10 +65,10 @@ def encode(num, alphabet=BASE62):
     return ''.join(arr)
 
 def calcObs():
-    for station in tableNames():
-        station = station[0][-3::]
+    for station in mpccode.keys():
         #initialize dict
         mpec_data[station] = {}
+        mpec_data[station]['MPECId'] = {}
         mpec_data[station]['Discovery'] = {}
         mpec_data[station]['Editorial'] = {}
         mpec_data[station]['OrbitUpdate'] = {}
@@ -101,28 +94,43 @@ def calcObs():
         mpec_data[station]['MEA'] = {} #contains all measurers for each station
         mpec_data[station]['Facilities'] = {} #contains all facilities for each station
 
+        #store object and mpecid information for catchurl use later
+        try:
+            for mpc_obj in mpecconn.execute("SELECT MPEC, Object FROM station_{}".format(station)).fetchall():
+                mpec_data[station]['MPECId'][mpc_obj[0]] = mpc_obj[1]
+        except: 
+            pass
+
         #observers per station
-        for observer in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
-            if observer[0] != '':
-                mpec_data[station]['OBS'][observer[0]] = mpec_data[station]['OBS'].get(observer[0],0)+1
+        try:
+            for observer in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
+                if observer[0] != '':
+                    mpec_data[station]['OBS'][observer[0]] = mpec_data[station]['OBS'].get(observer[0],0)+1
+        except: 
+            pass           
 
         #measurers per station
-        for measurer in mpecconn.execute("SELECT Measurer FROM station_{}".format(station)).fetchall():
-            if measurer[0] != '':
-                mpec_data[station]['MEA'][measurer[0]] = mpec_data[station]['MEA'].get(measurer[0],0)+1
+        try:
+            for measurer in mpecconn.execute("SELECT Measurer FROM station_{}".format(station)).fetchall():
+                if measurer[0] != '':
+                    mpec_data[station]['MEA'][measurer[0]] = mpec_data[station]['MEA'].get(measurer[0],0)+1
+        except:
+            pass
 
         #facilities per station
-        for facility in mpecconn.execute("SELECT Facility FROM station_{}".format(station)).fetchall():
-            if facility[0] != '':
-                mpec_data[station]['Facilities'][facility[0]] = mpec_data[station]['Facilities'].get(facility[0],0)+1
+        try:
+            for facility in mpecconn.execute("SELECT Facility FROM station_{}".format(station)).fetchall():
+                if facility[0] != '':
+                    mpec_data[station]['Facilities'][facility[0]] = mpec_data[station]['Facilities'].get(facility[0],0)+1
+        except:
+            pass
 
-    cursor.execute("select * from MPEC")
-    for mpec in cursor.fetchall():
+    for mpec in cursor.execute("select * from MPEC").fetchall():
         year = date.fromtimestamp(mpec[2]).year
         month = date.fromtimestamp(mpec[2]).month
 
         for station in mpec[3].split(', '):
-            if station == '':
+            if station == '' or station == 'XXX':
                 continue
 
             #MPECType = 'Discovery' and DiscStation != '{}'
@@ -199,9 +207,12 @@ def calcObs():
                     obj_type == "PHA (H>18)"
                 temp.append(obj_type)
 
-                
-                if mpec[7]: 
-                    catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[0].split()[1][:4], mpec[0].split()[1][5::])
+
+                if mpec[7]:
+                    #obs_code = cursor.execute("SELECT Object FROM station_{} WHERE MPEC = '{}'".format(station, mpec[0])).fetchall()
+                    #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(obs_code[:3], obs_code[3::])
+                    catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}>CATCH</a>".format(mpec_data[station]['MPECId'][mpec[0]])
+                    #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[0].split()[1][:4], mpec[0].split()[1][5::])
                     temp.append(catch_url)
                 else:
                     temp.append("")
@@ -209,24 +220,13 @@ def calcObs():
                 mpec_data[station]['MPECs'].append((temp))
 
 
-def main():
-    calcObs()
-    includeFirstFU = True #include first-followup in graph or just use FU
-    for station_name in tableNames():
-        try:
-            mpccode[station_name[0][-3:]]
-        except Exception as e:
-            print(e)
-            continue
-	
-    #for i in range(1):
-        df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
-        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        station = station_name[0]
-        #station = "station_J95"
-        page = "../www/byStation/" + str(station) + ".html"
+def createGraph(station_code, includeFirstFU = True):
+    df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    station = 'station_'+station_code
+    page = "../www/byStation/" + str(station) + ".html"
 
-        o = """
+    o = """
 <!doctype html>
 <html lang="en">
   <head>
@@ -265,7 +265,7 @@ def main():
     <!--[if lt IE 9]><script src="../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
     <script src="../assets/js/ie-emulation-modes-warning.js"></script>
     <script src="../dist/extensions/export/tableExport.min.js"></script>
-        <script src="../dist/extensions/export/tableExport.js"></script>
+    <script src="../dist/extensions/export/tableExport.js"></script>
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -304,23 +304,23 @@ def main():
     <div class="container theme-showcase" role="main">
 
       <!-- Main jumbotron for a primary marketing message or call to action -->""" % str(station[-3:])
-        o += """<div class="row">
-              <h2>{} {}</h2>""".format(station[-3:], mpccode[station[-3:]]['name'])
+    o += """<div class="row">
+            <h2>{} {}</h2>""".format(station[-3:], mpccode[station[-3:]]['name'])
               
-        if str(station[-3:]) not in ['244', '245', '247', '248', '249', '250', '258', '270', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
-            if mpccode[station[-3:]]['lon'] > 180:
-                lon = mpccode[station[-3:]]['lon'] - 360
-            else:
-                lon = mpccode[station[-3:]]['lon']
-            o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this place?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
+    if str(station[-3:]) not in ['244', '245', '247', '248', '249', '250', '258', '270', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
+        if mpccode[station[-3:]]['lon'] > 180:
+            lon = mpccode[station[-3:]]['lon'] - 360
+        else:
+            lon = mpccode[station[-3:]]['lon']
+        o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this place?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
               
-        o += """<p>
-                  <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
-                  <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
-                  <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
-                  <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
-              </p>
-            </div>
+    o += """<p>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+            </p>
+        </div>
         <div class="container">
             <table class="table table-striped table-sm">
                 <tr>
@@ -338,35 +338,35 @@ def main():
                 </tr>
         """.format(str(station), str(station), str(station), str(station))
         
-        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-            df_monthly = pd.DataFrame({"Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
-            obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
-            year_counts = list(map(lambda func: func(), [lambda mpecType=x: mpec_data[station[8::]][mpecType][year]['total'] if year in mpec_data[station[8::]][mpecType].keys() else 0 for x in obs_types]))
-            #month_counts = 
+    for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+        df_monthly = pd.DataFrame({"Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
+        obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+        year_counts = list(map(lambda func: func(), [lambda mpecType=x: mpec_data[station[8::]][mpecType][year]['total'] if year in mpec_data[station[8::]][mpecType].keys() else 0 for x in obs_types]))
+        #month_counts = 
 
-            if includeFirstFU:
-                year_counts[7] -= year_counts[8]
-            else:
-                year_counts[8] = 0
-            
-            df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
-            
-            month_index = 1
-            for month in months:
-                new_row = []
-                for mpecType in obs_types:
-                    #if year in mpec_data[station[8::]][mpecType].keys():
-                    if month_index in mpec_data[station[-3:]][mpecType][year].keys():
-                        new_row.append(mpec_data[station[-3:]][mpecType][year][month_index])
-                    else:
-                        new_row.append(0)
-                month_index+=1
-                df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=obs_types)])
-            
-            #print(df_monthly)
-            monthly(station, year, df_monthly)
+        if includeFirstFU:
+            year_counts[7] -= year_counts[8]
+        else:
+            year_counts[8] = 0
+        
+        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
+        
+        month_index = 1
+        for month in months:
+            new_row = []
+            for mpecType in obs_types:
+                #if year in mpec_data[station[8::]][mpecType].keys():
+                if month_index in mpec_data[station[-3:]][mpecType][year].keys():
+                    new_row.append(mpec_data[station[-3:]][mpecType][year][month_index])
+                else:
+                    new_row.append(0)
+            month_index+=1
+            df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=obs_types)])
+        
+        #print(df_monthly)
+        monthly(station, year, df_monthly)
 
-            o += """
+        o += """
                 <tr>
                     <td><a href="monthly/%s_%i.html">%i</a></td>
                     <td>%i</td>
@@ -380,22 +380,22 @@ def main():
                     <td>%i</td>
                     <td>%i</td>
                 </tr>
-            """ % (station, year, year, sum(year_counts), year_counts[0], year_counts[1], year_counts[2], year_counts[3], year_counts[4], year_counts[5], year_counts[6], year_counts[7], year_counts[8])
-        try:
-            fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
-            fig.write_html("../www/byStation/Graphs/"+station+".html")
-        except Exception as e:
-            print(e)
-        
-        #df_csv = pd.DataFrame({"Year": [], "Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
-        df_csv = pd.DataFrame()
-        df_csv["Year"] = df_yearly["Year"].unique()
-        for mpecType in df_yearly["MPECType"].unique():
-            df_csv[mpecType] = df_yearly[df_yearly["MPECType"] == mpecType]["#MPECs"].values
+        """ % (station, year, year, sum(year_counts), year_counts[0], year_counts[1], year_counts[2], year_counts[3], year_counts[4], year_counts[5], year_counts[6], year_counts[7], year_counts[8])
+    try:
+        fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
+        fig.write_html("../www/byStation/Graphs/"+station+".html")
+    except Exception as e:
+        print(e)
+    
+    #df_csv = pd.DataFrame({"Year": [], "Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
+    df_csv = pd.DataFrame()
+    df_csv["Year"] = df_yearly["Year"].unique()
+    for mpecType in df_yearly["MPECType"].unique():
+        df_csv[mpecType] = df_yearly[df_yearly["MPECType"] == mpecType]["#MPECs"].values
 
-        df_csv.to_csv("../www/byStation/csv/{}.csv".format(station), index=False)
+    df_csv.to_csv("../www/byStation/csv/{}.csv".format(station), index=False)
 
-        o += """
+    o += """
             </table>
             <a href="csv/{}.csv" download="{}">
                 <p style="padding-bottom: 30px;">Download as csv</p>
@@ -418,10 +418,10 @@ def main():
                     </tr>
                 </thead>
                 <tbody>
-        """.format(str(station), str(station))
-        
-        for i in reversed(mpec_data[station[-3::]]['MPECs']):
-            o += """
+    """.format(str(station), str(station))
+    
+    for i in reversed(mpec_data[station[-3::]]['MPECs']):
+        o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
@@ -430,9 +430,9 @@ def main():
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-            """.format(i[0],i[1],i[2],i[3],i[4],i[5])
+        """.format(i[0],i[1],i[2],i[3],i[4],i[5])
 
-        o += """
+    o += """
                 </tbody>
             </table>
             <table id="OBS_table" 
@@ -447,16 +447,15 @@ def main():
                     </tr>
                 </thead>
                 <tbody>"""
-        
-        for observer, count in mpec_data[station[-3::]]['OBS'].items():
-            o += """
+    for observer, count in mpec_data[station[-3::]]['OBS'].items():
+        o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(observer, count)
-            
-        o += """
+    """.format(observer, count)
+        
+    o += """
                 </tbody>
             </table>
             <table id="MEA_table" 
@@ -471,16 +470,16 @@ def main():
                     </tr>
                 </thead>
                 <tbody>"""
-        
-        for measurer, count in mpec_data[station[-3::]]['MEA'].items():
-            o += """
+    
+    for measurer, count in mpec_data[station[-3::]]['MEA'].items():
+        o += """
                     <tr>
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(measurer, count)
-            
-        o += """
+    """.format(measurer, count)
+        
+    o += """
                 </tbody>
             </table>
             <table id="FAC_table" 
@@ -495,16 +494,16 @@ def main():
                     </tr>
                 </thead>
                 <tbody>"""
-        
-        for facility, count in mpec_data[station[-3::]]['Facilities'].items():
-            o += """
-                    <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                    </tr>
-        """.format(facility, count)
-
+    
+    for facility, count in mpec_data[station[-3::]]['Facilities'].items():
         o += """
+                <tr>
+                    <td>{}</td>
+                    <td>{}</td>
+                </tr>
+    """.format(facility, count)
+
+    o += """
                 </tbody>
             </table>
             <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
@@ -527,34 +526,34 @@ def main():
                 }
             </script>
         </div>"""
-        
-        o += """
-	<footer class="pt-5 my-5 text-muted border-top">
-    Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
-  <path d="M6.375 7.125V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/>
-  <path d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12V3.545h3.399c1.587 0 2.543.809 2.543 2.11 0 .884-.65 1.675-1.483 1.816v.1c1.143.117 1.904.931 1.904 2.033 0 1.488-1.084 2.396-2.888 2.396H5.062z"/>
-</svg> Bootstrap</a> and <a href="https://bootstrap-table.com">Bootstrap Table</a>.
-        <a href="https://pdssbn.astro.umd.edu/"><img src="../sbn_logo5_v0.png" width="100" style="vertical-align:bottom"></a>
-        <a href="https://github.com/Small-Bodies-Node/mpecwatch"><svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
-  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
-</svg></a>
-  </footer>
+    
+    o += """
+        <footer class="pt-5 my-5 text-muted border-top">
+        Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
+        <path d="M6.375 7.125V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/>
+        <path d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12V3.545h3.399c1.587 0 2.543.809 2.543 2.11 0 .884-.65 1.675-1.483 1.816v.1c1.143.117 1.904.931 1.904 2.033 0 1.488-1.084 2.396-2.888 2.396H5.062z"/>
+        </svg> Bootstrap</a> and <a href="https://bootstrap-table.com">Bootstrap Table</a>.
+            <a href="https://pdssbn.astro.umd.edu/"><img src="../sbn_logo5_v0.png" width="100" style="vertical-align:bottom"></a>
+            <a href="https://github.com/Small-Bodies-Node/mpecwatch"><svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+        </svg></a>
+        </footer>
 
-    <!-- Bootstrap core JavaScript
-    ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
-    <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
-    <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"><\/script>')</script>
-    <script src="../dist/js/bootstrap.min.js"></script>
-    <script src="../assets/js/docs.min.js"></script>
-    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
+        <!-- Bootstrap core JavaScript
+        ================================================== -->
+        <!-- Placed at the end of the document so the pages load faster -->
+        <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
+        <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"><\/script>')</script>
+        <script src="../dist/js/bootstrap.min.js"></script>
+        <script src="../assets/js/docs.min.js"></script>
+        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+        <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
     </div>
   </body>
 </html>"""
-        print(station)
-        with open(page, 'w', encoding='utf-8') as f:
-            f.write(o)
+
+    with open(page, 'w', encoding='utf-8') as f:
+        f.write(o)
 
 
 def monthly(station, year, df_monthly):
@@ -624,6 +623,15 @@ def monthly(station, year, df_monthly):
     with open(page, 'w', encoding='utf-8') as f:
             f.write(o)    
 
-main()    
+def main():
+    calcObs()
+    for station in mpccode.keys():
+        if station == 'XXX':
+            continue
+        createGraph(station)
+        print(station)
+    #createGraph('J95')
+
+main()
 mpecconn.close()
 print('finished')
