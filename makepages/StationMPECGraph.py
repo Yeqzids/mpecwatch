@@ -211,7 +211,7 @@ def calcObs():
                 if mpec[7]:
                     #obs_code = cursor.execute("SELECT Object FROM station_{} WHERE MPEC = '{}'".format(station, mpec[0])).fetchall()
                     #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(obs_code[:3], obs_code[3::])
-                    catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}>CATCH</a>".format(mpec_data[station]['MPECId'][mpec[0]])
+                    catch_url = "<a href=https://catch.astro.umd.edu/data?target={}>CATCH</a>".format(mpec_data[station]['MPECId'][mpec[0]])
                     #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[0].split()[1][:4], mpec[0].split()[1][5::])
                     temp.append(catch_url)
                 else:
@@ -625,12 +625,12 @@ def monthly(station, year, df_monthly):
 
 def main():
     calcObs()
-    for station in mpccode.keys():
-        if station == 'XXX':
-            continue
-        createGraph(station)
-        print(station)
-    #createGraph('J95')
+    # for station in mpccode.keys():
+    #     if station == 'XXX':
+    #         continue
+    #     createGraph(station)
+    #     print(station)
+    createGraph('J95')
 
 main()
 mpecconn.close()
