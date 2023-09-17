@@ -64,6 +64,7 @@ def encode(num, alphabet=BASE62):
     arr.reverse()
     return ''.join(arr)
 
+obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
 def calcObs():
     for station in mpccode.keys():
         #initialize dict
@@ -211,18 +212,17 @@ def calcObs():
                 if mpec[7]:
                     #obs_code = cursor.execute("SELECT Object FROM station_{} WHERE MPEC = '{}'".format(station, mpec[0])).fetchall()
                     #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(obs_code[:3], obs_code[3::])
-                    catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}>CATCH</a>".format(mpec_data[station]['MPECId'][mpec[0]])
+                    catch_url = "<a href=https://catch.astro.umd.edu/data?target={}>CATCH</a>".format(mpec_data[station]['MPECId'][mpec[0]])
                     #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[0].split()[1][:4], mpec[0].split()[1][5::])
                     temp.append(catch_url)
                 else:
                     temp.append("")
 
-                mpec_data[station]['MPECs'].append((temp))
+                mpec_data[station]['MPECs'].append(temp)
 
 
 def createGraph(station_code, includeFirstFU = True):
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
-    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     station = 'station_'+station_code
     page = "../www/byStation/" + str(station) + ".html"
 
@@ -258,8 +258,7 @@ def createGraph(station_code, includeFirstFU = True):
     <!-- Custom styles for this template -->
     <link href="../theme.css" rel="stylesheet">
     <!-- Table pagination -->
-    <link href="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
+    <link href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css" rel="stylesheet">
     
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]><script src="../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
@@ -339,10 +338,14 @@ def createGraph(station_code, includeFirstFU = True):
         """.format(str(station), str(station), str(station), str(station))
         
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-        df_monthly = pd.DataFrame({"Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
-        obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
-        year_counts = list(map(lambda func: func(), [lambda mpecType=x: mpec_data[station[8::]][mpecType][year]['total'] if year in mpec_data[station[8::]][mpecType].keys() else 0 for x in obs_types]))
-        #month_counts = 
+        year_counts = []
+        for mpecType in obs_types:
+            if year in mpec_data[station[8::]][mpecType].keys():
+                total = mpec_data[station[8::]][mpecType][year]['total']
+            else:
+                total = 0
+            year_counts.append(total)
+
 
         if includeFirstFU:
             year_counts[7] -= year_counts[8]
@@ -351,20 +354,19 @@ def createGraph(station_code, includeFirstFU = True):
         
         df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
         
+        df_monthly_graph = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         month_index = 1
         for month in months:
-            new_row = []
+            month_counts = []
             for mpecType in obs_types:
-                #if year in mpec_data[station[8::]][mpecType].keys():
-                if month_index in mpec_data[station[-3:]][mpecType][year].keys():
-                    new_row.append(mpec_data[station[-3:]][mpecType][year][month_index])
+                if year in mpec_data[station[8::]][mpecType].keys() and month_index in mpec_data[station[8::]][mpecType][year].keys():
+                    month_counts.append(mpec_data[station[8::]][mpecType][year][month_index])
                 else:
-                    new_row.append(0)
-            month_index+=1
-            df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=obs_types)])
-        
-        #print(df_monthly)
-        monthly(station, year, df_monthly)
+                    month_counts.append(0)
+            df_monthly_graph = pd.concat([df_monthly_graph, pd.DataFrame({"Month": [month, month, month, month, month, month, month, month, month], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": month_counts})])
+            monthly(station, year, df_monthly_graph)
+            month_index += 1
 
         o += """
                 <tr>
@@ -409,12 +411,12 @@ def createGraph(station_code, includeFirstFU = True):
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="name">Name</th>
-                        <th class="th-sm" data-field="date">Date/Time</th>
-                        <th class="th-sm" data-field="ds">Discoverer</th>
-                        <th class="th-sm" data-field="fs">First-responding Confirmer</th>
-                        <th class="th-sm" data-field="obj">Object Type</th>
-                        <th class="th-sm" data-field="catch">Search Archival Image</th>
+                        <th class="th-sm" data-field="name" data-sortable="true">Name</th>
+                        <th class="th-sm" data-field="date" data-sortable="true">Date/Time</th>
+                        <th class="th-sm" data-field="ds" data-sortable="true">Discoverer</th>
+                        <th class="th-sm" data-field="fs" data-sortable="true">First-responding Confirmer</th>
+                        <th class="th-sm" data-field="obj" data-sortable="true">Object Type</th>
+                        <th class="th-sm" data-field="catch" data-sortable="true">Search Archival Image</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -507,7 +509,7 @@ def createGraph(station_code, includeFirstFU = True):
                 </tbody>
             </table>
             <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
             <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
             <script>
                 function customSort(sortName, sortOrder, data) {
@@ -556,7 +558,24 @@ def createGraph(station_code, includeFirstFU = True):
         f.write(o)
 
 
-def monthly(station, year, df_monthly):
+def monthly(station, year, df_month_graph):
+    fig = px.bar(df_month_graph, x="Month", y="#MPECs", color="MPECType")
+    fig.write_html("../www/byStation/monthly/graphs/"+station+"_"+str(year)+".html")
+
+    df_monthly = pd.DataFrame({"Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    month_index = 1
+    for month in months:
+        new_row = []
+        for mpecType in obs_types:
+            #if year in mpec_data[station[8::]][mpecType].keys():
+            if month_index in mpec_data[station[-3:]][mpecType][year].keys():
+                new_row.append(mpec_data[station[-3:]][mpecType][year][month_index])
+            else:
+                new_row.append(0)
+        month_index+=1
+        df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=obs_types)])
+    
     page = '../www/byStation/monthly/{}.html'.format(station+"_"+str(year))
     o = """
 <!DOCTYPE html>
@@ -577,6 +596,7 @@ def monthly(station, year, df_monthly):
     <body>
         <div class="container" theme-showcase" role="main">
             <h2>{} {} | {}</h2>
+            <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{}.html" height="525" width="100%"></iframe>
             <table class="table table-striped table-hover table-condensed table-responsive">
                 <thead>
                     <tr>
@@ -591,7 +611,7 @@ def monthly(station, year, df_monthly):
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
                     </tr>
-            </thead>""".format(year, station[-3:], mpccode[station[-3:]]['name'], year)
+            </thead>""".format(year, station[-3:], mpccode[station[-3:]]['name'], year, station+"_"+str(year))
     
     for month in ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
         o += """
