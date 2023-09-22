@@ -627,7 +627,7 @@ def monthly(station, year, df_month_graph):
                         <td>%i</td>
                         <td>%i</td>
                         <td>%i</td>
-                    </tr>""" % (month, df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
+                    </tr>""" % (month, df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
         
     df_monthly.to_csv("../www/byStation/monthly/csv/{}.csv".format(station+"_"+str(year)))
     o += """      
@@ -650,7 +650,7 @@ def main():
             continue
         createGraph(station)
         print(station)
-    #createGraph('J95')
+    #createGraph('I41')
 
 main()
 mpecconn.close()
