@@ -14,6 +14,15 @@
 - [x] Figure/table - break-down of number and type of MPECs
 - [x] Table - top 10 of various categories
 
+## Individual_OMF
+This script is used to generate the figures (OMF: Obersers, Measurers, and Facilities) for individual observatories. 
+
+## Overall_OMF
+This script is used to generate the figures (OMF: Obersers, Measurers, and Facilities) for the congergation of ALL observatories.
+
+## StationMPECGraph
+This is the main script used to generate the webpages for each of the stations. This depends on Individual_OMF having been run first since it pulls the figures from the output of that script.
+
 ## Acknowledgment
 
 This project makes use of [Bootstrap](https://getbootstrap.com/), [Bootstrap Table](https://bootstrap-table.com/), data provided by the [International Astronomical Union's Minor Planet Center](https://minorplanetcenter.net/), and a [revised list of the MPC observatory code by Bill Gray](https://www.projectpluto.com/mpc_stat.htm).

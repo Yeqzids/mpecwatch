@@ -2,7 +2,8 @@
 """
 Created on Wed Jul  6 14:49:19 2022
 
-(a) Bar chart + break-down table of the number and type of MPECs by year (like the one on the home page)
+Generates individual station webpages including tables and statistics. Graphs are generated in IndividualOMF.py
+Run this script AFTER IndividualOMF.py
 
 Database structure
 ---
