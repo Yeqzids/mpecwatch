@@ -257,8 +257,6 @@ def createGraph(station_code, includeFirstFU = True):
 
     <!-- Custom styles for this template -->
     <link href="../theme.css" rel="stylesheet">
-    <!-- Table pagination -->
-    <link href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css" rel="stylesheet">
     
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]><script src="../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
@@ -408,7 +406,8 @@ def createGraph(station_code, includeFirstFU = True):
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
                 data-height="460"
-                data-pagination="true">
+                data-pagination="true"
+                data-search="true">
                 <thead>
                     <tr>
                         <th class="th-sm" data-field="name" data-sortable="true">Name</th>
@@ -508,25 +507,13 @@ def createGraph(station_code, includeFirstFU = True):
     o += """
                 </tbody>
             </table>
-            <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-            <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
-            <script>
-                function customSort(sortName, sortOrder, data) {
-                    var order = sortOrder === 'desc' ? -1 : 1
-                    data.sort(function (a, b) {
-                        var aa = +((a[sortName] + '').replace(/[^\d]/g, ''))
-                        var bb = +((b[sortName] + '').replace(/[^\d]/g, ''))
-                        if (aa < bb) {
-                            return order * -1
-                        }
-                        if (aa > bb) {
-                            return order
-                        }
-                        return 0
-                    })
-                }
-            </script>
+        
+        <!-- Table pagination -->
+        <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+        <link href="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.css" rel="stylesheet">
+        <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+        <script src="../dist/js/custom_sort.js"></script>
         </div>"""
     
     o += """
@@ -645,12 +632,12 @@ def monthly(station, year, df_month_graph):
 
 def main():
     calcObs()
-    for station in mpccode.keys():
-        if station == 'XXX':
-            continue
-        createGraph(station)
-        print(station)
-    #createGraph('I41')
+    # for station in mpccode.keys():
+    #     if station == 'XXX':
+    #         continue
+    #     createGraph(station)
+    #     print(station)
+    createGraph('J95')
 
 main()
 mpecconn.close()
