@@ -249,6 +249,7 @@ def createGraph(station_code, includeFirstFU = True):
     <title>MPEC Watch | Station Statistics %s</title>
 
     <!-- Bootstrap core CSS -->
+    <link href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css" rel="stylesheet">
     <link href="../dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap theme -->
     <link href="../dist/css/bootstrap-theme.min.css" rel="stylesheet">
@@ -261,8 +262,10 @@ def createGraph(station_code, includeFirstFU = True):
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]><script src="../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
     <script src="../assets/js/ie-emulation-modes-warning.js"></script>
+    <!--
     <script src="../dist/extensions/export/tableExport.min.js"></script>
     <script src="../dist/extensions/export/tableExport.js"></script>
+    -->
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -319,7 +322,7 @@ def createGraph(station_code, includeFirstFU = True):
             </p>
         </div>
         <div class="container">
-            <table class="table table-striped table-sm">
+            <table class="table table-striped table-sm" data-show-export="true">
                 <tr>
                     <th>Year</th>
                     <th>Total MPECs</th>
@@ -508,11 +511,10 @@ def createGraph(station_code, includeFirstFU = True):
                 </tbody>
             </table>
         
-        <!-- Table pagination -->
-        <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
-        <link href="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.css" rel="stylesheet">
-        <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
+        <!--
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+        -->
+
         <script src="../dist/js/custom_sort.js"></script>
         </div>"""
     
@@ -537,6 +539,9 @@ def createGraph(station_code, includeFirstFU = True):
         <script src="../assets/js/docs.min.js"></script>
         <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
         <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
+
+        <!-- Bootstrap Table -->
+        <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
     </div>
   </body>
 </html>"""
