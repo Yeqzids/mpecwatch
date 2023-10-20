@@ -2,7 +2,8 @@
 """
 Created on Wed Jul  6 14:49:19 2022
 
-(a) Bar chart + break-down table of the number and type of MPECs by year (like the one on the home page)
+Generates individual station webpages including tables and statistics. Graphs are generated in IndividualOMF.py
+Run this script AFTER IndividualOMF.py
 
 Database structure
 ---
@@ -249,6 +250,7 @@ def createGraph(station_code, includeFirstFU = True):
     <title>MPEC Watch | Station Statistics %s</title>
 
     <!-- Bootstrap core CSS -->
+    <link href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css" rel="stylesheet">
     <link href="../dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap theme -->
     <link href="../dist/css/bootstrap-theme.min.css" rel="stylesheet">
@@ -257,14 +259,14 @@ def createGraph(station_code, includeFirstFU = True):
 
     <!-- Custom styles for this template -->
     <link href="../theme.css" rel="stylesheet">
-    <!-- Table pagination -->
-    <link href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css" rel="stylesheet">
     
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]><script src="../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
     <script src="../assets/js/ie-emulation-modes-warning.js"></script>
+    <!--
     <script src="../dist/extensions/export/tableExport.min.js"></script>
     <script src="../dist/extensions/export/tableExport.js"></script>
+    -->
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -321,7 +323,7 @@ def createGraph(station_code, includeFirstFU = True):
             </p>
         </div>
         <div class="container">
-            <table class="table table-striped table-sm">
+            <table class="table table-striped table-sm" data-show-export="true">
                 <tr>
                     <th>Year</th>
                     <th>Total MPECs</th>
@@ -408,7 +410,8 @@ def createGraph(station_code, includeFirstFU = True):
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
                 data-height="460"
-                data-pagination="true">
+                data-pagination="true"
+                data-search="true">
                 <thead>
                     <tr>
                         <th class="th-sm" data-field="name" data-sortable="true">Name</th>
@@ -508,25 +511,12 @@ def createGraph(station_code, includeFirstFU = True):
     o += """
                 </tbody>
             </table>
-            <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-            <script src="https://unpkg.com/bootstrap-table@1.21.4/dist/bootstrap-table.min.js"></script>
-            <script>
-                function customSort(sortName, sortOrder, data) {
-                    var order = sortOrder === 'desc' ? -1 : 1
-                    data.sort(function (a, b) {
-                        var aa = +((a[sortName] + '').replace(/[^\d]/g, ''))
-                        var bb = +((b[sortName] + '').replace(/[^\d]/g, ''))
-                        if (aa < bb) {
-                            return order * -1
-                        }
-                        if (aa > bb) {
-                            return order
-                        }
-                        return 0
-                    })
-                }
-            </script>
+        
+        <!--
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+        -->
+
+        <script src="../dist/js/custom_sort.js"></script>
         </div>"""
     
     o += """
@@ -550,6 +540,9 @@ def createGraph(station_code, includeFirstFU = True):
         <script src="../assets/js/docs.min.js"></script>
         <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
         <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
+
+        <!-- Bootstrap Table -->
+        <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
     </div>
   </body>
 </html>"""
@@ -627,7 +620,7 @@ def monthly(station, year, df_month_graph):
                         <td>%i</td>
                         <td>%i</td>
                         <td>%i</td>
-                    </tr>""" % (month, df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
+                    </tr>""" % (month, df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
         
     df_monthly.to_csv("../www/byStation/monthly/csv/{}.csv".format(station+"_"+str(year)))
     o += """      
