@@ -316,13 +316,20 @@ def createGraph(station_code, includeFirstFU = True):
         o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this place?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
               
     o += """<p>
+             <h3>Graphs</h3>^M
+              <h4>Yearly Breakdown of MPEC Types</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
+              <h4>Breakdown by Observers</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
+              <h4>Breakdown by Measurers</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
+              <h4>Breakdown by Facilities</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
             </p>
         </div>
         <div class="container">
+          <h3>Tables</h3>
+          <h4>Yearly Breakdown of MPEC Types</h4>
             <table class="table table-striped table-sm" data-show-export="true">
                 <tr>
                     <th>Year</th>
@@ -405,6 +412,7 @@ def createGraph(station_code, includeFirstFU = True):
                 <p style="padding-bottom: 30px;">Download as csv</p>
             </a>
         </div>
+        <h4>List of Individual MPECs</h4>
         <div class="containter">
             <table id="mpec_table" 
                 class="table table-striped table-bordered table-sm"
@@ -440,6 +448,7 @@ def createGraph(station_code, includeFirstFU = True):
     o += """
                 </tbody>
             </table>
+            <h4>List of Observers</h4>
             <table id="OBS_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
@@ -463,6 +472,7 @@ def createGraph(station_code, includeFirstFU = True):
     o += """
                 </tbody>
             </table>
+            <h4>List of Measurers</h4>
             <table id="MEA_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
