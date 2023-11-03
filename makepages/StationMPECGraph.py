@@ -316,7 +316,7 @@ def createGraph(station_code, includeFirstFU = True):
         o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this place?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
               
     o += """<p>
-             <h3>Graphs</h3>^M
+             <h3>Graphs</h3>
               <h4>Yearly Breakdown of MPEC Types</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Observers</h4>
