@@ -1,5 +1,4 @@
-import sqlite3, plotly.express as px, pandas as pd, json
-from datetime import date
+import sqlite3, plotly.express as px, pandas as pd, json, numpy as np, datetime
 
 mpecconn = sqlite3.connect("../mpecwatch_v3.db")
 cursor = mpecconn.cursor()
@@ -53,38 +52,52 @@ def topN(someDictionary, graphTitle, station, includeNA = False):
     fig1.write_html("../www/byStation/OMF/"+station+"_"+graphTitle.replace(' ', '_')+"{}.html".format(titleNA))
 
 def time_frequency_figure(station):
-    yearly = {'summer':0, 'autumn':0, 'winter':0, 'spring':0}
-    weekly = {'Monday':0, 'Tuesday':0, 'Wednesday':0, 'Thursday':0, 'Friday':0, 'Saturday':0, 'Sunday':0}
-    #daily = {} unable to use daily since data only includes the day of oberservation, no the time
+    yearly = np.zeros(366)
+    hourly = np.zeros(24)
+    weekly = np.zeros(7)
 
     cursor.execute("select Time from {}".format(station))
     for time in cursor.fetchall():
         time = int(time[0])
-        year = date.fromtimestamp(time).year
-        month = date.fromtimestamp(time).month
-        day = date.fromtimestamp(time).day
-        if month in [6,7,8]:
-            yearly['summer'] += 1
-        elif month in [9,10,11]:
-            yearly['autumn'] += 1
-        elif month in [12,1,2]:
-            yearly['winter'] += 1
-        elif month in [3,4,5]:
-            yearly['spring'] += 1
-        
-    df = pd.DataFrame(list(yearly.items()), columns=['Season', 'Count'])
-    print(df)
-    graph_title = station[-3:] + " " + mpccode[station[-3:]]['name']
-    fig1 = px.pie(df, values='Count', names='Season', title = graph_title + " | Seasonal Frequency")
-    fig1.write_html("../www/byStation/OMF/"+station+"_seasonal.html".replace(' ', '_'))
 
+        day = datetime.date.fromtimestamp(time).timetuple().tm_yday
+        hour = datetime.datetime.fromtimestamp(time).hour
+        weekday = datetime.date.fromtimestamp(time).weekday()
+        
+        yearly[day-1] += 1 #treat the index of the array as the day of the year
+        hourly[hour] += 1 #treat the index of the array as the hour of the day
+        weekly[weekday] += 1 #treat the index of the array as the day of the week
+
+    #yearly graph
+    fig1 = px.bar(x=np.arange(1,367), y=yearly, title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + "Yearly Frequency")
+    fig1.update_layout(
+        xaxis_title="Day of the Year",
+        yaxis_title="Number of Observations",
+    )
+    fig1.write_html("../www/byStation/OMF/"+station+"_yearly.html".replace(' ', '_'))
+
+    #hourly graph
+    fig2 = px.bar(x=np.arange(0,24), y=hourly, title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + "Hourly Frequency")
+    fig2.update_layout(
+        xaxis_title="Hour of the Day",
+        yaxis_title="Number of Observations",
+    )
+    fig2.write_html("../www/byStation/OMF/"+station+"_hourly.html".replace(' ', '_'))
+
+    #weekly graph
+    fig3 = px.bar(x=np.arange(0,7), y=weekly, title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + "Weekly Frequency")
+    fig3.update_layout(
+        xaxis_title="Day of the Week",
+        yaxis_title="Number of Observations",
+    )
+    fig3.write_html("../www/byStation/OMF/"+station+"_weekly.html".replace(' ', '_'))
 
 
 N = 10 #Top limit of objects to show individually
-for station in mpccode.keys():
-#for i in range(1):
-    #station = "station_J95"
-    station = "station_" + station
+#for station in mpccode.keys():
+for i in range(1):
+    station = "station_J95"
+    #station = "station_" + station
     observers = {}
     measurers = {}
     facilities = {}
@@ -104,13 +117,13 @@ for station in mpccode.keys():
         measurers[mpec[1]] = measurers.get(mpec[1],0)+1
         facilities[mpec[2]] = facilities.get(mpec[2],0)+1
     
+
     #doesnt include NA:
     try:
         topN(observers, "Top {} Observers".format(N), station)
         topN(measurers, "Top {} Measurers".format(N), station)
         topN(facilities, "Top {} Facilities".format(N), station)
         time_frequency_figure(station)
-        #day week frequency
 
     except Exception as e:
         message = e
