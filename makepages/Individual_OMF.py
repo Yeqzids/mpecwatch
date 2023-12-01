@@ -94,10 +94,10 @@ def time_frequency_figure(station):
 
 
 N = 10 #Top limit of objects to show individually
-#for station in mpccode.keys():
-for i in range(1):
-    station = "station_J95"
-    #station = "station_" + station
+for station in mpccode.keys():
+#for i in range(1):
+    #station = "station_J95"
+    station = "station_" + station
     observers = {}
     measurers = {}
     facilities = {}
