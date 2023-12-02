@@ -325,6 +325,12 @@ def createGraph(station_code, includeFirstFU = True):
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Facilities</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+              <h4>Annual Breakdown</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_yearly.html" height="525" width="100%"></iframe>
+              <h4>Weekly Breakdown</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_weekly.html" height="525" width="100%"></iframe>
+              <h4>Hourly Breakdown</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_hourly.html" height="525" width="100%"></iframe>
             </p>
         </div>
         <div class="container">
@@ -344,7 +350,7 @@ def createGraph(station_code, includeFirstFU = True):
                     <th>Follow-Up</th>
                     <th>First Follow-Up</th>
                 </tr>
-        """.format(str(station), str(station), str(station), str(station))
+        """.format(str(station), str(station), str(station), str(station), str(station), str(station), str(station))
         
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         year_counts = []
@@ -416,10 +422,12 @@ def createGraph(station_code, includeFirstFU = True):
         <div class="containter">
             <table id="mpec_table" 
                 class="table table-striped table-bordered table-sm"
-                data-toggle="table"
                 data-height="460"
+                data-toggle="table"
                 data-pagination="true"
-                data-search="true">
+                data-search="true"
+                data-show-export="true"
+                data-show-columns="true">
                 <thead>
                     <tr>
                         <th class="th-sm" data-field="name" data-sortable="true">Name</th>
@@ -452,7 +460,6 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="OBS_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
-                data-height="460"
                 data-pagination="true">
                 <thead>
                     <tr>
@@ -476,7 +483,6 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="MEA_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
-                data-height="460"
                 data-pagination="true">
                 <thead>
                     <tr>
@@ -500,7 +506,6 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="FAC_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
-                data-height="460"
                 data-pagination="true">
                 <thead>
                     <tr>
