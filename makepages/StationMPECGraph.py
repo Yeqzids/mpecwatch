@@ -32,7 +32,7 @@ TABLE XXX (observatory code):
     Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
-import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json
+import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, threading, concurrent.futures
 from datetime import date
 
 mpec_data=dict()
@@ -460,6 +460,7 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="OBS_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
+                data-search="true"
                 data-pagination="true">
                 <thead>
                     <tr>
@@ -483,6 +484,7 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="MEA_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
+                data-search="true"
                 data-pagination="true">
                 <thead>
                     <tr>
@@ -506,6 +508,7 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="FAC_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
+                data-search="true"
                 data-pagination="true">
                 <thead>
                     <tr>
@@ -562,6 +565,7 @@ def createGraph(station_code, includeFirstFU = True):
   </body>
 </html>"""
 
+    print(station)
     with open(page, 'w', encoding='utf-8') as f:
         f.write(o)
 
@@ -652,13 +656,15 @@ def monthly(station, year, df_month_graph):
             f.write(o)    
 
 def main():
+    print('start...')
     calcObs()
-    # for station in mpccode.keys():
-    #     if station == 'XXX':
-    #         continue
-    #     createGraph(station)
-    #     print(station)
-    createGraph('J95')
+    print('begin writing stations')
+    for station in mpccode.keys():
+        if station == 'XXX':
+            continue
+        createGraph(station)
+        print(station)
+    #createGraph('J95')
 
 main()
 mpecconn.close()
