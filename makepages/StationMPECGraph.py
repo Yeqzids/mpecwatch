@@ -430,6 +430,7 @@ def createGraph(station_code, includeFirstFU = True):
                 data-show-columns="true">
                 <thead>
                     <tr>
+                        <th class="th-sm" data-field="index" data-sortable="true">Index</th>
                         <th class="th-sm" data-field="name" data-sortable="true">Name</th>
                         <th class="th-sm" data-field="date" data-sortable="true">Date/Time</th>
                         <th class="th-sm" data-field="ds" data-sortable="true">Discoverer</th>
@@ -441,6 +442,7 @@ def createGraph(station_code, includeFirstFU = True):
                 <tbody>
     """.format(str(station), str(station))
     
+    index = 1
     for i in reversed(mpec_data[station[-3::]]['MPECs']):
         o += """
                     <tr>
@@ -450,8 +452,10 @@ def createGraph(station_code, includeFirstFU = True):
                         <td>{}</td>
                         <td>{}</td>
                         <td>{}</td>
+                        <td>{}</td>
                     </tr>
-        """.format(i[0],i[1],i[2],i[3],i[4],i[5])
+        """.format(index,i[0],i[1],i[2],i[3],i[4],i[5])
+        index += 1
 
     o += """
                 </tbody>
@@ -658,13 +662,13 @@ def monthly(station, year, df_month_graph):
 def main():
     print('start...')
     calcObs()
-    print('begin writing stations')
-    for station in mpccode.keys():
-        if station == 'XXX':
-            continue
-        createGraph(station)
-        print(station)
-    #createGraph('J95')
+    # print('begin writing stations')
+    # for station in mpccode.keys():
+    #     if station == 'XXX':
+    #         continue
+    #     createGraph(station)
+    #     print(station)
+    createGraph('J95')
 
 main()
 mpecconn.close()
