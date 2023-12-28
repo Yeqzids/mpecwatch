@@ -380,8 +380,8 @@ def createGraph(station_code, includeFirstFU = True):
                 else:
                     month_counts.append(0)
             df_monthly_graph = pd.concat([df_monthly_graph, pd.DataFrame({"Month": [month, month, month, month, month, month, month, month, month], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": month_counts})])
-            monthly(station, year, df_monthly_graph)
             month_index += 1
+        monthly(station, year, df_monthly_graph)
 
         o += """
                 <tr>
@@ -662,13 +662,12 @@ def monthly(station, year, df_month_graph):
 def main():
     print('start...')
     calcObs()
-    # print('begin writing stations')
-    # for station in mpccode.keys():
-    #     if station == 'XXX':
-    #         continue
-    #     createGraph(station)
-    #     print(station)
-    createGraph('J95')
+    print('begin writing stations')
+    for station in mpccode.keys():
+        if station == 'XXX':
+            continue
+        createGraph(station)
+    #createGraph('J95')
 
 main()
 mpecconn.close()
