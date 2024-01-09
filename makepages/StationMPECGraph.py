@@ -32,7 +32,7 @@ TABLE XXX (observatory code):
     Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
-import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json
+import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, threading, concurrent.futures
 from datetime import date
 
 mpec_data=dict()
@@ -380,8 +380,8 @@ def createGraph(station_code, includeFirstFU = True):
                 else:
                     month_counts.append(0)
             df_monthly_graph = pd.concat([df_monthly_graph, pd.DataFrame({"Month": [month, month, month, month, month, month, month, month, month], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": month_counts})])
-            monthly(station, year, df_monthly_graph)
             month_index += 1
+        monthly(station, year, df_monthly_graph)
 
         o += """
                 <tr>
@@ -430,6 +430,7 @@ def createGraph(station_code, includeFirstFU = True):
                 data-show-columns="true">
                 <thead>
                     <tr>
+                        <th class="th-sm" data-field="index" data-sortable="true">Index</th>
                         <th class="th-sm" data-field="name" data-sortable="true">Name</th>
                         <th class="th-sm" data-field="date" data-sortable="true">Date/Time</th>
                         <th class="th-sm" data-field="ds" data-sortable="true">Discoverer</th>
@@ -441,6 +442,7 @@ def createGraph(station_code, includeFirstFU = True):
                 <tbody>
     """.format(str(station), str(station))
     
+    index = 1
     for i in reversed(mpec_data[station[-3::]]['MPECs']):
         o += """
                     <tr>
@@ -450,8 +452,10 @@ def createGraph(station_code, includeFirstFU = True):
                         <td>{}</td>
                         <td>{}</td>
                         <td>{}</td>
+                        <td>{}</td>
                     </tr>
-        """.format(i[0],i[1],i[2],i[3],i[4],i[5])
+        """.format(index,i[0],i[1],i[2],i[3],i[4],i[5])
+        index += 1
 
     o += """
                 </tbody>
@@ -460,6 +464,7 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="OBS_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
+                data-search="true"
                 data-pagination="true">
                 <thead>
                     <tr>
@@ -483,6 +488,7 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="MEA_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
+                data-search="true"
                 data-pagination="true">
                 <thead>
                     <tr>
@@ -506,6 +512,7 @@ def createGraph(station_code, includeFirstFU = True):
             <table id="FAC_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
+                data-search="true"
                 data-pagination="true">
                 <thead>
                     <tr>
@@ -562,6 +569,7 @@ def createGraph(station_code, includeFirstFU = True):
   </body>
 </html>"""
 
+    print(station)
     with open(page, 'w', encoding='utf-8') as f:
         f.write(o)
 
@@ -652,12 +660,13 @@ def monthly(station, year, df_month_graph):
             f.write(o)    
 
 def main():
+    print('start...')
     calcObs()
+    print('begin writing stations')
     for station in mpccode.keys():
         if station == 'XXX':
             continue
         createGraph(station)
-        print(station)
     #createGraph('J95')
 
 main()
