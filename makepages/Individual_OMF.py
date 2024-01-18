@@ -101,21 +101,42 @@ for station in mpccode.keys():
     observers = {}
     measurers = {}
     facilities = {}
+    objects = {}
     try:
-        cursor.execute("select Observer, Measurer, Facility, Time from {}".format(station))
+        cursor.execute("select Observer, Measurer, Facility, Object from {}".format(station))
         message = "{} done".format(station)
     except:
         message = "Table {} does not exist".format(station)
         
         
     for mpec in cursor.fetchall():
+        # observers
         if (len(mpec[0]) > 30):
             observer = mpec[0][:30] + "..."
             observers[observer] = observers.get(observer,0)+1
         else:
             observers[mpec[0]] = observers.get(mpec[0],0)+1
-        measurers[mpec[1]] = measurers.get(mpec[1],0)+1
-        facilities[mpec[2]] = facilities.get(mpec[2],0)+1
+
+        # measurers
+        if (len(mpec[1]) > 30):
+            measurer = mpec[1][:30] + "..."
+            measurers[measurer] = measurers.get(measurer,0)+1
+        else:
+            measurers[mpec[1]] = measurers.get(mpec[1],0)+1
+
+        # facilities
+        if (len(mpec[2]) > 30):
+            facility = mpec[2][:30] + "..."
+            facilities[facility] = facilities.get(facility,0)+1
+        else:
+            facilities[mpec[2]] = facilities.get(mpec[2],0)+1
+
+        # objects
+        if (len(mpec[3]) > 30):
+            object = mpec[3][:30] + "..."
+            objects[object] = objects.get(object,0)+1
+        else:
+            objects[mpec[3]] = objects.get(mpec[3],0)+1
     
 
     #doesnt include NA:
@@ -123,6 +144,7 @@ for station in mpccode.keys():
         topN(observers, "Top {} Observers".format(N), station)
         topN(measurers, "Top {} Measurers".format(N), station)
         topN(facilities, "Top {} Facilities".format(N), station)
+        topN(objects, "Top {} Objects".format(N), station)
         time_frequency_figure(station)
 
     except Exception as e:

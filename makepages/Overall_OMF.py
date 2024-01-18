@@ -39,8 +39,7 @@ for station in tableNames():
         observers[observation[2]] = observers.get(observation[2],0)+1
         measurers[observation[3]] = measurers.get(observation[3],0)+1
 
-N=10       
-def topN(someDictionary, graphTitle, includeNA = False, includeOther = True):
+def topN(someDictionary, graphTitle, N=10, includeNA = False, includeOther = True):
     NA=""
     if includeNA:
         NA = "+NA"
@@ -68,9 +67,6 @@ def topN(someDictionary, graphTitle, includeNA = False, includeOther = True):
     fig1.write_html('../www/stats/' + graphTitle.replace(' ', '_')+"{}{}.html".format(NA, Other))
 
 
-#topN(observers, "Top {} Observers".format(N))
-#topN(measurers, "Top {} Measurers".format(N))
-#topN(stations, "Top {} Facilities".format(N), includeOther = False)
 topN(observers, "Fraction of each observer groups among all MPECs")
 topN(measurers, "Fraction of each measurer groups among all MPECs")
 topN(stations, "Fraction of each observatory code among all MPECs")

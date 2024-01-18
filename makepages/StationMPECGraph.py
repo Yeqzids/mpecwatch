@@ -325,6 +325,8 @@ def createGraph(station_code, includeFirstFU = True):
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Facilities</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+              <h4>Breakdown by Objects</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Objects.html" height="525" width="100%"></iframe>
               <h4>Annual Breakdown</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_yearly.html" height="525" width="100%"></iframe>
               <h4>Weekly Breakdown</h4>
@@ -340,7 +342,7 @@ def createGraph(station_code, includeFirstFU = True):
                 <tr>
                     <th>Year</th>
                     <th>Total MPECs</th>
-                    <th>Editorial</th>
+                      <th>Editorial</th>
                     <th>Discovery</th>
                     <th>P/R/FU</th>
                     <th>DOU</th>
@@ -350,7 +352,7 @@ def createGraph(station_code, includeFirstFU = True):
                     <th>Follow-Up</th>
                     <th>First Follow-Up</th>
                 </tr>
-        """.format(str(station), str(station), str(station), str(station), str(station), str(station), str(station))
+        """.format(str(station), str(station), str(station), str(station), str(station), str(station), str(station), str(station))
         
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         year_counts = []
@@ -667,7 +669,7 @@ def main():
         if station == 'XXX':
             continue
         createGraph(station)
-    #createGraph('J95')
+    #createGraph('274')
 
 main()
 mpecconn.close()
