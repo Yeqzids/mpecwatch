@@ -83,8 +83,8 @@ def calcObs():
         mpec_data[station]['FirstFollowup'] = {}
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             mpec_data[station]['Discovery'][year] = {'total':0} #add object type
-            for obj in obj_types:
-                mpec_data[station]['Discovery'][year][obj] = 0
+            # for obj in obj_types:
+            #     mpec_data[station]['Discovery'][year][obj] = 0
             mpec_data[station]['Editorial'][year] = {'total':0}
             mpec_data[station]['OrbitUpdate'][year] = {'total':0} #add object type
             mpec_data[station]['DOU'][year] = {'total':0}
@@ -415,7 +415,7 @@ def createGraph(station_code, includeFirstFU = True):
         print(e)
 
     try:
-        fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Discovery: Number and type of Object by year")
+        fig = px.bar(disc_obj, x="Year", y="#MPECs", color="Object Type", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Discovery: Number and type of Object by year")
         fig.write_html("../www/byStation/Graphs/"+station+"_disc_obj.html") #
     except Exception as e:
         print(e)
@@ -683,7 +683,7 @@ def main():
     #     if station == 'XXX':
     #         continue
     #     createGraph(station)
-    createGraph('G96')
+    createGraph('033')
 
 main()
 mpecconn.close()
