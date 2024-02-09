@@ -377,7 +377,7 @@ def createGraph(station_code, includeFirstFU = True):
             year_counts[8] = 0
         
         df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
-        disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "unk"], "#MPECs": [mpec_data[station[8::]]['Discovery'][year]['NEA'], mpec_data[station[8::]]['Discovery'][year]['Comet'], mpec_data[station[8::]]['Discovery'][year]['Satellite'], mpec_data[station[8::]]['Discovery'][year]['TNO'], mpec_data[station[8::]]['Discovery'][year]['Unusual'], mpec_data[station[8::]]['Discovery'][year]['Interstellar'], mpec_data[station[8::]]['Discovery'][year]['unk']]})])
+        disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [mpec_data[station[8::]]['Discovery'][year]['NEA'], mpec_data[station[8::]]['Discovery'][year]['Comet'], mpec_data[station[8::]]['Discovery'][year]['Satellite'], mpec_data[station[8::]]['Discovery'][year]['TNO'], mpec_data[station[8::]]['Discovery'][year]['Unusual'], mpec_data[station[8::]]['Discovery'][year]['Interstellar'], mpec_data[station[8::]]['Discovery'][year]['unk']]})])
 
         df_monthly_graph = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
