@@ -153,7 +153,10 @@ def calcObs():
             if station == mpec[4]:
                 mpec_data[station]['Discovery'][year]['total'] = mpec_data[station]['Discovery'][year].get('total',0)+1
                 mpec_data[station]['Discovery'][year][month] = mpec_data[station]['Discovery'][year].get(month,0)+1
-                mpec_data[station]['Discovery'][year][mpec[7]] = mpec_data[station]['Discovery'][year].get(mpec[7],0)+1 #object type
+                if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
+                    mpec_data[station]['Discovery'][year]["NEA"] = mpec_data[station]['Discovery'][year].get("NEA",0)+1
+                else:
+                    mpec_data[station]['Discovery'][year][mpec[7]] = mpec_data[station]['Discovery'][year].get(mpec[7],0)+1 #object type
             
             for mpecType in ["Editorial", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
                 if mpec[6] == mpecType:
@@ -369,12 +372,12 @@ def createGraph(station_code, includeFirstFU = True):
             else:
                 total = 0
             year_counts.append(total)
-
-
         if includeFirstFU:
             year_counts[7] -= year_counts[8]
         else:
             year_counts[8] = 0
+
+        #for objType in obj_types:
         
         df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
         disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [mpec_data[station[8::]]['Discovery'][year]['NEA'], mpec_data[station[8::]]['Discovery'][year]['Comet'], mpec_data[station[8::]]['Discovery'][year]['Satellite'], mpec_data[station[8::]]['Discovery'][year]['TNO'], mpec_data[station[8::]]['Discovery'][year]['Unusual'], mpec_data[station[8::]]['Discovery'][year]['Interstellar'], mpec_data[station[8::]]['Discovery'][year]['unk']]})])
