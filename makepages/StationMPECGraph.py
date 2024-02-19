@@ -678,12 +678,12 @@ def monthly(station, year, df_month_graph):
 def main():
     print('start...')
     calcObs()
-    # print('begin writing stations')
-    # for station in mpccode.keys():
-    #     if station == 'XXX':
-    #         continue
-    #     createGraph(station)
-    createGraph('033')
+    print('begin writing stations')
+    for station in mpccode.keys():
+        if station == 'XXX':
+            continue
+        createGraph(station)
+    #createGraph('033')
 
 main()
 mpecconn.close()
