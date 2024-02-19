@@ -23,7 +23,7 @@ with open(mpccode) as mpccode:
 with open(stat) as stat:
     stat = json.load(stat)
     
-pages = list(np.arange(1993, 2024, 1))
+pages = list(np.arange(1993, 2025, 1))
 pages.append('All time')
 
 for p in pages:

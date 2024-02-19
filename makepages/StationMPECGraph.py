@@ -313,7 +313,7 @@ def createGraph(station_code, includeFirstFU = True):
     o += """<div class="row">
             <h2>{} {}</h2>""".format(station[-3:], mpccode[station[-3:]]['name'])
               
-    if str(station[-3:]) not in ['244', '245', '247', '248', '249', '250', '258', '270', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
+    if str(station[-3:]) not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
         if mpccode[station[-3:]]['lon'] > 180:
             lon = mpccode[station[-3:]]['lon'] - 360
         else:
