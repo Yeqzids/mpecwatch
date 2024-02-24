@@ -82,11 +82,13 @@ def calcObs():
         mpec_data[station]['Followup'] = {}
         mpec_data[station]['FirstFollowup'] = {}
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-            mpec_data[station]['Discovery'][year] = {'total':0} #add object type
-            # for obj in obj_types:
-            #     mpec_data[station]['Discovery'][year][obj] = 0
+            mpec_data[station]['Discovery'][year] = {'total':0} #object type count
+            for obj in obj_types:
+                mpec_data[station]['Discovery'][year][obj] = 0
             mpec_data[station]['Editorial'][year] = {'total':0}
-            mpec_data[station]['OrbitUpdate'][year] = {'total':0} #add object type
+            mpec_data[station]['OrbitUpdate'][year] = {'total':0} 
+            for obj in obj_types:
+                mpec_data[station]['OrbitUpdate'][year][obj] = 0 #object type count
             mpec_data[station]['DOU'][year] = {'total':0}
             mpec_data[station]['ListUpdate'][year] = {'total':0}
             mpec_data[station]['Retraction'][year] = {'total':0}
@@ -153,12 +155,21 @@ def calcObs():
             if station == mpec[4]:
                 mpec_data[station]['Discovery'][year]['total'] = mpec_data[station]['Discovery'][year].get('total',0)+1
                 mpec_data[station]['Discovery'][year][month] = mpec_data[station]['Discovery'][year].get(month,0)+1
-                mpec_data[station]['Discovery'][year][mpec[7]] = mpec_data[station]['Discovery'][year].get(mpec[7],0)+1 #object type
+                if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
+                    mpec_data[station]['Discovery'][year]["NEA"] = mpec_data[station]['Discovery'][year].get("NEA",0)+1
+                else:
+                    mpec_data[station]['Discovery'][year][mpec[7]] = mpec_data[station]['Discovery'][year].get(mpec[7],0)+1 #object type
             
             for mpecType in ["Editorial", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
                 if mpec[6] == mpecType:
                     mpec_data[station][mpecType][year]['total'] = mpec_data[station][mpecType][year].get('total',0)+1
                     mpec_data[station][mpecType][year][month] = mpec_data[station][mpecType][year].get(month,0)+1
+
+            if mpec[6] == "OrbitUpdate":
+                if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
+                    mpec_data[station]['OrbitUpdate'][year]["NEA"] = mpec_data[station]['OrbitUpdate'][year].get("NEA",0)+1
+                else:
+                    mpec_data[station]['OrbitUpdate'][year][mpec[7]] = mpec_data[station]['OrbitUpdate'][year].get(mpec[7],0)+1 #object type
 
             #listing all the MPECs from one station: USING TITLE (from MPEC table)
             temp = [] 
@@ -229,6 +240,7 @@ def calcObs():
 def createGraph(station_code, includeFirstFU = True):
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
     disc_obj = pd.DataFrame({"Year": [], "ObjType": [], "#MPECs": []})
+    OU_obj = pd.DataFrame({"Year": [], "ObjType": [], "#MPECs": []})
     station = 'station_'+station_code
     page = "../www/byStation/" + str(station) + ".html"
 
@@ -326,6 +338,8 @@ def createGraph(station_code, includeFirstFU = True):
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
               <h4>Yearly Breakdown of Discovery Object Types</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_disc_obj.html" height="525" width="100%"></iframe>
+              <h4>Yearly Breakdown of Orbit Update Object Types</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_OU_obj.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Observers</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Measurers</h4>
@@ -359,7 +373,7 @@ def createGraph(station_code, includeFirstFU = True):
                     <th>Follow-Up</th>
                     <th>First Follow-Up</th>
                 </tr>
-        """.format(station, station, station, station, station, station, station, station, station) 
+        """.format(station, station, station, station, station, station, station, station, station, station) 
         
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         year_counts = []
@@ -369,16 +383,17 @@ def createGraph(station_code, includeFirstFU = True):
             else:
                 total = 0
             year_counts.append(total)
-
-
         if includeFirstFU:
             year_counts[7] -= year_counts[8]
         else:
             year_counts[8] = 0
+
+        #for objType in obj_types:
         
         df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
         disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [mpec_data[station[8::]]['Discovery'][year]['NEA'], mpec_data[station[8::]]['Discovery'][year]['Comet'], mpec_data[station[8::]]['Discovery'][year]['Satellite'], mpec_data[station[8::]]['Discovery'][year]['TNO'], mpec_data[station[8::]]['Discovery'][year]['Unusual'], mpec_data[station[8::]]['Discovery'][year]['Interstellar'], mpec_data[station[8::]]['Discovery'][year]['unk']]})])
-
+        OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [mpec_data[station[8::]]['OrbitUpdate'][year]['NEA'], mpec_data[station[8::]]['OrbitUpdate'][year]['Comet'], mpec_data[station[8::]]['OrbitUpdate'][year]['Satellite'], mpec_data[station[8::]]['OrbitUpdate'][year]['TNO'], mpec_data[station[8::]]['OrbitUpdate'][year]['Unusual'], mpec_data[station[8::]]['OrbitUpdate'][year]['Interstellar'], mpec_data[station[8::]]['OrbitUpdate'][year]['unk']]})])
+        
         df_monthly_graph = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         month_index = 1
@@ -415,8 +430,14 @@ def createGraph(station_code, includeFirstFU = True):
         print(e)
 
     try:
-        fig = px.bar(disc_obj, x="Year", y="#MPECs", color="Object Type", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Discovery: Number and type of Object by year")
-        fig.write_html("../www/byStation/Graphs/"+station+"_disc_obj.html") #
+        fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Discovery: Number and type of Object by year")
+        fig.write_html("../www/byStation/Graphs/"+station+"_disc_obj.html")
+    except Exception as e:
+        print(e)
+
+    try:
+        fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Orbit Update: Number and type of Object by year")
+        fig.write_html("../www/byStation/Graphs/"+station+"_OU_obj.html")
     except Exception as e:
         print(e)
     
