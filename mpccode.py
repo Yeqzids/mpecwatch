@@ -13,9 +13,45 @@ from geopy.geocoders import Nominatim
 import json, math
 import re
 
+# Constants
+EARTH_MAJOR_AXIS = 6378137.0
+EARTH_MINOR_AXIS = 6356752.314140347
+
 def calculate_latitude(rho_sin_phi, rho_cos_phi):
-    latitude = math.atan2(rho_sin_phi, rho_cos_phi)
-    return math.degrees(latitude)  # Convert radians to degrees
+    a = 1
+    b = EARTH_MINOR_AXIS / EARTH_MAJOR_AXIS
+    fy = abs(rho_sin_phi)
+    fx = abs(rho_cos_phi)
+
+    if rho_cos_phi == 0:
+        lat = math.pi / 2
+    else:
+        c_squared = a * a - b * b
+        e = (b * fy - c_squared) / (a * fx)
+        f = (b * fy + c_squared) / (a * fx)
+        p = (4. / 3.) * (e * f + 1.)
+        q = 2. * (e * e - f * f)
+        d = p * p * p + q * q
+
+        if d >= 0:
+            sqrt_d = math.sqrt(d)
+            v = math.pow(sqrt_d - q, 1/3) - math.pow(sqrt_d + q, 1/3)
+
+        else:
+            sqp = math.sqrt(-p)
+            temp_ang = math.acos( q / (sqp * p))
+
+            v = 2 * sqp * math.cos(temp_ang / 3)
+
+        g = (math.sqrt(e * e + v) + e) * .5
+        t = math.sqrt(g * g + (f - v * g) / (2. * g - e)) - g
+        lat = math.atan2(a * (1. - t * t), 2. * b * t)
+
+    if rho_sin_phi < 0:
+        lat = -lat
+    if rho_cos_phi < 0:
+        lat = math.pi - lat
+    return math.degrees(lat)  # Convert radians to degrees
 
 def parse_table_entry(entry):
     if len(entry.strip()) < 3:
@@ -80,24 +116,7 @@ d = dict()
 
 for line in mpccode[1:-1]:
     code = str(line[0:3])
-    d[code] = {}
- 
-    entry_data = parse_table_entry(line)
-
-    d[code] = entry_data
-    # if float(i[19:29]) == 0 and float(i[8:16]) == 0:
-    #     d[str(i[3:6])][' name'] = i[79:].strip()
-    # else:
-    #     location = geolocator.reverse(str(float(i[19:29]))+","+i[8:16], language='en')
-    #     address = location.raw['address']
-    #     d[str(i[3:6])]['name'] = i[79:].strip()
-    #     d[str(i[3:6])]['country'] = address.get('country', '') 
-    #     d[str(i[3:6])]['state'] = address.get('state', '')
-    #     d[str(i[3:6])]['county'] = address.get('county', '')
-    #     d[str(i[3:6])]['city'] = address.get('city', '')
-    #     d[str(i[3:6])]['lon'] = float(i[8:16])
-    #     d[str(i[3:6])]['lat'] = float(i[19:29])
-    #     d[str(i[3:6])]['elev'] = float(i[31:40])
+    d[code] = parse_table_entry(line)
 
 with open('mpccode.json', 'w') as o:
     json.dump(d, o)
