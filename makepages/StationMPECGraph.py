@@ -82,9 +82,9 @@ def calcObs():
         mpec_data[station]['Followup'] = {}
         mpec_data[station]['FirstFollowup'] = {}
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-            mpec_data[station]['Discovery'][year] = {'total':0} #object type count
+            mpec_data[station]['Discovery'][year] = {'total':0} 
             for obj in obj_types:
-                mpec_data[station]['Discovery'][year][obj] = 0
+                mpec_data[station]['Discovery'][year][obj] = 0 #object type count
             mpec_data[station]['Editorial'][year] = {'total':0}
             mpec_data[station]['OrbitUpdate'][year] = {'total':0} 
             for obj in obj_types:
