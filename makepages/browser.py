@@ -142,6 +142,7 @@ for p in pages:
               data-toggle="table"
               data-search="true"
               data-show-export="true"
+              data-pagination="true"
               data-show-columns="true">
               <thead>
                 <tr class="tr-class-1">
@@ -153,6 +154,8 @@ for p in pages:
                   <th data-field="country" data-sortable="true">Country</th>
                   <th data-field="nmpec" data-sortable="true">MPECs</th>
                   <th data-field="ndisc" data-sortable="true">Disc.</th>
+                  <th data-field="nNEA" data-sortable="true">NEA</th>
+                  <th data-field="nPHA" data-sortable="true">PHA</th>
                   <th data-field="nfu" data-sortable="true">F/U</th>
                   <th data-field="nffu" data-sortable="true">1st F/U</th>
                   <th data-field="nprecovery" data-sortable="true">Prec.</th>
@@ -206,7 +209,7 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                 </tr>
-            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())))
+            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['NEA'].values())), str(sum(stat[s]['PHA'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())))
         else:
             o += """
                     <td>%s</td>
@@ -214,8 +217,10 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                     <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
                 </tr>
-            """ % (str(stat[s]['mpec'][str(p)]), str(stat[s]['mpec_discovery'][str(p)]), str(stat[s]['mpec_followup'][str(p)]), str(stat[s]['mpec_1st_followup'][str(p)]), str(stat[s]['mpec_precovery'][str(p)]))
+            """ % (str(stat[s]['mpec'][str(p)]), str(stat[s]['mpec_discovery'][str(p)]), str(stat[s]['NEA'][str(p)]), str(stat[s]['PHA'][str(p)]), str(stat[s]['mpec_followup'][str(p)]), str(stat[s]['mpec_1st_followup'][str(p)]), str(stat[s]['mpec_precovery'][str(p)]))
         
     o += """
         </tbody>
@@ -254,7 +259,7 @@ for p in pages:
     
     if p == 'All time':
         with open('../www/obs.html', 'w') as f:
-        	f.write(o)
+          f.write(o)
     else:
         with open('../www/obs-%s.html' % str(p), 'w') as f:
-        	f.write(o)
+          f.write(o)
