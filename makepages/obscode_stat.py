@@ -23,7 +23,12 @@ with open(mpccode) as mpccode:
     
 d = dict()
 
-for s in mpccode:
+#for s in mpccode:
+for i in range(1):
+    # for debugging purposes
+    s = 'G96'
+    print(s)
+
     d[s] = {}
     d[s]['mpec'] = {}
     d[s]['mpec_discovery'] = {}
@@ -47,11 +52,11 @@ for s in mpccode:
         d[s]['mpec_discovery'][y] = len(cursor.fetchall())
 
         ## numbers of PHAs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and ObjectType like '%PHA%' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
+        cursor.execute("select ObjectType from MPEC where Station like '%{}%' and ObjectType like '%PHA%' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
         d[s]['PHA'][y] = len(cursor.fetchall())
 
         ## numbers of NEAs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and ObjectType like '%NEA%' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
+        cursor.execute("select ObjectType from MPEC where Station like '%{}%' and ObjectType like '%NEA%' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
         d[s]['NEA'][y] = len(cursor.fetchall())
     
         ## numbers of follow-up MPECs
@@ -80,3 +85,4 @@ for s in mpccode:
     
 with open('obscode_stat.json', 'w') as o:
     json.dump(d, o)
+ 
