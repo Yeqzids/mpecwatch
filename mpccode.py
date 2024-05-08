@@ -114,7 +114,7 @@ geolocator = Nominatim(user_agent="MPECWatch", timeout=10)
 
 d = dict()
 
-for line in mpccode[1:-1]:
+for line in mpccode[1:]:
     code = str(line[0:3])
     d[code] = parse_table_entry(line)
 
