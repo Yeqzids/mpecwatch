@@ -58,7 +58,7 @@ def parse_table_entry(entry):
         return None  # Ignore entries with less than 3 characters
 
     # Extracting data using regular expressions
-    match = re.match(r'(\w{3})\s+(\d+\.\d+)\s*(0\.\d+)\s*(\+|-)?(0\.\d+)\s*(.*)', entry)
+    match = re.match(r'(\w{3})\s+(\d+\.\d+)\s*(\d+\.\d+)\s*(\+|-)?(0\.\d+)\s*(.*)', entry)
     match1 = re.match(r'(\w{3})\s+(\w+)', entry)
     if match:
         longitude = float(match.group(2))
