@@ -51,6 +51,7 @@ for p in pages:
         <title>MPEC Watch | Global Statistics %s</title>
     
         <!-- Bootstrap core CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/bootstrap-table.min.css">
         <link href="dist/css/bootstrap.min.css" rel="stylesheet">
         <!-- Bootstrap theme -->
         <link href="dist/css/bootstrap-theme.min.css" rel="stylesheet">
@@ -63,8 +64,6 @@ for p in pages:
         <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
         <!--[if lt IE 9]><script src="assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
         <script src="assets/js/ie-emulation-modes-warning.js"></script>
-        <script src="extensions/export/tableExport.min.js"></script>
-        <script src="extensions/export/tableExport.js"></script>
     
         <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -73,9 +72,6 @@ for p in pages:
         <![endif]-->
         
         <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.19.1/dist/bootstrap-table.min.css">
-        
-        <script src="https://unpkg.com/bootstrap-table@1.19.1/dist/bootstrap-table.min.js"></script>
       </head>
     
       <body>
@@ -138,10 +134,11 @@ for p in pages:
           
     o += """
           <div class="page-header">
-          <table class="table table-striped"
+          <table id="obs_table" class="table table-striped"
               data-toggle="table"
               data-search="true"
               data-show-export="true"
+              data-pagination="true"
               data-show-columns="true">
               <thead>
                 <tr class="tr-class-1">
@@ -153,6 +150,8 @@ for p in pages:
                   <th data-field="country" data-sortable="true">Country</th>
                   <th data-field="nmpec" data-sortable="true">MPECs</th>
                   <th data-field="ndisc" data-sortable="true">Disc.</th>
+                  <th data-field="nNEA" data-sortable="true">NEA</th>
+                  <th data-field="nPHA" data-sortable="true">PHA</th>
                   <th data-field="nfu" data-sortable="true">F/U</th>
                   <th data-field="nffu" data-sortable="true">1st F/U</th>
                   <th data-field="nprecovery" data-sortable="true">Prec.</th>
@@ -205,8 +204,10 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                     <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
                 </tr>
-            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())))
+            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['NEA'].values())), str(sum(stat[s]['PHA'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())))
         else:
             o += """
                     <td>%s</td>
@@ -214,8 +215,10 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                     <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
                 </tr>
-            """ % (str(stat[s]['mpec'][str(p)]), str(stat[s]['mpec_discovery'][str(p)]), str(stat[s]['mpec_followup'][str(p)]), str(stat[s]['mpec_1st_followup'][str(p)]), str(stat[s]['mpec_precovery'][str(p)]))
+            """ % (str(stat[s]['mpec'][str(p)]), str(stat[s]['mpec_discovery'][str(p)]), str(stat[s]['NEA'][str(p)]), str(stat[s]['PHA'][str(p)]), str(stat[s]['mpec_followup'][str(p)]), str(stat[s]['mpec_1st_followup'][str(p)]), str(stat[s]['mpec_precovery'][str(p)]))
         
     o += """
         </tbody>
@@ -238,23 +241,43 @@ for p in pages:
         <!-- Bootstrap core JavaScript
         ================================================== -->
         <!-- Placed at the end of the document so the pages load faster -->
+        <!--
         <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
         <script>window.jQuery || document.write('<script src="assets/js/vendor/jquery.min.js"><\/script>')</script>
+
+        <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+        -->
+
+        <script
+        src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+        crossorigin="anonymous"></script>
+
         <script src="dist/js/bootstrap.min.js"></script>
         <script src="assets/js/docs.min.js"></script>
         <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
         <script src="assets/js/ie10-viewport-bug-workaround.js"></script>
         
-        <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-        <script src="https://unpkg.com/bootstrap-table@1.19.1/dist/bootstrap-table.min.js"></script>
+
+        <!-- Export table
+        <script type="text/javascript" src="extensions/export/libs/FileSaver/FileSaver.min.js"></script>
+        <script type="text/javascript" src="extensions/export/libs/js-xlsx/xlsx.core.min.js"></script>
+        <script type="text/javascript" src="extensions/export/libs/html2canvas/html2canvas.min.js"></script>
+        <script src="extensions/export/tableExport.min.js">$('#obs_table').tableExport({type:'csv'});</script>
+        -->
+
+        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/tableExport.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/libs/jsPDF/jspdf.umd.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/bootstrap-table.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/extensions/export/bootstrap-table-export.min.js"></script>
+
       </body>
     </html>"""
     
     if p == 'All time':
-        with open('../www/obs.html', 'w') as f:
-        	f.write(o)
+        with open('../www/obs.html', 'w', encoding='utf-8') as f:
+          f.write(o)
     else:
-        with open('../www/obs-%s.html' % str(p), 'w') as f:
-        	f.write(o)
+        with open('../www/obs-%s.html' % str(p), 'w', encoding='utf-8') as f:
+          f.write(o)

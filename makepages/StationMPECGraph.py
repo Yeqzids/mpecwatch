@@ -267,7 +267,7 @@ def createGraph(station_code, includeFirstFU = True):
     <title>MPEC Watch | Station Statistics %s</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/bootstrap-table@1.22.5/dist/bootstrap-table.min.css" rel="stylesheet">
     <link href="../dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap theme -->
     <link href="../dist/css/bootstrap-theme.min.css" rel="stylesheet">
@@ -361,20 +361,25 @@ def createGraph(station_code, includeFirstFU = True):
         <div class="container">
           <h3>Tables</h3>
           <h4>Yearly Breakdown of MPEC Types</h4>
-            <table class="table table-striped table-sm" data-show-export="true">
-                <tr>
-                    <th>Year</th>
-                    <th>Total MPECs</th>
-                    <th>Editorial</th>
-                    <th>Discovery</th>
-                    <th>P/R/FU</th>
-                    <th>DOU</th>
-                    <th>List Update</th>
-                    <th>Retraction</th>
-                    <th>Other</th>
-                    <th>Follow-Up</th>
-                    <th>First Follow-Up</th>
-                </tr>
+            <table id="year_table" class="table table-striped table-sm" 
+                data-toggle="table"
+                data-show-export="true"
+                data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Total MPECs</th>
+                        <th>Editorial</th>
+                        <th>Discovery</th>
+                        <th>P/R/FU</th>
+                        <th>DOU</th>
+                        <th>List Update</th>
+                        <th>Retraction</th>
+                        <th>Other</th>
+                        <th>Follow-Up</th>
+                        <th>First Follow-Up</th>
+                    </tr>
+                </thead>
         """.format(station, station, station, station, station, station, station, station, station, station) 
         
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
@@ -443,22 +448,11 @@ def createGraph(station_code, includeFirstFU = True):
     except Exception as e:
         print(e)
     
-    #df_csv = pd.DataFrame({"Year": [], "Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
-    df_csv = pd.DataFrame()
-    df_csv["Year"] = df_yearly["Year"].unique()
-    for mpecType in df_yearly["MPECType"].unique():
-        df_csv[mpecType] = df_yearly[df_yearly["MPECType"] == mpecType]["#MPECs"].values
-
-    df_csv.to_csv("../www/byStation/csv/{}.csv".format(station), index=False)
-
     o += """
             </table>
-            <a href="csv/{}.csv" download="{}">
-                <p style="padding-bottom: 30px;">Download as csv</p>
-            </a>
         </div>
-        <h4>List of Individual MPECs</h4>
         <div class="containter">
+            <h4>List of Individual MPECs</h4>
             <table id="mpec_table" 
                 class="table table-striped table-bordered table-sm"
                 data-height="460"
@@ -603,7 +597,10 @@ def createGraph(station_code, includeFirstFU = True):
         <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
 
         <!-- Bootstrap Table -->
-        <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/tableExport.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/libs/jsPDF/jspdf.umd.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/bootstrap-table.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/extensions/export/bootstrap-table-export.min.js"></script>
     </div>
   </body>
 </html>"""
@@ -702,11 +699,11 @@ def main():
     print('start...')
     calcObs()
     print('begin writing stations')
-    for station in mpccode.keys():
-        if station == 'XXX':
-            continue
-        createGraph(station)
-    #createGraph('033')
+    # for station in mpccode.keys():
+    #     if station == 'XXX':
+    #         continue
+    #     createGraph(station)
+    createGraph('G96')
 
 main()
 mpecconn.close()

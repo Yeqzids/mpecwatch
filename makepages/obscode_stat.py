@@ -24,9 +24,14 @@ with open(mpccode) as mpccode:
 d = dict()
 
 for s in mpccode:
+#for i in range(1):
+    #s = 'G96'
+
     d[s] = {}
     d[s]['mpec'] = {}
     d[s]['mpec_discovery'] = {}
+    d[s]['NEA'] = {}
+    d[s]['PHA'] = {}
     d[s]['mpec_followup'] = {}
     d[s]['mpec_1st_followup'] = {}
     d[s]['mpec_precovery'] = {}
@@ -43,6 +48,14 @@ for s in mpccode:
         ## numbers of discovery MPECs
         cursor.execute("select DiscStation from MPEC where DiscStation like '{}' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
         d[s]['mpec_discovery'][y] = len(cursor.fetchall())
+
+        ## numbers of PHAs
+        cursor.execute("select ObjectType from MPEC where Station like '%{}%' and ObjectType like '%PHA%' and ((MPECType like 'Discovery' and DiscStation like '%{}%')) and time >= {} and time <= {};".format(s, s, timestamp_start, timestamp_end))
+        d[s]['PHA'][y] = len(cursor.fetchall())
+
+        ## numbers of NEAs
+        cursor.execute("select ObjectType from MPEC where Station like '%{}%' and ObjectType like '%NEA%' and ((MPECType like 'Discovery' and DiscStation like '%{}%')) and time >= {} and time <= {};".format(s, s, timestamp_start, timestamp_end))
+        d[s]['NEA'][y] = len(cursor.fetchall())
     
         ## numbers of follow-up MPECs
         cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}';".format(s, timestamp_start, timestamp_end, s))
@@ -70,3 +83,4 @@ for s in mpccode:
     
 with open('obscode_stat.json', 'w') as o:
     json.dump(d, o)
+ 
