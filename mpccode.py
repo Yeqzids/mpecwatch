@@ -58,7 +58,7 @@ def parse_table_entry(entry):
         return None  # Ignore entries with less than 3 characters
 
     # Extracting data using regular expressions
-    match = re.match(r'(\w{3})\s+(\d+\.\d+)\s*(0\.\d+)\s*(\+|-)?(0\.\d+)\s*(.*)', entry)
+    match = re.match(r'(\w{3})\s+(\d+\.\d+)\s*(\d+\.\d+)\s*(\+|-)?(0\.\d+)\s*(.*)', entry)
     match1 = re.match(r'(\w{3})\s+(\w+)', entry)
     if match:
         longitude = float(match.group(2))
@@ -114,7 +114,7 @@ geolocator = Nominatim(user_agent="MPECWatch", timeout=10)
 
 d = dict()
 
-for line in mpccode[1:-1]:
+for line in mpccode[1:]:
     code = str(line[0:3])
     d[code] = parse_table_entry(line)
 
