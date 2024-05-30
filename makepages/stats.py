@@ -86,9 +86,9 @@ for y in np.arange(1993, currentYear+1, 1):
             else:
                 stat_issuer[issuer][str(y)] = r[matched[0][0]][1]
                 issuer_nmpec_thisyear.append(r[matched[0][0]][1])
-        
-    df_computer = df_computer.append(pd.DataFrame({"Year": [y]*len(list_computer), "Orbit computer": list_computer, "#MPECs": computer_nmpec_thisyear}), ignore_index = True)
-    df_issuer = df_issuer.append(pd.DataFrame({"Year": [y]*len(list_issuer), "Issuer": list_issuer, "#MPECs": issuer_nmpec_thisyear}), ignore_index = True)
+
+    df_computer = pd.concat([df_computer, pd.DataFrame({"Year": [y]*len(list_computer), "Orbit computer": list_computer, "#MPECs": computer_nmpec_thisyear})], ignore_index = True)
+    df_issuer = pd.concat([df_issuer, pd.DataFrame({"Year": [y]*len(list_issuer), "Issuer": list_issuer, "#MPECs": issuer_nmpec_thisyear})], ignore_index = True)
     
 fig = px.bar(df_computer, x="Year", y="#MPECs", color="Orbit computer", title="Number MPECs by orbit computers")
 fig.write_html("../www/Computer_ByYear_Fig.html")  
@@ -168,9 +168,9 @@ for mt in ['Discovery', 'OrbitUpdate']:
                     stat_issuer[issuer][str(y)] = r[matched[0][0]][1]
                     issuer_nmpec_thisyear.append(r[matched[0][0]][1])
             
-        df_computer = df_computer.append(pd.DataFrame({"Year": [y]*len(list_computer), "Orbit computer": list_computer, "#MPECs": computer_nmpec_thisyear}), ignore_index = True)
-        df_issuer = df_issuer.append(pd.DataFrame({"Year": [y]*len(list_issuer), "Issuer": list_issuer, "#MPECs": issuer_nmpec_thisyear}), ignore_index = True)
-        
+        df_computer = pd.concat([df_computer, pd.DataFrame({"Year": [y]*len(list_computer), "Orbit computer": list_computer, "#MPECs": computer_nmpec_thisyear})], ignore_index = True)
+        df_issuer = pd.concat([df_issuer, pd.DataFrame({"Year": [y]*len(list_issuer), "Issuer": list_issuer, "#MPECs": issuer_nmpec_thisyear})], ignore_index = True)
+
     fig = px.bar(df_computer, x="Year", y="#MPECs", color="Orbit computer", title="Number MPECs by orbit computers")
     fig.write_html("../www/Computer_%s_ByYear_Fig.html" % mt)  
     
@@ -218,7 +218,7 @@ for y in [1, 1995, 2005, 2015]:
         listupdate = len(np.where((tmp.T[0] == h) & (tmp.T[2] == 'ListUpdate'))[0])
         retraction = len(np.where((tmp.T[0] == h) & (tmp.T[2] == 'Retraction'))[0])
         other = len(np.where((tmp.T[0] == h) & (tmp.T[2] == 'Other'))[0])
-        df_hours = df_hours.append(pd.DataFrame({"Hour": [h, h, h, h, h, h, h], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]}), ignore_index = True)
+        df_hours = pd.concat([df_hours, pd.DataFrame({"Hour": [h, h, h, h, h, h, h], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]})], ignore_index = True)
         
     for w in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']:
         editorial = len(np.where((tmp.T[1] == w) & (tmp.T[2] == 'Editorial'))[0])
@@ -228,7 +228,7 @@ for y in [1, 1995, 2005, 2015]:
         listupdate = len(np.where((tmp.T[1] == w) & (tmp.T[2] == 'ListUpdate'))[0])
         retraction = len(np.where((tmp.T[1] == w) & (tmp.T[2] == 'Retraction'))[0])
         other = len(np.where((tmp.T[1] == w) & (tmp.T[2] == 'Other'))[0])
-        df_weekdays = df_weekdays.append(pd.DataFrame({"Weekday": [w, w, w, w, w, w, w], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]}), ignore_index = True)
+        df_weekdays = pd.concat([df_weekdays, pd.DataFrame({"Weekday": [w, w, w, w, w, w, w], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]})], ignore_index = True)
     
     if y == 1:
         fig = px.bar(df_hours, x="Hour", y="#MPECs", color="MPECType", title="Number and type of MPECs by hours over the past 1-year period")
