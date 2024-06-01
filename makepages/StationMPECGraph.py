@@ -310,8 +310,9 @@ def createGraph(station_code, includeFirstFU = True):
           <ul class="nav navbar-nav">
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li> -->
+            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
           </ul>
@@ -332,11 +333,23 @@ def createGraph(station_code, includeFirstFU = True):
             lon = mpccode[station[-3:]]['lon'] - 360
         else:
             lon = mpccode[station[-3:]]['lon']
-        o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this place?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
+        o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this observatory?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
               
     o += """<p>
              <h3>Graphs</h3>
               <h4>Yearly Breakdown of MPEC Types</h4>
+              <p>
+              <b>Term definition:</b>
+              Editorial - Editorial MPECs associated with this station.<br>
+              Discovery - MPECs associated with discovery made by this station.<br>
+              OrbitUpdate - MPECs associated with orbit updates involving observations made by this station. Typically, these are recoveries of single-opposition objects.<br>
+              DOU - Daily Orbit Update MPECs involving observations made by this station.<br>
+              ListUpdate - MPECs associated with list updates involving observations made by this station. This category has largely been retired since 2012.<br>
+              Retraction - Retracted MPECs involving observations made by this station.<br>
+              Followup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere.<br>
+              FirstFollowup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
+              Other - MPECs that do not fit into categories listed above and involve observations made by this station.
+              </p>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
               <h4>Yearly Breakdown of Discovery Object Types</h4>
               <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_disc_obj.html" height="525" width="100%"></iframe>
@@ -542,6 +555,7 @@ def createGraph(station_code, includeFirstFU = True):
     o += """
                 </tbody>
             </table>
+            <h4>List of Facilities</h4>
             <table id="FAC_table" 
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"

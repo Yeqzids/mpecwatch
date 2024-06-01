@@ -108,6 +108,14 @@ o += """
       <div class="page-header">
         <h1>At a glance</h1>
       </div>
+      <b>Term definition:</b>
+              Editorial - Editorial notices and announcements by the Minor Planet Center.<br>
+              Discovery - MPECs associated with discoveries.<br>
+              OrbitUpdate - MPECs associated with orbit updates of single or a few objects; these are usually recoveries of single-opposition objects.<br>
+              DOU - Daily Orbit Update.<br>
+              ListUpdate - MPECs associated with updates to a list of interesting objects. This category has largely been retired since 2012.<br>
+              Retraction - Retracted MPECs.<br>
+              Other - MPECs that do not fit into categories listed above.
       <p>
         <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByYear_Fig.html" height="525" width="100%"></iframe>
       </p>
@@ -126,8 +134,7 @@ o += """
             <th>Other</th>
           </tr>
         </thead>
-        <tfoot><tr><td colspan="5">1. P/R/FU - precovery/recovery/follow-up.
-        <br>2. DOU - Daily Orbit Update.</td></tr></tfoot>
+        <tfoot><tr><td colspan="5">P/R/FU - precovery/recovery/follow-up.</td></tr></tfoot>
         <tbody>
 """
 
@@ -178,7 +185,7 @@ pc_count = pd.read_fwf('pc_count.txt')
 r_count = pd.read_fwf('r_count.txt')
 r1_count = pd.read_fwf('r1_count.txt')
 
-for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', disc_count], ['Top MPEC-ed Follow-up Observatories', fu_count], ['Top MPEC-ed First Follow-up Observatories', fu1_count], ['Top MPEC-ed Precoverers', pc_count], ['Top MPEC-ed Recoverers of Single Opposition Objects', r_count], ['Top MPEC-ed First Sighters of Single Opposition Objects', r1_count]]:
+for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', disc_count], ['Top MPEC-ed Follow-up Observatories', fu_count], ['Top MPEC-ed First Follow-up Observatories', fu1_count], ['Top MPEC-ed Precoverers', pc_count], ['Top MPEC-ed Recoverers of Single Opposition Objects', r_count], ['Top MPEC-ed First Sighters in Recovery of Single Opposition Objects', r1_count]]:
 
 	o += """<div class="page-header">
 			<h1>%s</h1>
