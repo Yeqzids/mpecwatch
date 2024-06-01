@@ -9,6 +9,7 @@
 """
 
 import sqlite3, datetime, json, numpy as np
+from datetime import datetime
 
 dbFile = '../mpecwatch_v3.db'
 stat = 'obscode_stat.json'
@@ -23,7 +24,7 @@ with open(mpccode) as mpccode:
 with open(stat) as stat:
     stat = json.load(stat)
     
-pages = list(np.arange(1993, 2025, 1))
+pages = list(np.arange(1993, datetime.now().year+1, 1))
 pages.append('All time')
 
 for p in pages:
