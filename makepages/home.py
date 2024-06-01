@@ -82,8 +82,9 @@ o = """
           <ul class="nav navbar-nav">
             <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li> -->
+            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
           </ul>
@@ -96,8 +97,7 @@ o = """
       <!-- Main jumbotron for a primary marketing message or call to action -->
       <div class="jumbotron">
         <h2>Welcome to MPEC Watch!</h2>
-        <p><b>Note: This site is still under active development.</b></p>
-        <p>MPEC Watch provides various statistical metrics and plots derived from <a href="https://minorplanetcenter.net/">Minor Planet Center</a>'s <a href="https://www.minorplanetcenter.net/mpec/RecentMPECs.html">Minor Planet Electronic Circular</a> service. This website is created and maintained by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts. Tables and plots are automatically updated at midnight US Eastern Time. </p>
+        <p>MPEC Watch provides various metrics and plots derived from <a href="https://minorplanetcenter.net/">Minor Planet Center</a>'s <a href="https://www.minorplanetcenter.net/mpec/RecentMPECs.html">Minor Planet Electronic Circular</a> service. This website is created and maintained by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts. Tables and plots are automatically updated at midnight US Eastern Time. We welcome bug reports and suggestions! Please submit them at our <a href="hhttps://github.com/Yeqzids/mpecwatch/issues">GitHub repo</a>. </p>
         <p>Last update: UTC %s</p>
       </div>
 """ % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -175,8 +175,10 @@ disc_count = pd.read_fwf('disc_count.txt')
 fu_count = pd.read_fwf('fu_count.txt')
 fu1_count = pd.read_fwf('fu1_count.txt')
 pc_count = pd.read_fwf('pc_count.txt')
+r_count = pd.read_fwf('r_count.txt')
+r1_count = pd.read_fwf('r1_count.txt')
 
-for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', disc_count], ['Top MPEC-ed Follow-up Observatories', fu_count], ['Top MPEC-ed First Follow-up Observatories', fu1_count], ['Top MPEC-ed Precoverers', pc_count]]:
+for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', disc_count], ['Top MPEC-ed Follow-up Observatories', fu_count], ['Top MPEC-ed First Follow-up Observatories', fu1_count], ['Top MPEC-ed Precoverers', pc_count], ['Top MPEC-ed Recoverers of Single Opposition Objects', r_count], ['Top MPEC-ed First Sighters of Single Opposition Objects', r1_count]]:
 
 	o += """<div class="page-header">
 			<h1>%s</h1>

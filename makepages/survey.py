@@ -10,6 +10,16 @@
 
 import sqlite3, datetime, json, numpy as np
 
+survey_def_table = [['Lincoln Near Earth Asteroid Research (LINEAR)', ['704']], \
+                    ['Space Surveillance Telescope (SST)', ['G45', 'P07']], \
+                    ['Near-Earth Asteroid Tracking (NEAT)', ['566', '608', '644']], \
+                    ['Spacewatch', ['291', '691']], \
+                    ['Lowell Observatory Near-Earth-Object Search (LONEOS)', ['699']], \
+                    ['Catalina Sky Survey (CSS)', ['703', 'E12', 'G96', 'I52', 'V06']], \
+                    ['Panoramic Survey Telescope and Rapid Response System (Pan-STARRS)', ['F51', 'F52']], \
+                    ['Wide-field Infrared Survey Explorer (WISE/NEOWISE)', ['C51']], \
+                    ['Asteroid Terrestrial-impact Last Alert System (ATLAS)', ['T05', 'T08', 'M22', 'W68']]]
+
 dbFile = '../mpecwatch_v3.db'
 stat = 'obscode_stat.json'
 mpccode = '../mpccode.json'
@@ -91,8 +101,8 @@ for p in pages:
             <div id="navbar" class="navbar-collapse collapse">
               <ul class="nav navbar-nav">
                 <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
-            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
             <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
@@ -106,7 +116,7 @@ for p in pages:
         
         <!-- Main jumbotron for a primary marketing message or call to action -->
       <div class="jumbotron">
-        <p>The pages here are still under active development and testing. Comments, suggestions and bug reports are welcome (via Issue Tracker or by email). Quanzhi 09/02/22</p>
+        <p>This page is still under active development and testing. Comments, suggestions and bug reports are welcome (via Issue Tracker or by email). Quanzhi 05/31/24</p>
       </div>
     """ % str(p)
     
@@ -114,11 +124,11 @@ for p in pages:
     
     o += """
           <div class="page-header">
-            <h1>Statistics by Observatory - %s</h1>
-            <p><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">All time</a> """ % str(p)
+            <h1>Statistics by Survey - %s</h1>
+            <p><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">All time</a> """ % str(p)
             
     for pp in pages[:-1]:
-        o += """ | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs-%s.html">%s</a>""" % (str(pp), str(pp))
+        o += """ | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey-%s.html">%s</a>""" % (str(pp), str(pp))
         
     o += """
             </p>
@@ -127,7 +137,9 @@ for p in pages:
           Disc. - MPECs associated with discovery made by this station.<br>
           F/U - MPECs associated with follow-up observations made by this station to an object discovered elsewhere.<br>
           1st F/U - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
-          Prec. - MPECs associated with precovery observations made by this station to an object discovered elsewhere.
+          Prec. - MPECs associated with precovery observations made by this station to an object discovered elsewhere.<br>
+          Recvy. - MPECs associated with recovery of single-opposition objects.<br>
+          1st Recvy. - MPECs associated with recovery of single-opposition objects with this station being the first station in time to detect the object.
           </p>
           <p>
             Last update: UTC %s
@@ -143,12 +155,8 @@ for p in pages:
               data-show-columns="true">
               <thead>
                 <tr class="tr-class-1">
-                  <th data-field="code" data-sortable="true">Code</th>
+                  <th data-field="survey" data-sortable="true">Survey</th>
                   <th data-field="obs" data-sortable="true">Observatory</th>
-                  <th data-field="city" data-sortable="true">City</th>
-                  <th data-field="county" data-sortable="true">County</th>
-                  <th data-field="state" data-sortable="true">State</th>
-                  <th data-field="country" data-sortable="true">Country</th>
                   <th data-field="nmpec" data-sortable="true">MPECs</th>
                   <th data-field="ndisc" data-sortable="true">Disc.</th>
                   <th data-field="nNEA" data-sortable="true">NEA</th>
@@ -156,47 +164,27 @@ for p in pages:
                   <th data-field="nfu" data-sortable="true">F/U</th>
                   <th data-field="nffu" data-sortable="true">1st F/U</th>
                   <th data-field="nprecovery" data-sortable="true">Prec.</th>
+                  <th data-field="nrecovery" data-sortable="true">Recvy.</th>
+                  <th data-field="nfrecovery" data-sortable="true">1st Recvy.</th>
                 </tr>
               </thead>
               <tbody>
     """
     
-    for s in stat:
+    for s in survey_def_table:
         
-        try:
-            city = mpccode[s]['city']
-        except:
-            city = ''
-            
-        try:
-            county = mpccode[s]['county']
-        except:
-            county = ''
-            
-        try:
-            state = mpccode[s]['state']
-        except:
-            state = ''
-            
-        try:
-            country = mpccode[s]['country']
-        except:
-            country = ''
+        survey = s[0]
+        data = [stat[i] for i in s[1]]
             
         o += """
             <tr>
-                <td>%s</td>""" % s
-                
-        #if s in ['244', '245', '247', '248', '249', '250', '258', '270', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
-        o += """
-                <td><a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s</a></td>""" % (str(s), mpccode[s]['name'])
-                
-        o += """
                 <td>%s</td>
-                <td>%s</td>
-                <td>%s</td>
-                <td>%s</td>
-        """ % (city, county, state, country)
+                <td>""" % survey
+        
+        for codi in s[1]:
+            o += """<a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s %s</a><br>""" % (codi, codi, mpccode[codi]['name'])
+            
+        o += """</td>"""
         
         if p == 'All time':
             o += """
@@ -207,8 +195,10 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                     <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
                 </tr>
-            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['NEA'].values())), str(sum(stat[s]['PHA'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())))
+            """ % (str(sum([sum(stat[i]['mpec'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_discovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['NEA'].values()) for i in s[1]])), str(sum([sum(stat[i]['PHA'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_precovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_recovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_recovery'].values()) for i in s[1]])))
         else:
             o += """
                     <td>%s</td>
@@ -218,8 +208,10 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                     <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
                 </tr>
-            """ % (str(stat[s]['mpec'][str(p)]), str(stat[s]['mpec_discovery'][str(p)]), str(stat[s]['NEA'][str(p)]), str(stat[s]['PHA'][str(p)]), str(stat[s]['mpec_followup'][str(p)]), str(stat[s]['mpec_1st_followup'][str(p)]), str(stat[s]['mpec_precovery'][str(p)]))
+            """ % (str(sum(stat[i]['mpec'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_discovery'][str(p)] for i in s[1])), str(sum(stat[i]['NEA'][str(p)] for i in s[1])), str(sum(stat[i]['PHA'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_followup'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_1st_followup'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_precovery'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_recovery'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_1st_recovery'][str(p)] for i in s[1])))
         
     o += """
         </tbody>
@@ -277,8 +269,8 @@ for p in pages:
     </html>"""
     
     if p == 'All time':
-        with open('../www/obs.html', 'w', encoding='utf-8') as f:
+        with open('../www/survey.html', 'w', encoding='utf-8') as f:
           f.write(o)
     else:
-        with open('../www/obs-%s.html' % str(p), 'w', encoding='utf-8') as f:
+        with open('../www/survey-%s.html' % str(p), 'w', encoding='utf-8') as f:
           f.write(o)

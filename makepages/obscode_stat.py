@@ -35,6 +35,8 @@ for s in mpccode:
     d[s]['mpec_followup'] = {}
     d[s]['mpec_1st_followup'] = {}
     d[s]['mpec_precovery'] = {}
+    d[s]['mpec_recovery'] = {}
+    d[s]['mpec_1st_recovery'] = {}
     
     for y in np.arange(1993, currentYear+1, 1):
         y = int(y)
@@ -80,6 +82,14 @@ for s in mpccode:
                 c += 1
             
         d[s]['mpec_precovery'][y] = c
+        
+        ## numbers of orbit update MPECs
+        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'OrbitUpdate';".format(s, timestamp_start, timestamp_end))
+        d[s]['mpec_recovery'][y] = len(cursor.fetchall())
+        
+        ## numbers of "1st spotter" orbit update MPECs
+        cursor.execute("select Station from MPEC where Station like '{}%' and time >= {} and time <= {} and MPECType = 'OrbitUpdate';".format(s, timestamp_start, timestamp_end))
+        d[s]['mpec_1st_recovery'][y] = len(cursor.fetchall())
     
 with open('obscode_stat.json', 'w') as o:
     json.dump(d, o)
