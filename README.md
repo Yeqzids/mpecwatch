@@ -1,18 +1,6 @@
 # MPEC Watch
 
-[MPEC Watch](https://sbnmpc.astro.umd.edu/mpecwatch/index.html) provides various statistical metrics and plots derived from the Minor Planet Center's Minor Planet Electronic Circular service. This is inspired by [MPEC statistics](http://mpec.jostjahn.de) by Jost Jahn.
-
-## Change log
-
-* 2022 Jan 25: alpha version is now accessible from [SBN-MPC Annex](https://sbnmpc.astro.umd.edu)!
-* 2022 Sep 2: adding statistics and graphs for indivdiual sites,
-
-## Development stage
-
-### Home page
-
-- [x] Figure/table - break-down of number and type of MPECs
-- [x] Table - top 10 of various categories
+[MPEC Watch](https://sbnmpc.astro.umd.edu/mpecwatch/index.html) provides various statistical metrics and plots derived from the Minor Planet Center's Minor Planet Electronic Circular service. The project is inspired by [MPEC statistics](http://mpec.jostjahn.de) by Jost Jahn.
 
 ## Individual_OMF
 This script is used to generate the figures (OMF: Obersers, Measurers, and Facilities) for individual observatories. 
@@ -25,7 +13,7 @@ This is the main script used to generate the webpages for each of the stations. 
 
 ## Acknowledgment
 
-This project makes use of [Bootstrap](https://getbootstrap.com/), [Bootstrap Table](https://bootstrap-table.com/), data provided by the [International Astronomical Union's Minor Planet Center](https://minorplanetcenter.net/), and a [revised list of the MPC observatory code by Bill Gray](https://www.projectpluto.com/mpc_stat.htm).
+This project makes use of [Bootstrap](https://getbootstrap.com/), [Bootstrap Table](https://bootstrap-table.com/), data provided by the [International Astronomical Union's Minor Planet Center](https://minorplanetcenter.net/).
 
 ## Author
 
