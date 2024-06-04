@@ -24,6 +24,8 @@ disc_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 
 fu_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 'countall')
 fu1_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 'countall')
 pc_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 'countall')
+r_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 'countall')
+r1_count = '{:3s} {:10s} {:10s} {:10s}\n'.format('cod', 'count1y', 'count5y', 'countall')
 
 for s in mpccode:
     t_1y = datetime.datetime.utcnow() - datetime.timedelta(days=365)
@@ -109,6 +111,29 @@ for s in mpccode:
             
     pc_count += '{:3s} {:10s} {:10s} {:10s}\n'.format(s, str(c_1y), str(c_5y), str(c_all))
     
+    # Count numbers of orbit update MPECs for each station for last 1, 5 year and all time
+    
+    cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and MPECType = 'OrbitUpdate';".format(s, t_1y.timestamp()))
+    r_1y = len(cursor.fetchall())
+    cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and MPECType = 'OrbitUpdate';".format(s, t_5y.timestamp()))
+    r_5y = len(cursor.fetchall())
+    cursor.execute("select Station from MPEC where Station like '%{}%' and MPECType = 'OrbitUpdate';".format(s))
+    r_all = len(cursor.fetchall())
+    r_count += '{:3s} {:10s} {:10s} {:10s}\n'.format(s, str(r_1y), str(r_5y), str(r_all))
+    
+    # Count numbers of "1st spotter" orbit update MPECs for each station for last 1, 5 year and all time
+    
+    cursor.execute("select Station from MPEC where Station like '{}%' and time >= {} and MPECType = 'OrbitUpdate';".format(s, t_1y.timestamp()))
+    r1_1y = len(cursor.fetchall())
+            
+    cursor.execute("select Station from MPEC where Station like '{}%' and time >= {} and MPECType = 'OrbitUpdate';".format(s, t_5y.timestamp()))
+    r1_5y = len(cursor.fetchall())
+            
+    cursor.execute("select Station from MPEC where Station like '{}%' and MPECType = 'OrbitUpdate';".format(s))
+    r1_all = len(cursor.fetchall())
+            
+    r1_count += '{:3s} {:10s} {:10s} {:10s}\n'.format(s, str(r1_1y), str(r1_5y), str(r1_all))
+    
 with open('mpec_count.txt', 'w') as f:
 	f.write(mpec_count)
 
@@ -123,3 +148,9 @@ with open('fu1_count.txt', 'w') as f:
     
 with open('pc_count.txt', 'w') as f:
 	f.write(pc_count)
+
+with open('r_count.txt', 'w') as f:
+	f.write(r_count)
+    
+with open('r1_count.txt', 'w') as f:
+	f.write(r1_count)

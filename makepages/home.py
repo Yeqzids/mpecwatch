@@ -82,8 +82,9 @@ o = """
           <ul class="nav navbar-nav">
             <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff</a></li> -->
+            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
             <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
           </ul>
@@ -96,8 +97,7 @@ o = """
       <!-- Main jumbotron for a primary marketing message or call to action -->
       <div class="jumbotron">
         <h2>Welcome to MPEC Watch!</h2>
-        <p><b>Note: This site is still under active development.</b></p>
-        <p>MPEC Watch provides various statistical metrics and plots derived from <a href="https://minorplanetcenter.net/">Minor Planet Center</a>'s <a href="https://www.minorplanetcenter.net/mpec/RecentMPECs.html">Minor Planet Electronic Circular</a> service. This website is created and maintained by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts. Tables and plots are automatically updated at midnight US Eastern Time. </p>
+        <p>MPEC Watch provides various metrics and plots derived from <a href="https://minorplanetcenter.net/">Minor Planet Center</a>'s <a href="https://www.minorplanetcenter.net/mpec/RecentMPECs.html">Minor Planet Electronic Circular</a> service. This website is created and maintained by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts. Tables and plots are automatically updated at midnight US Eastern Time. We welcome bug reports and suggestions! Please submit them at our <a href="hhttps://github.com/Yeqzids/mpecwatch/issues">GitHub repo</a>. </p>
         <p>Last update: UTC %s</p>
       </div>
 """ % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -108,6 +108,14 @@ o += """
       <div class="page-header">
         <h1>At a glance</h1>
       </div>
+      <b>Term definition:</b>
+              Editorial - Editorial notices and announcements by the Minor Planet Center.<br>
+              Discovery - MPECs associated with discoveries.<br>
+              OrbitUpdate - MPECs associated with orbit updates of single or a few objects; these are usually recoveries of single-opposition objects.<br>
+              DOU - Daily Orbit Update.<br>
+              ListUpdate - MPECs associated with updates to a list of interesting objects. This category has largely been retired since 2012.<br>
+              Retraction - Retracted MPECs.<br>
+              Other - MPECs that do not fit into categories listed above.
       <p>
         <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="MPECTally_ByYear_Fig.html" height="525" width="100%"></iframe>
       </p>
@@ -126,8 +134,7 @@ o += """
             <th>Other</th>
           </tr>
         </thead>
-        <tfoot><tr><td colspan="5">1. P/R/FU - precovery/recovery/follow-up.
-        <br>2. DOU - Daily Orbit Update.</td></tr></tfoot>
+        <tfoot><tr><td colspan="5">P/R/FU - precovery/recovery/follow-up.</td></tr></tfoot>
         <tbody>
 """
 
@@ -175,8 +182,10 @@ disc_count = pd.read_fwf('disc_count.txt')
 fu_count = pd.read_fwf('fu_count.txt')
 fu1_count = pd.read_fwf('fu1_count.txt')
 pc_count = pd.read_fwf('pc_count.txt')
+r_count = pd.read_fwf('r_count.txt')
+r1_count = pd.read_fwf('r1_count.txt')
 
-for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', disc_count], ['Top MPEC-ed Follow-up Observatories', fu_count], ['Top MPEC-ed First Follow-up Observatories', fu1_count], ['Top MPEC-ed Precoverers', pc_count]]:
+for s in [['Top MPEC Contributors', mpec_count], ['Top MPEC-ed Discoverers', disc_count], ['Top MPEC-ed Follow-up Observatories', fu_count], ['Top MPEC-ed First Follow-up Observatories', fu1_count], ['Top MPEC-ed Precoverers', pc_count], ['Top MPEC-ed Recoverers of Single Opposition Objects', r_count], ['Top MPEC-ed First Sighters in Recovery of Single Opposition Objects', r1_count]]:
 
 	o += """<div class="page-header">
 			<h1>%s</h1>
