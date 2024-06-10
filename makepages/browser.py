@@ -132,7 +132,7 @@ for p in pages:
           </p>
           <p>
             Last update: UTC %s
-          </p>""" % (datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+          </p>""" % (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
           
     o += """
           <div class="page-header">
@@ -152,9 +152,23 @@ for p in pages:
                   <th data-field="country" data-sortable="true">Country</th>
                   <th data-field="nmpec" data-sortable="true">MPECs</th>
                   <th data-field="ndisc" data-sortable="true">Disc.</th>
-                  <th data-field="nNEA" data-sortable="true">NEA</th>
-                  <th data-field="nPHA" data-sortable="true">PHA</th>
+                  <th data-field="nNEAd" data-sortable="true">NEA Disc.</th>
+                  <th data-field="nPHAd" data-sortable="true">PHA Disc.</th>
+                  <th data-field="nComd" data-sortable="true">Comet Disc.</th>
+                  <th data-field="nSatd" data-sortable="true">Sat Disc.</th>
+                  <th data-field="nTNOd" data-sortable="true">TNO Disc.</th>
+                  <th data-field="nund" data-sortable="true">Unusual Disc.</th>
+                  <th data-field="nintd" data-sortable="true">Inter Disc.</th>
+                  <th data-field="nunkd" data-sortable="true">Unk Disc.</th>
                   <th data-field="nfu" data-sortable="true">F/U</th>
+                  <th data-field="nNEAfu" data-sortable="true">NEA FU</th>
+                  <th data-field="nPHAfu" data-sortable="true">PHA FU</th>
+                  <th data-field="nComfu" data-sortable="true">Comet FU</th>
+                  <th data-field="nSatfu" data-sortable="true">Sat FU</th>
+                  <th data-field="nTNOfu" data-sortable="true">TNO FU</th>
+                  <th data-field="nunfu" data-sortable="true">Unusual FU</th>
+                  <th data-field="nintfu" data-sortable="true">Inter FU</th>
+                  <th data-field="nunkfu" data-sortable="true">Unk FU</th>
                   <th data-field="nffu" data-sortable="true">1st F/U</th>
                   <th data-field="nprecovery" data-sortable="true">Prec.</th>
                 </tr>
@@ -208,8 +222,22 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                     <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
                 </tr>
-            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['NEA'].values())), str(sum(stat[s]['PHA'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())))
+            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['NEA_Disc'].values())), str(sum(stat[s]['PHA_Disc'].values())), str(sum(stat[s]['Comet_Disc'].values())), str(sum(stat[s]['Satellite_Disc'].values())), str(sum(stat[s]['TNO_Disc'].values())), str(sum(stat[s]['Unusual_Disc'].values())), str(sum(stat[s]['Interstellar_Disc'].values())), str(sum(stat[s]['Unknown_Disc'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['NEA_FU'].values())), str(sum(stat[s]['PHA_FU'].values())), str(sum(stat[s]['Comet_FU'].values())), str(sum(stat[s]['Satellite_FU'].values())), str(sum(stat[s]['TNO_FU'].values())), str(sum(stat[s]['Unusual_FU'].values())), str(sum(stat[s]['Interstellar_FU'].values())), str(sum(stat[s]['Unknown_FU'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())))
         else:
             o += """
                     <td>%s</td>
@@ -219,8 +247,22 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                     <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
                 </tr>
-            """ % (str(stat[s]['mpec'][str(p)]), str(stat[s]['mpec_discovery'][str(p)]), str(stat[s]['NEA'][str(p)]), str(stat[s]['PHA'][str(p)]), str(stat[s]['mpec_followup'][str(p)]), str(stat[s]['mpec_1st_followup'][str(p)]), str(stat[s]['mpec_precovery'][str(p)]))
+            """ % (str(stat[s]['mpec'][str(p)]), str(stat[s]['mpec_discovery'][str(p)]), str(stat[s]['NEA_Disc'][str(p)]), str(stat[s]['PHA_Disc'][str(p)]), str(stat[s]['Comet_Disc'][str(p)]), str(stat[s]['Satellite_Disc'][str(p)]), str(stat[s]['TNO_Disc'][str(p)]), str(stat[s]['Unusual_Disc'][str(p)]), str(stat[s]['Interstellar_Disc'][str(p)]), str(stat[s]['Unknown_Disc'][str(p)]), str(stat[s]['mpec_followup'][str(p)]), str(stat[s]['NEA_FU'][str(p)]), str(stat[s]['PHA_FU'][str(p)]), str(stat[s]['Comet_FU'][str(p)]), str(stat[s]['Satellite_FU'][str(p)]), str(stat[s]['TNO_FU'][str(p)]), str(stat[s]['Unusual_FU'][str(p)]), str(stat[s]['Interstellar_FU'][str(p)]), str(stat[s]['Unknown_FU'][str(p)]), str(stat[s]['mpec_1st_followup'][str(p)]), str(stat[s]['mpec_precovery'][str(p)]))
         
     o += """
         </tbody>
