@@ -38,8 +38,8 @@ for year in list(np.arange(1993, datetime.datetime.now().year+1, 1)):
 	cursor.execute("select * from MPEC where Time >= {} and Time <= {} and MPECType = '{}'".format(year_start, year_end, 'Other'))
 	other = len(cursor.fetchall())
 	
-	df = df.append(pd.DataFrame({"Year": [year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]}), ignore_index = True)
-	
+	df = pd.concat([df, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"], "#MPECs": [editorial, discovery, orbitupdate, dou, listupdate, retraction, other]})], ignore_index = True)
+
 	cursor.execute("select * from MPEC where Time >= {} and Time <= {} and ObjectType = '{}'".format(year_start, year_end, 'NEA'))
 	nea = len(cursor.fetchall())
 	cursor.execute("select * from MPEC where Time >= {} and Time <= {} and ObjectType = '{}'".format(year_start, year_end, 'Comet'))
