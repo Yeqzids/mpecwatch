@@ -4,7 +4,8 @@
 
 ## Change log
 
-* **2024 Jun 1: survey summary page now available; adding recovery stats; adding term definitions.**
+* 2024 Jun 11: observatory table has expanded columns.
+* 2024 Jun 1: survey summary page now available; adding recovery stats; adding term definitions.
 * 2024 May 30: export options added to individual station yearly breakdown of MPEC types.
 * 2024 Apr 5: switching to MPC code list from Bill Gray's digested list to fix update hangs between code additions and Bill's updates.
 * 2024 Feb 22: fixed NEA counts.

@@ -198,7 +198,7 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                 </tr>
-            """ % (str(sum([sum(stat[i]['mpec'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_discovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['NEA'].values()) for i in s[1]])), str(sum([sum(stat[i]['PHA'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_precovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_recovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_recovery'].values()) for i in s[1]])))
+            """ % (str(sum([sum(stat[i]['mpec'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_discovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['NEA_Disc'].values()) for i in s[1]]) + sum([sum(stat[i]['NEA_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['PHA_Disc'].values()) for i in s[1]]) + sum([sum(stat[i]['PHA_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_precovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_recovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_recovery'].values()) for i in s[1]])))
         else:
             o += """
                     <td>%s</td>
@@ -211,7 +211,7 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                 </tr>
-            """ % (str(sum(stat[i]['mpec'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_discovery'][str(p)] for i in s[1])), str(sum(stat[i]['NEA'][str(p)] for i in s[1])), str(sum(stat[i]['PHA'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_followup'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_1st_followup'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_precovery'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_recovery'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_1st_recovery'][str(p)] for i in s[1])))
+            """ % (str(sum(stat[i]['mpec'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_discovery'][str(p)] for i in s[1])), str(sum(stat[i]['NEA_Disc'][str(p)] for i in s[1]) + sum(stat[i]['NEA_FU'][str(p)] for i in s[1])), str(sum(stat[i]['PHA_Disc'][str(p)] for i in s[1]) + sum(stat[i]['PHA_FU'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_followup'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_1st_followup'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_precovery'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_recovery'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_1st_recovery'][str(p)] for i in s[1])))
         
     o += """
         </tbody>

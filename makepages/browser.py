@@ -8,7 +8,7 @@
  
 """
 
-import sqlite3, datetime, json, numpy as np
+import sqlite3, json, numpy as np
 from datetime import datetime
 
 dbFile = '../mpecwatch_v3.db'
