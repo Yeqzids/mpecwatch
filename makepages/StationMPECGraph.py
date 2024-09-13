@@ -71,32 +71,20 @@ def calcObs():
     for station in mpccode.keys():
         #initialize dict
         mpec_data[station] = {}
-        mpec_data[station]['MPECId'] = {}
-        mpec_data[station]['Discovery'] = {} 
-        mpec_data[station]['Editorial'] = {}
-        mpec_data[station]['OrbitUpdate'] = {}
-        mpec_data[station]['DOU'] = {}
-        mpec_data[station]['ListUpdate'] = {}
-        mpec_data[station]['Retraction'] = {}
-        mpec_data[station]['Other'] = {}
-        mpec_data[station]['Followup'] = {}
-        mpec_data[station]['FirstFollowup'] = {}
+        mpec_data[station]['MPECId'] = {} # every MPECId and packed object
+        for obs_type in obs_types:
+            mpec_data[station][obs_type] = {}
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-            mpec_data[station]['Discovery'][year] = {'total':0} 
-            for obj in obj_types:
-                mpec_data[station]['Discovery'][year][obj] = 0 #object type count
-            mpec_data[station]['Editorial'][year] = {'total':0}
-            mpec_data[station]['OrbitUpdate'][year] = {'total':0} 
-            for obj in obj_types:
-                mpec_data[station]['OrbitUpdate'][year][obj] = 0 #object type count
-            mpec_data[station]['DOU'][year] = {'total':0}
-            mpec_data[station]['ListUpdate'][year] = {'total':0}
-            mpec_data[station]['Retraction'][year] = {'total':0}
-            mpec_data[station]['Other'][year] = {'total':0}
-            mpec_data[station]['Followup'][year] = {'total':0}
-            mpec_data[station]['FirstFollowup'][year] = {'total':0}
-
-        mpec_data[station]['MPECs'] = [] #[Name, Date, Discovery?, First Conf?, Object Type, CATCH]
+            year = int(year)
+            for obs_type in obs_types:
+                mpec_data[station][obs_type][year] = {'total':0}
+                if obs_type == "Discovery" or obs_type == "OrbitUpdate":
+                    for obj in obj_types:
+                        mpec_data[station][obs_type][year][obj] = 0 #object type count
+                for month in list(np.arange(1, 13, 1)):
+                    month = int(month)
+                    mpec_data[station][obs_type][year][month] = 0 #month count
+        mpec_data[station]['MPECs'] = [] #[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH]
         mpec_data[station]['OBS'] = {} #contains all observers for each station
         mpec_data[station]['MEA'] = {} #contains all measurers for each station
         mpec_data[station]['Facilities'] = {} #contains all facilities for each station
@@ -133,8 +121,8 @@ def calcObs():
             pass
 
     for mpec in cursor.execute("select * from MPEC").fetchall():
-        year = date.fromtimestamp(mpec[2]).year
-        month = date.fromtimestamp(mpec[2]).month
+        year = int(date.fromtimestamp(mpec[2]).year)
+        month = int(date.fromtimestamp(mpec[2]).month)
 
         for station in mpec[3].split(', '):
             if station == '' or station == 'XXX':
@@ -171,8 +159,9 @@ def calcObs():
                 else:
                     mpec_data[station]['OrbitUpdate'][year][mpec[7]] = mpec_data[station]['OrbitUpdate'][year].get(mpec[7],0)+1 #object type
 
-            #listing all the MPECs from one station: USING TITLE (from MPEC table)
-            temp = [] 
+            # listing all the MPECs from one station:
+            # adds MPEC if the current MPEC object has not been added for the current station
+            temp = [] #[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH]
             name = mpec[0] + "\t" + mpec[1]
             if name not in mpec_data[station]['MPECs']: #prevents duplication of the same MPEC object
                 id = mpec[0][5::]
@@ -196,14 +185,14 @@ def calcObs():
                 url1 = "\"https://www.minorplanetcenter.net/mpec/{}/{}.html\"".format(packed_front, packed_back)
                 mpec_url = "<a href={}>{}</a>".format(url1, name)
 
-                temp.append(mpec_url) #
-                temp.append(datetime.datetime.fromtimestamp(mpec[2])) #time: date and time
-                #if station = discovery station
+                temp.append(mpec_url) #name w/ url embedded
+                temp.append(int(mpec[2])) #time: date and time
+                #Discovery?
                 if station == mpec[4]:
                     temp.append("&#x2713") #check mark
                 else:
                     temp.append("")
-                #if station = FirstFU
+                #First Conf?
                 if station == mpec[5]:
                     temp.append("&#x2713") #check mark
                 else:
@@ -396,6 +385,7 @@ def createGraph(station_code, includeFirstFU = True):
         """.format(station, station, station, station, station, station, station, station, station, station) 
         
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+        year = int(year)
         year_counts = []
         for mpecType in obs_types:
             if year in mpec_data[station[8::]][mpecType].keys():
@@ -420,10 +410,7 @@ def createGraph(station_code, includeFirstFU = True):
         for month in months:
             month_counts = []
             for mpecType in obs_types:
-                if year in mpec_data[station[8::]][mpecType].keys() and month_index in mpec_data[station[8::]][mpecType][year].keys():
-                    month_counts.append(mpec_data[station[8::]][mpecType][year][month_index])
-                else:
-                    month_counts.append(0)
+                month_counts.append(mpec_data[station[8::]][mpecType][year][month_index])
             df_monthly_graph = pd.concat([df_monthly_graph, pd.DataFrame({"Month": [month, month, month, month, month, month, month, month, month], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": month_counts})])
             month_index += 1
         monthly(station, year, df_monthly_graph)
@@ -500,7 +487,7 @@ def createGraph(station_code, includeFirstFU = True):
                         <td>{}</td>
                         <td>{}</td>
                     </tr>
-        """.format(index,i[0],i[1],i[2],i[3],i[4],i[5])
+        """.format(index,i[0],datetime.datetime.fromtimestamp(i[1]),i[2],i[3],i[4],i[5])
         index += 1
 
     o += """
@@ -717,7 +704,11 @@ def main():
     #     if station == 'XXX':
     #         continue
     #     createGraph(station)
-    createGraph('G96')
+    createGraph('704')
+
+    # Export mpec_data to json
+    with open('../mpec_data.json', 'w') as f:
+        json.dump(mpec_data, f)
 
 main()
 mpecconn.close()

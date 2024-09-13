@@ -11,3 +11,4 @@ proc_loop.*
 .project
 .pydevproject
 .settings
+.json
