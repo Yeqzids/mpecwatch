@@ -30,6 +30,8 @@ for s in mpccode:
     d[s] = {}
     d[s]['mpec'] = {}
     d[s]['mpec_discovery'] = {}
+    d[s]['NEA'] = {}
+    d[s]['PHA'] = {}
     d[s]['NEA_Disc'] = {}
     d[s]['PHA_Disc'] = {}
     d[s]['Comet_Disc'] = {}
@@ -61,6 +63,14 @@ for s in mpccode:
         cursor.execute("select station from MPEC where station like '%{}%' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
         d[s]['mpec'][y] = len(cursor.fetchall())
     
+        ## numbers of PHAs
+        cursor.execute("select ObjectType from MPEC where Station like '%{}%' and ObjectType like '%PHA%' and ((MPECType like 'Discovery' and DiscStation like '%{}%')) and time >= {} and time <= {};".format(s, s, timestamp_start, timestamp_end))
+        d[s]['PHA'][y] = len(cursor.fetchall())
+
+        ## numbers of NEAs
+        cursor.execute("select ObjectType from MPEC where Station like '%{}%' and ObjectType like '%NEA%' and ((MPECType like 'Discovery' and DiscStation like '%{}%')) and time >= {} and time <= {};".format(s, s, timestamp_start, timestamp_end))
+        d[s]['NEA'][y] = len(cursor.fetchall())
+        
         ## numbers of discovery MPECs
         cursor.execute("select DiscStation from MPEC where DiscStation like '{}' and time >= {} and time <= {} and MPECType like 'Discovery';".format(s, timestamp_start, timestamp_end))
         d[s]['mpec_discovery'][y] = len(cursor.fetchall())
