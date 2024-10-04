@@ -700,23 +700,15 @@ def main():
     print('start...')
     calcObs()
     print('begin writing stations')
-<<<<<<< HEAD
-    # for station in mpccode.keys():
-    #     if station == 'XXX':
-    #         continue
-    #     createGraph(station)
-    createGraph('704')
-
-    # Export mpec_data to json
-    with open('../mpec_data.json', 'w') as f:
-        json.dump(mpec_data, f)
-=======
     for station in mpccode.keys():
         if station == 'XXX':
             continue
         createGraph(station)
-    #createGraph('G96')
->>>>>>> bb372d9 (bug fix)
+    #createGraph('704')
+
+    # Export mpec_data to json
+    with open('../mpec_data.json', 'w') as f:
+        json.dump(mpec_data, f)
 
 main()
 mpecconn.close()
