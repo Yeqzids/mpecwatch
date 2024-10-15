@@ -242,8 +242,8 @@ def createGraph(surveyName, codes, includeFirstFU = True):
         o += """<h3>{}</h3>""".format(code)
               
         if str(code) not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
-            print(code)
-            print(mpccode[code])
+            #print(code)
+            #print(mpccode[code])
             if mpccode[code]['lon'] > 180:
                 lon = mpccode[code]['lon'] - 360
             else:
@@ -536,7 +536,7 @@ def createGraph(surveyName, codes, includeFirstFU = True):
   </body>
 </html>"""
 
-    print(survey)
+    #print(survey)
     with open(page, 'w', encoding='utf-8') as f:
         f.write(o)      
 
@@ -800,19 +800,29 @@ for p in pages:
               </thead>
               <tbody>
     """
-    
+    print("Year: ", p)
     for s in survey_def_table:
         
         survey = s[0]
         data = [stat[i] for i in s[1]]
         
+        
+        print(survey)
         createSurveyPage(survey, s[1])
-        o += """
+        if p == 'All time':
+            o += """
             <tr>
                 <td>
                     <a href="../www/bySurvey/%s.html">%s</a>
                 </td> 
                 <td> """ % (survey, survey)
+        else:
+            o += """
+                <tr>
+                    <td>
+                        <a href="../www/bySurvey/monthly/%s.html">%s</a>
+                    </td> 
+                    <td> """ % (survey+"_"+str(p), survey)
         
         for codi in s[1]:
             o += """<a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s %s</a><br>""" % (codi, codi, mpccode[codi]['name'])
@@ -845,7 +855,7 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                 </tr>
-            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['NEA_Disc'].values())), str(sum(stat[s]['PHA_Disc'].values())), str(sum(stat[s]['Comet_Disc'].values())), str(sum(stat[s]['Satellite_Disc'].values())), str(sum(stat[s]['TNO_Disc'].values())), str(sum(stat[s]['Unusual_Disc'].values())), str(sum(stat[s]['Interstellar_Disc'].values())), str(sum(stat[s]['Unknown_Disc'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['NEA_FU'].values())), str(sum(stat[s]['PHA_FU'].values())), str(sum(stat[s]['Comet_FU'].values())), str(sum(stat[s]['Satellite_FU'].values())), str(sum(stat[s]['TNO_FU'].values())), str(sum(stat[s]['Unusual_FU'].values())), str(sum(stat[s]['Interstellar_FU'].values())), str(sum(stat[s]['Unknown_FU'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())), str(sum(stat[s]['mpec_recovery'].values())), str(sum(stat[s]['mpec_1st_recovery'].values())))
+            """ % (str(sum([sum(stat[i]['mpec'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_discovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['NEA_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['PHA_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Comet_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Satellite_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['TNO_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Unusual_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Interstellar_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Unknown_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['NEA_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['PHA_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Comet_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Satellite_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['TNO_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Unusual_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Interstellar_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Unknown_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_precovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_recovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_recovery'].values()) for i in s[1]])))
         else:
             o += """
                     <td>%s</td>
