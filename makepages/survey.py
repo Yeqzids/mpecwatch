@@ -809,12 +809,20 @@ for p in pages:
         
         print(survey)
         createSurveyPage(survey, s[1])
-        o += """
+        if p == 'All time':
+            o += """
             <tr>
                 <td>
                     <a href="../www/bySurvey/%s.html">%s</a>
                 </td> 
                 <td> """ % (survey, survey)
+        else:
+            o += """
+                <tr>
+                    <td>
+                        <a href="../www/bySurvey/monthly/%s.html">%s</a>
+                    </td> 
+                    <td> """ % (survey+"_"+str(p), survey)
         
         for codi in s[1]:
             o += """<a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s %s</a><br>""" % (codi, codi, mpccode[codi]['name'])
