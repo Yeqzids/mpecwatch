@@ -4,6 +4,7 @@
 
 ## Change log
 
+* 2024 Oct 5: statistics of individual survey program is now available.
 * 2024 Jun 11: observatory table has expanded columns.
 * 2024 Jun 1: survey summary page now available; adding recovery stats; adding term definitions.
 * 2024 May 30: export options added to individual station yearly breakdown of MPEC types.
