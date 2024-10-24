@@ -55,7 +55,7 @@ def merge_dictionaries(dict1, dict2):
     return merged_dict
 
 # Creates a sruvey page by combining the stats of all stations in the survey
-def createSurveyPage(surveyName, codes):
+def createSurveyPage(surveyName, surveyNameAbbv, codes):
   survey_data[surveyName] = {}
   survey_data[surveyName]['MPECId'] = {} # single 'MPECId' key: {MPECId: Object designation in packed form}
   survey_data[surveyName]['Discovery'] = {} 
@@ -147,14 +147,14 @@ def createSurveyPage(surveyName, codes):
   survey_data[surveyName]['MPECs'] = [list(mpec) for mpec in survey_data[surveyName]['MPECs']]
   
   # Potential improvement: make dictionary local to function and pass it to createGraph
-  createGraph(surveyName, codes)
+  createGraph(surveyName, surveyNameAbbv, codes)
 
-def createGraph(surveyName, codes, includeFirstFU = True):
+def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
     disc_obj = pd.DataFrame({"Year": [], "ObjType": [], "#MPECs": []})
     OU_obj = pd.DataFrame({"Year": [], "ObjType": [], "#MPECs": []})
     survey = 'survey'+surveyName
-    page = "../www/bySurvey/" + surveyName + ".html"
+    page = "../www/bySurvey/" + surveyNameAbbv + ".html"
     #list of codes in the corresponding survey
 
     o = """
@@ -343,7 +343,7 @@ def createGraph(surveyName, codes, includeFirstFU = True):
                 month_counts.append(survey_data[surveyName][mpecType][year][month_index])
             df_monthly_graph = pd.concat([df_monthly_graph, pd.DataFrame({"Month": [month, month, month, month, month, month, month, month, month], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": month_counts})])
             month_index += 1
-        monthly(surveyName, year, df_monthly_graph)
+        monthly(surveyName, surveyNameAbbv, year, df_monthly_graph)
 
         o += """
                 <tr>
@@ -362,19 +362,19 @@ def createGraph(surveyName, codes, includeFirstFU = True):
         """ % (survey, year, year, sum(year_counts), year_counts[0], year_counts[1], year_counts[2], year_counts[3], year_counts[4], year_counts[5], year_counts[6], year_counts[7], year_counts[8])
     try:
         fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= surveyName+" | Number and type of MPECs by year")
-        fig.write_html("../www/bySurvey/graphs/"+surveyName+".html")
+        fig.write_html("../www/bySurvey/graphs/"+surveyNameAbbv+".html")
     except Exception as e:
         print(e)
 
     try:
         fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjType", title= surveyName+" | Discovery: Number and type of Object by year")
-        fig.write_html("../www/bySurvey/graphs/"+surveyName+"_disc_obj.html")
+        fig.write_html("../www/bySurvey/graphs/"+surveyNameAbbv+"_disc_obj.html")
     except Exception as e:
         print(e)
 
     try:
         fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjType", title= surveyName+" | Orbit Update: Number and type of Object by year")
-        fig.write_html("../www/bySurvey/graphs/"+surveyName+"_OU_obj.html")
+        fig.write_html("../www/bySurvey/graphs/"+surveyNameAbbv+"_OU_obj.html")
     except Exception as e:
         print(e)
     
@@ -540,9 +540,9 @@ def createGraph(surveyName, codes, includeFirstFU = True):
     with open(page, 'w', encoding='utf-8') as f:
         f.write(o)      
 
-def monthly(surveyName, year, df_month_graph):
+def monthly(surveyName, surveyNameAbbv, year, df_month_graph):
     fig = px.bar(df_month_graph, x="Month", y="#MPECs", color="MPECType")
-    fig.write_html("../www/bySurvey/monthly/graphs/"+surveyName+"_"+str(year)+".html")
+    fig.write_html("../www/bySurvey/monthly/graphs/"+surveyNameAbbv+"_"+str(year)+".html")
 
     df_monthly = pd.DataFrame({"Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -554,7 +554,7 @@ def monthly(surveyName, year, df_month_graph):
         month_index+=1
         df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=obs_types)])
     
-    page = '../www/bySurvey/monthly/{}.html'.format(surveyName+"_"+str(year))
+    page = '../www/bySurvey/monthly/{}.html'.format(surveyNameAbbv+"_"+str(year))
     o = """
 <!DOCTYPE html>
 <html lang="en">
@@ -607,7 +607,7 @@ def monthly(surveyName, year, df_month_graph):
                         <td>%i</td>
                     </tr>""" % (month, df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
         
-    df_monthly.to_csv("../www/bySurvey/monthly/csv/{}.csv".format(surveyName+"_"+str(year)))
+    df_monthly.to_csv("../www/bySurvey/monthly/csv/{}.csv".format(surveyNameAbbv+"_"+str(year)))
     o += """      
                 </tbody>
             </table>
@@ -616,20 +616,20 @@ def monthly(surveyName, year, df_month_graph):
             </a>
         </div>
     </body>
-</html>""".format(surveyName+"_"+str(year), surveyName+"_"+str(year))
+</html>""".format(surveyNameAbbv+"_"+str(year), surveyNameAbbv+"_"+str(year))
     
     with open(page, 'w', encoding='utf-8') as f:
             f.write(o)
       
-survey_def_table = [['Lincoln Near Earth Asteroid Research (LINEAR)', ['704']], \
-                    ['Space Surveillance Telescope (SST)', ['G45', 'P07']], \
-                    ['Near-Earth Asteroid Tracking (NEAT)', ['566', '608', '644']], \
-                    ['Spacewatch', ['291', '691']], \
-                    ['Lowell Observatory Near-Earth-Object Search (LONEOS)', ['699']], \
-                    ['Catalina Sky Survey (CSS)', ['703', 'E12', 'G96', 'I52', 'V06']], \
-                    ['Panoramic Survey Telescope and Rapid Response System (Pan-STARRS)', ['F51', 'F52']], \
-                    ['Wide-field Infrared Survey Explorer (WISE_NEOWISE)', ['C51']], \
-                    ['Asteroid Terrestrial-impact Last Alert System (ATLAS)', ['T05', 'T08', 'M22', 'W68']]]
+survey_def_table = [['Lincoln Near Earth Asteroid Research (LINEAR)', ['704'], 'linear'], \
+                    ['Space Surveillance Telescope (SST)', ['G45', 'P07'], 'sst'], \
+                    ['Near-Earth Asteroid Tracking (NEAT)', ['566', '608', '644'], 'neat'], \
+                    ['Spacewatch', ['291', '691'], 'spacewatch'], \
+                    ['Lowell Observatory Near-Earth-Object Search (LONEOS)', ['699'], 'loneos'], \
+                    ['Catalina Sky Survey (CSS)', ['703', 'E12', 'G96', 'I52', 'V06'], 'css'], \
+                    ['Panoramic Survey Telescope and Rapid Response System (Pan-STARRS)', ['F51', 'F52'], 'panstarrs'], \
+                    ['Wide-field Infrared Survey Explorer (WISE_NEOWISE)', ['C51'], 'wise'], \
+                    ['Asteroid Terrestrial-impact Last Alert System (ATLAS)', ['T05', 'T08', 'M22', 'W68'], 'atlas']]
 
 dbFile = '../mpecwatch_v3.db'
 stat = 'obscode_stat.json'
@@ -805,24 +805,25 @@ for p in pages:
         
         survey = s[0]
         data = [stat[i] for i in s[1]]
+        survey_abbv = s[2]
         
         
         print(survey)
-        createSurveyPage(survey, s[1])
+        createSurveyPage(survey, survey_abbv, s[1])
         if p == 'All time':
             o += """
             <tr>
                 <td>
                     <a href="../www/bySurvey/%s.html">%s</a>
                 </td> 
-                <td> """ % (survey, survey)
+                <td> """ % (survey_abbv, survey)
         else:
             o += """
                 <tr>
                     <td>
                         <a href="../www/bySurvey/monthly/%s.html">%s</a>
                     </td> 
-                    <td> """ % (survey+"_"+str(p), survey)
+                    <td> """ % (survey_abbv, survey)
         
         for codi in s[1]:
             o += """<a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s %s</a><br>""" % (codi, codi, mpccode[codi]['name'])
