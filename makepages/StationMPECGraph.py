@@ -149,7 +149,7 @@ def calcObs():
                 else:
                     mpec_data[station]['Discovery'][year][mpec[7]] = mpec_data[station]['Discovery'][year].get(mpec[7],0)+1 #object type
             
-            for mpecType in ["Editorial", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
+            for mpecType in ["Editorial", "DOU", "ListUpdate", "Retraction", "Other"]:
                 if mpec[6] == mpecType:
                     mpec_data[station][mpecType][year]['total'] = mpec_data[station][mpecType][year].get('total',0)+1
                     mpec_data[station][mpecType][year][month] = mpec_data[station][mpecType][year].get(month,0)+1
@@ -701,15 +701,15 @@ def main():
     print('start...')
     calcObs()
     print('begin writing stations')
-    for station in mpccode.keys():
-        if station == 'XXX':
-            continue
-        createGraph(station)
-    #createGraph('704')
+    # for station in mpccode.keys():
+    #     if station == 'XXX':
+    #         continue
+    #     createGraph(station)
+    createGraph('704')
 
     # Export mpec_data to json
-    with open('../mpec_data.json', 'w') as f:
-        json.dump(mpec_data, f)
+    # with open('../mpec_data.json', 'w') as f:
+    #     json.dump(mpec_data, f)
 
 main()
 mpecconn.close()

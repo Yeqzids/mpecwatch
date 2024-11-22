@@ -40,7 +40,7 @@ def encode(num, alphabet=BASE62):
     return ''.join(arr)
 
 # fix browser.py and survey.py after changing dictionary structure
-obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery"]
+MPEC_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery"]
 obj_types = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "unk"] #Only used when MPECType is Discovery or OrbitUpdate
 d = dict()
 for s in mpccode:
@@ -51,12 +51,12 @@ for s in mpccode:
     d[s]['total'] = 0
     d[s]['MPECId'] = {}
     
-    for obs_type in obs_types: 
+    for obs_type in MPEC_types: 
         d[s][obs_type] = {}
 
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         year = int(year)
-        for obs_type in obs_types:
+        for obs_type in MPEC_types:
             d[s][obs_type][year] = {'total': 0}
             if obs_type == "Discovery" or obs_type == "OrbitUpdate":
                 for obj_type in obj_types:
@@ -109,7 +109,6 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 
         # numbers of MPECs
         d[station]['total'] = d[station].get('total', 0) + 1
-        d[station]['total'][year] = d[station].get(year, 0) + 1
 
         #MPECType = 'Discovery' and DiscStation != '{}'
         if mpec[6] == 'Discovery' and station != mpec[4]:
@@ -130,7 +129,7 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
             else:
                 d[station]['Discovery'][year][mpec[7]] = d[station]['Discovery'][year].get(mpec[7],0)+1 #object type
 
-        for mpecType in ["Editorial", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
+        for mpecType in ["Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
             if mpec[6] == mpecType:
                 d[station][mpecType][year]['total'] = d[station][mpecType][year].get('total',0)+1
                 d[station][mpecType][year][month] = d[station][mpecType][year].get(month,0)+1
@@ -205,190 +204,96 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
             d[station]['PHA'][year] = d[station]['PHA'].get(year, 0) + 1
 
         # numbers of NEAs
+        if mpec[7] == 'NEA' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['NEA'][year] = d[station]['NEA'].get(year, 0) + 1
 
         # numbers of discovery MPECs
+        if mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['mpec_discovery'][year] = d[station].get('mpec_discovery', 0) + 1
 
         # numbers of NEAs Discovery MPECs
+        if mpec[7] == 'NEA' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['NEA_Disc'][year] = d[station].get('NEA_Disc', 0) + 1
 
         # numbers of PHA Discovery MPECs
+        if mpec[7] == 'PHA' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['PHA_Disc'][year] = d[station].get('PHA_Disc', 0) + 1
 
         # numbers of Comet Discovery MPECs
+        if mpec[7] == 'Comet' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['Comet_Disc'][year] = d[station].get('Comet_Disc', 0) + 1
 
         # numbers of Satellite Discovery MPECs
+        if mpec[7] == 'Satellite' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['Satellite_Disc'][year] = d[station].get('Satellite_Disc', 0) + 1
 
         # numbers of TNO Discovery MPECs
+        if mpec[7] == 'TNO' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['TNO_Disc'][year] = d[station].get('TNO_Disc', 0) + 1
 
         # numbers of Unusual Object Discovery MPECs
+        if mpec[7] == 'Unusual' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['Unusual_Disc'][year] = d[station].get('Unusual_Disc', 0) + 1
 
         # numbers of Interstellar Object Discovery MPECs
+        if mpec[7] == 'Interstellar' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['Interstellar_Disc'][year] = d[station].get('Interstellar_Disc', 0) + 1
 
         # numbers of Unknown Object Discovery MPECs
+        if mpec[7] == 'Unknown' and mpec[6] == 'Discovery' and mpec[4] == station:
+            d[station]['Unknown_Disc'][year] = d[station].get('Unknown_Disc', 0) + 1
 
         # numbers of follow-up MPECs
+        if mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['mpec_followup'][year] = d[station].get('mpec_followup', 0) + 1
 
         # numbers of first follow-up MPECs
+        if mpec[6] == 'Discovery' and mpec[4] != station and station + ', ' + mpec[4] in mpec[3]:
+            d[station]['mpec_1st_followup'][year] = d[station].get('mpec_1st_followup', 0) + 1
 
         # numbers of NEAs follow-up MPECs
+        if mpec[7] == 'NEA' and mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['NEA_FU'][year] = d[station].get('NEA_FU', 0) + 1
 
         # numbers of PHAs follow-up MPECs
+        if mpec[7] == 'PHA' and mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['PHA_FU'][year] = d[station].get('PHA_FU', 0) + 1
 
         # numbers of Comets follow-up MPECs
+        if mpec[7] == 'Comet' and mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['Comet_FU'][year] = d[station].get('Comet_FU', 0) + 1
 
         # numbers of Satellites follow-up MPECs
+        if mpec[7] == 'Satellite' and mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['Satellite_FU'][year] = d[station].get('Satellite_FU', 0) + 1
 
         # numbers of TNOs follow-up MPECs
+        if mpec[7] == 'TNO' and mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['TNO_FU'][year] = d[station].get('TNO_FU', 0) + 1
 
         # numbers of Unusual Objects follow-up MPECs
+        if mpec[7] == 'Unusual' and mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['Unusual_FU'][year] = d[station].get('Unusual_FU', 0) + 1
 
         # numbers of Interstellar Objects follow-up MPECs
+        if mpec[7] == 'Interstellar' and mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['Interstellar_FU'][year] = d[station].get('Interstellar_FU', 0) + 1
 
         # numbers of Unknown Objects follow-up MPECs
+        if mpec[7] == 'Unknown' and mpec[6] == 'Discovery' and mpec[4] != station:
+            d[station]['Unknown_FU'][year] = d[station].get('Unknown_FU', 0) + 1
 
-        # numbers of precovery MPECs
+        # numbers of precovery MPECs'
+        if bool(re.match('.*' + station + '.*' + mpec[4] + '.*', mpec[3])):
+            d[station]['mpec_precovery'][year] = d[station].get('mpec_precovery', 0) + 1
 
         # numbers of orbit update MPECs
+        if mpec[6] == 'OrbitUpdate':
+            d[station]['mpec_recovery'][year] = d[station].get('mpec_recovery', 0) + 1
 
         # numbers of "1st spotter" orbit update MPECs
-
-    # d[s]['mpec_discovery'] = {}
-    # d[s]['NEA_Disc'] = {}
-    # d[s]['PHA_Disc'] = {}
-    # d[s]['Comet_Disc'] = {}
-    # d[s]['Satellite_Disc'] = {}
-    # d[s]['TNO_Disc'] = {}
-    # d[s]['Unusual_Disc'] = {}
-    # d[s]['Interstellar_Disc'] = {}
-    # d[s]['Unknown_Disc'] = {}
-    # d[s]['mpec_followup'] = {}
-    # d[s]['NEA_FU'] = {}
-    # d[s]['PHA_FU'] = {}
-    # d[s]['Comet_FU'] = {}
-    # d[s]['Satellite_FU'] = {}
-    # d[s]['TNO_FU'] = {}
-    # d[s]['Unusual_FU'] = {}
-    # d[s]['Interstellar_FU'] = {}
-    # d[s]['Unknown_FU'] = {}
-    #d[s]['mpec_1st_followup'] = {}
-    #d[s]['mpec_precovery'] = {}
-    #d[s]['mpec_recovery'] = {}
-    #d[s]['mpec_1st_recovery'] = {}
-    
-    for y in np.arange(1993, currentYear+1, 1):
-        y = int(y)
-        timestamp_start = calendar.timegm(datetime.date(y,1,1).timetuple())
-        timestamp_end = calendar.timegm(datetime.date(y+1,1,1).timetuple())-1
-
-        ## numbers of MPECs
-        cursor.execute("select station from MPEC where station like '%{}%' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['mpec'][y] = len(cursor.fetchall())
-    
-        ## numbers of PHAs
-        cursor.execute("select ObjectType from MPEC where Station like '%{}%' and ObjectType like '%PHA%' and ((MPECType like 'Discovery' and DiscStation like '%{}%')) and time >= {} and time <= {};".format(s, s, timestamp_start, timestamp_end))
-        d[s]['PHA'][y] = len(cursor.fetchall())
-
-        ## numbers of NEAs
-        cursor.execute("select ObjectType from MPEC where Station like '%{}%' and ObjectType like '%NEA%' and ((MPECType like 'Discovery' and DiscStation like '%{}%')) and time >= {} and time <= {};".format(s, s, timestamp_start, timestamp_end))
-        d[s]['NEA'][y] = len(cursor.fetchall())
-        
-        ## numbers of discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '{}' and time >= {} and time <= {} and MPECType like 'Discovery';".format(s, timestamp_start, timestamp_end))
-        d[s]['mpec_discovery'][y] = len(cursor.fetchall())
-
-        ## numbers of NEAs Discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '%{}%' and ObjectType like '%NEA%' and MPECType like 'Discovery' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['NEA_Disc'][y] = len(cursor.fetchall())
-
-        ## numbers of PHA Discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '%{}%' and ObjectType like '%PHA%' and MPECType like 'Discovery' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['PHA_Disc'][y] = len(cursor.fetchall())
-
-        ## numbers of Comet Discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '%{}%' and ObjectType like '%Comet%' and MPECType like 'Discovery' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['Comet_Disc'][y] = len(cursor.fetchall())
-
-        ## numbers of Satellite Discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '%{}%' and ObjectType like '%Satellite%' and MPECType like 'Discovery' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['Satellite_Disc'][y] = len(cursor.fetchall())
-
-        ## numbers of TNO Discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '%{}%' and ObjectType like '%TNO%' and MPECType like 'Discovery' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['TNO_Disc'][y] = len(cursor.fetchall())
-
-        ## numbers of Unusual Object Discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '%{}%' and ObjectType like '%Unusual%' and MPECType like 'Discovery' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['Unusual_Disc'][y] = len(cursor.fetchall())
-
-        ## numbers of Interstellar Object Discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '%{}%' and ObjectType like '%Interstellar%' and MPECType like 'Discovery' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['Interstellar_Disc'][y] = len(cursor.fetchall())
-
-        ## numbers of Unknown Object Discovery MPECs
-        cursor.execute("select DiscStation from MPEC where DiscStation like '%{}%' and ObjectType like '%Unknown%' and MPECType like 'Discovery' and time >= {} and time <= {};".format(s, timestamp_start, timestamp_end))
-        d[s]['Unknown_Disc'][y] = len(cursor.fetchall())
-    
-        ## numbers of follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['mpec_followup'][y] = len(cursor.fetchall())
-    
-        ## numbers of first follow-up MPECs
-        cursor.execute("select DiscStation, Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}';".format(s, timestamp_start, timestamp_end, s))
-        tmp = cursor.fetchall()
-        c = 0
-        for i in tmp:
-            if i[0] + ', ' + s in i[1]:
-                c += 1
-        
-        d[s]['mpec_1st_followup'][y] = c
-
-        ## numbers of NEAs follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}' and ObjectType like '%NEA%';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['NEA_FU'][y] = len(cursor.fetchall())
-
-        ## numbers of PHAs follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}' and ObjectType like '%PHA%';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['PHA_FU'][y] = len(cursor.fetchall())
-
-        ## numbers of Comets follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}' and ObjectType like '%Comet%';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['Comet_FU'][y] = len(cursor.fetchall())
-
-        ## numbers of Satellites follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}' and ObjectType like '%Satellite%';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['Satellite_FU'][y] = len(cursor.fetchall())
-
-        ## numbers of TNOs follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}' and ObjectType like '%TNO%';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['TNO_FU'][y] = len(cursor.fetchall())
-
-        ## numbers of Unusual Objects follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}' and ObjectType like '%Unusual%';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['Unusual_FU'][y] = len(cursor.fetchall())
-
-        ## numbers of Interstellar Objects follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}' and ObjectType like '%Interstellar%';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['Interstellar_FU'][y] = len(cursor.fetchall())
-
-        ## numbers of Unknown Objects follow-up MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}' and ObjectType like '%Unknown%';".format(s, timestamp_start, timestamp_end, s))
-        d[s]['Unknown_FU'][y] = len(cursor.fetchall())
-
-        ## numbers of precovery MPECs
-        cursor.execute("select DiscStation, Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'Discovery' and DiscStation != '{}';".format(s, timestamp_start, timestamp_end, s))
-        tmp = cursor.fetchall()
-        c = 0
-        for i in tmp:
-            if bool(re.match('.*' + s + '.*' + i[0] + '.*', i[1])):
-                c += 1
-            
-        d[s]['mpec_precovery'][y] = c
-        
-        ## numbers of orbit update MPECs
-        cursor.execute("select Station from MPEC where Station like '%{}%' and time >= {} and time <= {} and MPECType = 'OrbitUpdate';".format(s, timestamp_start, timestamp_end))
-        d[s]['mpec_recovery'][y] = len(cursor.fetchall())
-        
-        ## numbers of "1st spotter" orbit update MPECs
-        cursor.execute("select Station from MPEC where Station like '{}%' and time >= {} and time <= {} and MPECType = 'OrbitUpdate';".format(s, timestamp_start, timestamp_end))
-        d[s]['mpec_1st_recovery'][y] = len(cursor.fetchall())
+        if mpec[6] == 'OrbitUpdate' and station[0] == mpec[4][0]:
+            d[station]['mpec_1st_recovery'][year] = d[station].get('mpec_1st_recovery', 0) + 1
     
 with open('obscode_stat.json', 'w') as o:
     json.dump(d, o)
