@@ -74,6 +74,7 @@ def calcObs():
         mpec_data[station]['MPECId'] = {} # every MPECId and packed object
         for obs_type in obs_types:
             mpec_data[station][obs_type] = {}
+        # yearly
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             year = int(year)
             for obs_type in obs_types:
