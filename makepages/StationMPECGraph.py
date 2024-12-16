@@ -705,7 +705,7 @@ def main():
     #     if station == 'XXX':
     #         continue
     #     createGraph(station)
-    createGraph('704')
+    createGraph('G96')
 
     # Export mpec_data to json
     # with open('../mpec_data.json', 'w') as f:

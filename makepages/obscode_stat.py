@@ -39,9 +39,13 @@ def encode(num, alphabet=BASE62):
     arr.reverse()
     return ''.join(arr)
 
+def getMonthName(month):
+    return calendar.month_name[month]
+
 # fix browser.py and survey.py after changing dictionary structure
+# "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery" are not in database (calulated from other fields)
 MPEC_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery"]
-obj_types = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "unk"] #Only used when MPECType is Discovery or OrbitUpdate
+obj_types = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"] #Only used when MPECType is Discovery or OrbitUpdate
 d = dict()
 for s in mpccode:
 #for i in range(1):
@@ -52,19 +56,20 @@ for s in mpccode:
     d[s]['MPECId'] = {}
     
     for obs_type in MPEC_types: 
-        d[s][obs_type] = {}
-
-    for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-        year = int(year)
-        for obs_type in MPEC_types:
+        d[s][obs_type] = {'total': 0}
+        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+            year = int(year)
             d[s][obs_type][year] = {'total': 0}
-            if obs_type == "Discovery" or obs_type == "OrbitUpdate":
+            if obs_type in ["Discovery", "OrbitUpdate", "Followup"]:
                 for obj_type in obj_types:
                     d[s][obs_type][year][obj_type] = 0
-
-    d[s]['OBS'] = {} #observers at this station
-    d[s]['MEA'] = {} #measurers at this station
-    d[s]['FAC'] = {} #facilities at this station 
+                    for month in np.arange(1, 13, 1):
+                        d[s][obs_type][year][getMonthName(month)] = 0
+    
+    # each station has its own OBS, MEA, FAC and will be initialized as empty dictionaries
+    d[s]['OBS'] = {}
+    d[s]['MEA'] = {}
+    d[s]['FAC'] = {}
     d[s]['MPECs'] = {}
     # old structure used in line 491 StationMPECGraph.py: need to update
     for i in ["Name", "timestamp", "Discovery?", "First Conf?", "Object Type", "CATCH"]:
@@ -78,9 +83,11 @@ for s in mpccode:
         pass
 
     #Grab OBS, MEA, FAC (respectiveley)
+    # why are these in try/except blocks?
     try:
         for obs in cursor.execute("SELECT Observer FROM station_{}".format(s)).fetchall():
             if obs[0] != '':
+                #adds 1 or initializes to 1 (if current observer is not in dictionary)
                 d[s]['OBS'][obs[0]] = d[s]['OBS'].get(obs[0], 0) + 1
     except:
         pass
@@ -101,38 +108,41 @@ for s in mpccode:
 
 for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
     year = int(date.fromtimestamp(mpec[2]).year)
-    month = int(date.fromtimestamp(mpec[2]).month)
+    month = getMonthName(int(date.fromtimestamp(mpec[2]).month))
 
     for station in mpec[3].split(', '):
         if station == '' or station == 'XXX':
             continue    
 
         # numbers of MPECs
-        d[station]['total'] = d[station].get('total', 0) + 1
+        d[station]['total'] += 1
 
-        #MPECType = 'Discovery' and DiscStation != '{}'
+        # numbers of first followups: MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
+        if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
+            d[station]['FirstFollowup'][year]['total'] += 1
+            d[station]['FirstFollowup'][year][month] += 1
+
+        # numbers of Discovery MPECs by object type
+        if station == mpec[4] and mpec[6] == 'Discovery':
+            d[station]['Discovery'][year]['total'] += 1
+            d[station]['Discovery'][year][month] += 1
+            if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
+                d[station]['Discovery'][year]["NEA"] += 1
+            else:
+                d[station]['Discovery'][year][mpec[7]] += 1 #object type
+
+        # numbers of follow-up MPECs by object type
         if mpec[6] == 'Discovery' and station != mpec[4]:
             d[station]['Followup'][year]['total'] += 1
-            d[station]['Followup'][year][mpec[5]] += 1
+            d[station]['Followup'][year][month] += 1
+            d[station]['Followup'][year][mpec[7]] += 1
 
-        #MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
-        if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
-            d[station]['FirstFollowup'][year]['total'] = d[station]['FirstFollowup'][year].get('total',0)+1
-            d[station]['FirstFollowup'][year][month] = d[station]['FirstFollowup'][year].get(month,0)+1
-
-        #if station = discovery station
-        if station == mpec[4]:
-            d[station]['Discovery'][year]['total'] = d[station]['Discovery'][year].get('total',0)+1
-            d[station]['Discovery'][year][month] = d[station]['Discovery'][year].get(month,0)+1
-            if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
-                d[station]['Discovery'][year]["NEA"] = d[station]['Discovery'][year].get("NEA",0)+1
-            else:
-                d[station]['Discovery'][year][mpec[7]] = d[station]['Discovery'][year].get(mpec[7],0)+1 #object type
-
-        for mpecType in ["Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]:
+        # numbers of Editorial, DOU, ListUpdate, Retraction, and Other MPECs
+        for mpecType in ["Editorial", "DOU", "ListUpdate", "Retraction", "Other"]:
             if mpec[6] == mpecType:
-                d[station][mpecType][year]['total'] = d[station][mpecType][year].get('total',0)+1
-                d[station][mpecType][year][month] = d[station][mpecType][year].get(month,0)+1
+                # adding 'total' to allow monthly breakdown (only MPECTypes are used for monthly breakdown)
+                d[station][mpecType][year]['total'] += 1
+                d[station][mpecType][year][month] += 1
 
         if mpec[6] == "OrbitUpdate":
             if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
@@ -207,81 +217,9 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
         if mpec[7] == 'NEA' and mpec[6] == 'Discovery' and mpec[4] == station:
             d[station]['NEA'][year] = d[station]['NEA'].get(year, 0) + 1
 
-        # numbers of discovery MPECs
-        if mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['mpec_discovery'][year] = d[station].get('mpec_discovery', 0) + 1
-
-        # numbers of NEAs Discovery MPECs
-        if mpec[7] == 'NEA' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['NEA_Disc'][year] = d[station].get('NEA_Disc', 0) + 1
-
-        # numbers of PHA Discovery MPECs
-        if mpec[7] == 'PHA' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['PHA_Disc'][year] = d[station].get('PHA_Disc', 0) + 1
-
-        # numbers of Comet Discovery MPECs
-        if mpec[7] == 'Comet' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['Comet_Disc'][year] = d[station].get('Comet_Disc', 0) + 1
-
-        # numbers of Satellite Discovery MPECs
-        if mpec[7] == 'Satellite' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['Satellite_Disc'][year] = d[station].get('Satellite_Disc', 0) + 1
-
-        # numbers of TNO Discovery MPECs
-        if mpec[7] == 'TNO' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['TNO_Disc'][year] = d[station].get('TNO_Disc', 0) + 1
-
-        # numbers of Unusual Object Discovery MPECs
-        if mpec[7] == 'Unusual' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['Unusual_Disc'][year] = d[station].get('Unusual_Disc', 0) + 1
-
-        # numbers of Interstellar Object Discovery MPECs
-        if mpec[7] == 'Interstellar' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['Interstellar_Disc'][year] = d[station].get('Interstellar_Disc', 0) + 1
-
-        # numbers of Unknown Object Discovery MPECs
-        if mpec[7] == 'Unknown' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['Unknown_Disc'][year] = d[station].get('Unknown_Disc', 0) + 1
-
-        # numbers of follow-up MPECs
-        if mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['mpec_followup'][year] = d[station].get('mpec_followup', 0) + 1
-
         # numbers of first follow-up MPECs
         if mpec[6] == 'Discovery' and mpec[4] != station and station + ', ' + mpec[4] in mpec[3]:
             d[station]['mpec_1st_followup'][year] = d[station].get('mpec_1st_followup', 0) + 1
-
-        # numbers of NEAs follow-up MPECs
-        if mpec[7] == 'NEA' and mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['NEA_FU'][year] = d[station].get('NEA_FU', 0) + 1
-
-        # numbers of PHAs follow-up MPECs
-        if mpec[7] == 'PHA' and mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['PHA_FU'][year] = d[station].get('PHA_FU', 0) + 1
-
-        # numbers of Comets follow-up MPECs
-        if mpec[7] == 'Comet' and mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['Comet_FU'][year] = d[station].get('Comet_FU', 0) + 1
-
-        # numbers of Satellites follow-up MPECs
-        if mpec[7] == 'Satellite' and mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['Satellite_FU'][year] = d[station].get('Satellite_FU', 0) + 1
-
-        # numbers of TNOs follow-up MPECs
-        if mpec[7] == 'TNO' and mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['TNO_FU'][year] = d[station].get('TNO_FU', 0) + 1
-
-        # numbers of Unusual Objects follow-up MPECs
-        if mpec[7] == 'Unusual' and mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['Unusual_FU'][year] = d[station].get('Unusual_FU', 0) + 1
-
-        # numbers of Interstellar Objects follow-up MPECs
-        if mpec[7] == 'Interstellar' and mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['Interstellar_FU'][year] = d[station].get('Interstellar_FU', 0) + 1
-
-        # numbers of Unknown Objects follow-up MPECs
-        if mpec[7] == 'Unknown' and mpec[6] == 'Discovery' and mpec[4] != station:
-            d[station]['Unknown_FU'][year] = d[station].get('Unknown_FU', 0) + 1
 
         # numbers of precovery MPECs'
         if bool(re.match('.*' + station + '.*' + mpec[4] + '.*', mpec[3])):
