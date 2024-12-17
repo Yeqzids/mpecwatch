@@ -12,3 +12,4 @@ proc_loop.*
 .pydevproject
 .settings
 *.json
+newMPECGraph.py

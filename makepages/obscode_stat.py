@@ -8,8 +8,18 @@
  
 """
 
+# future improvements:
+# new db structure
+# db[station][year][month][mpecType] = count
+# AND
+# db[station][year][month][objType] = count
+# need to figure out how to get object breakdown by mpecType if this way is used
+
 import sqlite3, datetime, re, json, numpy as np, calendar
 from datetime import date
+import time
+
+start_time = time.time()
 
 dbFile = '../mpecwatch_v3.db'
 mpccode = '../mpccode.json'
@@ -44,7 +54,7 @@ def getMonthName(month):
 
 # fix browser.py and survey.py after changing dictionary structure
 # "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery" are not in database (calulated from other fields)
-MPEC_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery"]
+MPEC_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "1stRecovery"]
 obj_types = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"] #Only used when MPECType is Discovery or OrbitUpdate
 d = dict()
 for s in mpccode:
@@ -60,11 +70,11 @@ for s in mpccode:
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             year = int(year)
             d[s][obs_type][year] = {'total': 0}
-            if obs_type in ["Discovery", "OrbitUpdate", "Followup"]:
+            for month in np.arange(1, 13, 1):
+                d[s][obs_type][year][getMonthName(month)] = 0
+            if obs_type in ["Discovery", "OrbitUpdate", "1stRecovery", "Followup", "FirstFollowup"]:
                 for obj_type in obj_types:
                     d[s][obs_type][year][obj_type] = 0
-                    for month in np.arange(1, 13, 1):
-                        d[s][obs_type][year][getMonthName(month)] = 0
     
     # each station has its own OBS, MEA, FAC and will be initialized as empty dictionaries
     d[s]['OBS'] = {}
@@ -110,12 +120,18 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
     year = int(date.fromtimestamp(mpec[2]).year)
     month = getMonthName(int(date.fromtimestamp(mpec[2]).month))
 
+    # cast to list to avoid tuple
+    mpec = list(mpec)
+
     for station in mpec[3].split(', '):
         if station == '' or station == 'XXX':
             continue    
 
         # numbers of MPECs
         d[station]['total'] += 1
+
+        if mpec[7] == 'unk':
+            mpec[7] = 'Unknown'
 
         # numbers of first followups: MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
         if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
@@ -126,8 +142,11 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
         if station == mpec[4] and mpec[6] == 'Discovery':
             d[station]['Discovery'][year]['total'] += 1
             d[station]['Discovery'][year][month] += 1
-            if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
+            # Include NEA
+            if 'NEA' in mpec[7]:
                 d[station]['Discovery'][year]["NEA"] += 1
+            elif 'PHA' in mpec[7]:
+                d[station]['Discovery'][year]["PHA"] += 1
             else:
                 d[station]['Discovery'][year][mpec[7]] += 1 #object type
 
@@ -135,20 +154,29 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
         if mpec[6] == 'Discovery' and station != mpec[4]:
             d[station]['Followup'][year]['total'] += 1
             d[station]['Followup'][year][month] += 1
-            d[station]['Followup'][year][mpec[7]] += 1
+            if 'NEA' in mpec[7]:
+                d[station]['Followup'][year]["NEA"] += 1
+            elif 'PHA' in mpec[7]:
+                d[station]['Followup'][year]["PHA"] += 1
+            else:
+                d[station]['Followup'][year][mpec[7]] += 1
 
         # numbers of Editorial, DOU, ListUpdate, Retraction, and Other MPECs
         for mpecType in ["Editorial", "DOU", "ListUpdate", "Retraction", "Other"]:
             if mpec[6] == mpecType:
-                # adding 'total' to allow monthly breakdown (only MPECTypes are used for monthly breakdown)
                 d[station][mpecType][year]['total'] += 1
                 d[station][mpecType][year][month] += 1
 
+        # recovery = orbit update
         if mpec[6] == "OrbitUpdate":
-            if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
-                d[station]['OrbitUpdate'][year]["NEA"] = d[station]['OrbitUpdate'][year].get("NEA",0)+1
+            d[station]['OrbitUpdate'][year]['total'] += 1
+            d[station]['OrbitUpdate'][year][month] += 1
+            if 'NEA' in mpec[7]:
+                d[station]['OrbitUpdate'][year]["NEA"] += 1
+            elif 'PHA' in mpec[7]:
+                d[station]['OrbitUpdate'][year]["PHA"] += 1
             else:
-                d[station]['OrbitUpdate'][year][mpec[7]] = d[station]['OrbitUpdate'][year].get(mpec[7],0)+1 #object type
+                d[station]['OrbitUpdate'][year][mpec[7]] += 1 #object type
 
         # "Name", "timestamp", "Discovery?", "First Conf?", "Object Type", "CATCH"
         temp = [] #[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH]
@@ -195,9 +223,9 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
                 obj_type = "NEA (H>22)"
             elif obj_type == "NEA1822":
                 obj_type = "NEA (18>H>22)"
-            elif obj_type == "NEAI18":
+            elif obj_type == "NEAl18":
                 obj_type = "NEA (H<18)"
-            elif obj_type == "PHAI18":
+            elif obj_type == "PHAl18":
                 obj_type = "PHA (H<18)"
             elif obj_type == "PHAg18":
                 obj_type == "PHA (H>18)"
@@ -209,30 +237,25 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
             else:
                 d[station]['MPECs']["CATCH"] = ""
 
-        # numbers of PHAs
-        if mpec[7] == 'PHA' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['PHA'][year] = d[station]['PHA'].get(year, 0) + 1
-
-        # numbers of NEAs
-        if mpec[7] == 'NEA' and mpec[6] == 'Discovery' and mpec[4] == station:
-            d[station]['NEA'][year] = d[station]['NEA'].get(year, 0) + 1
-
-        # numbers of first follow-up MPECs
-        if mpec[6] == 'Discovery' and mpec[4] != station and station + ', ' + mpec[4] in mpec[3]:
-            d[station]['mpec_1st_followup'][year] = d[station].get('mpec_1st_followup', 0) + 1
-
         # numbers of precovery MPECs'
         if bool(re.match('.*' + station + '.*' + mpec[4] + '.*', mpec[3])):
-            d[station]['mpec_precovery'][year] = d[station].get('mpec_precovery', 0) + 1
-
-        # numbers of orbit update MPECs
-        if mpec[6] == 'OrbitUpdate':
-            d[station]['mpec_recovery'][year] = d[station].get('mpec_recovery', 0) + 1
+            d[station]['Precovery'][year]['total'] += 1
+            d[station]['Precovery'][year][month] += 1
 
         # numbers of "1st spotter" orbit update MPECs
-        if mpec[6] == 'OrbitUpdate' and station[0] == mpec[4][0]:
-            d[station]['mpec_1st_recovery'][year] = d[station].get('mpec_1st_recovery', 0) + 1
+        if mpec[6] == 'OrbitUpdate' and station == mpec[4]:
+            d[station]['1stRecovery'][year]['total'] += 1
+            d[station]['1stRecovery'][year][month] += 1
+            if 'NEA' in mpec[7]:
+                d[station]['1stRecovery'][year]["NEA"] += 1
+            elif 'PHA' in mpec[7]:
+                d[station]['1stRecovery'][year]["PHA"] += 1
+            else:
+                d[station]['1stRecovery'][year][mpec[7]] += 1
+
     
 with open('obscode_stat.json', 'w') as o:
-    json.dump(d, o)
- 
+    json.dump(d, o)  
+
+end_time = time.time()
+print("Time elapsed: ", end_time - start_time)

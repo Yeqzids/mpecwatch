@@ -43,10 +43,9 @@ mpccode = '../mpccode.json'
 with open(mpccode) as mpccode:
     mpccode = json.load(mpccode)
 
-#prints the contents of a table w/ output limit
-def printTableContent(table):
-    rows = cursor.execute("SELECT * FROM {} WHERE Object = 'J99M00L' LIMIT 100".format(table)).fetchall()
-    print(rows)
+obscode = '../obscode_stat.json'
+with open(obscode) as obscode:
+    obscode = json.load(obscode)
 
 BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 def encode(num, alphabet=BASE62):
@@ -64,168 +63,6 @@ def encode(num, alphabet=BASE62):
         arr.append(alphabet[rem])
     arr.reverse()
     return ''.join(arr)
-
-obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
-obj_types = ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "unk"]
-def calcObs():
-    for station in mpccode.keys():
-        #initialize dict
-        mpec_data[station] = {}
-        mpec_data[station]['MPECId'] = {} # every MPECId and packed object
-        for obs_type in obs_types:
-            mpec_data[station][obs_type] = {}
-        # yearly
-        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-            year = int(year)
-            for obs_type in obs_types:
-                mpec_data[station][obs_type][year] = {'total':0}
-                if obs_type == "Discovery" or obs_type == "OrbitUpdate":
-                    for obj in obj_types:
-                        mpec_data[station][obs_type][year][obj] = 0 #object type count
-                for month in list(np.arange(1, 13, 1)):
-                    month = int(month)
-                    mpec_data[station][obs_type][year][month] = 0 #month count
-        mpec_data[station]['MPECs'] = [] #[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH]
-        mpec_data[station]['OBS'] = {} #contains all observers for each station
-        mpec_data[station]['MEA'] = {} #contains all measurers for each station
-        mpec_data[station]['Facilities'] = {} #contains all facilities for each station
-
-        #store object and mpecid information for catchurl use later
-        try:
-            for mpc_obj in mpecconn.execute("SELECT MPEC, Object FROM station_{}".format(station)).fetchall():
-                mpec_data[station]['MPECId'][mpc_obj[0]] = mpc_obj[1]
-        except: 
-            pass
-
-        #observers per station
-        try:
-            for observer in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
-                if observer[0] != '':
-                    mpec_data[station]['OBS'][observer[0]] = mpec_data[station]['OBS'].get(observer[0],0)+1
-        except: 
-            pass           
-
-        #measurers per station
-        try:
-            for measurer in mpecconn.execute("SELECT Measurer FROM station_{}".format(station)).fetchall():
-                if measurer[0] != '':
-                    mpec_data[station]['MEA'][measurer[0]] = mpec_data[station]['MEA'].get(measurer[0],0)+1
-        except:
-            pass
-
-        #facilities per station
-        try:
-            for facility in mpecconn.execute("SELECT Facility FROM station_{}".format(station)).fetchall():
-                if facility[0] != '':
-                    mpec_data[station]['Facilities'][facility[0]] = mpec_data[station]['Facilities'].get(facility[0],0)+1
-        except:
-            pass
-
-    for mpec in cursor.execute("select * from MPEC").fetchall():
-        year = int(date.fromtimestamp(mpec[2]).year)
-        month = int(date.fromtimestamp(mpec[2]).month)
-
-        for station in mpec[3].split(', '):
-            if station == '' or station == 'XXX':
-                continue
-
-            #MPECType = 'Discovery' and DiscStation != '{}'
-            if mpec[6] == 'Discovery' and station != mpec[4]:
-                #increment dict value by 1
-                mpec_data[station]['Followup'][year]['total'] = mpec_data[station]['Followup'][year].get('total',0)+1
-                mpec_data[station]['Followup'][year][month] = mpec_data[station]['Followup'][year].get(month,0)+1
-
-            #MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
-            if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
-                mpec_data[station]['FirstFollowup'][year]['total'] = mpec_data[station]['FirstFollowup'][year].get('total',0)+1
-                mpec_data[station]['FirstFollowup'][year][month] = mpec_data[station]['FirstFollowup'][year].get(month,0)+1
-
-            #if station = discovery station
-            if station == mpec[4]:
-                mpec_data[station]['Discovery'][year]['total'] = mpec_data[station]['Discovery'][year].get('total',0)+1
-                mpec_data[station]['Discovery'][year][month] = mpec_data[station]['Discovery'][year].get(month,0)+1
-                if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
-                    mpec_data[station]['Discovery'][year]["NEA"] = mpec_data[station]['Discovery'][year].get("NEA",0)+1
-                else:
-                    mpec_data[station]['Discovery'][year][mpec[7]] = mpec_data[station]['Discovery'][year].get(mpec[7],0)+1 #object type
-            
-            for mpecType in ["Editorial", "DOU", "ListUpdate", "Retraction", "Other"]:
-                if mpec[6] == mpecType:
-                    mpec_data[station][mpecType][year]['total'] = mpec_data[station][mpecType][year].get('total',0)+1
-                    mpec_data[station][mpecType][year][month] = mpec_data[station][mpecType][year].get(month,0)+1
-
-            if mpec[6] == "OrbitUpdate":
-                if mpec[7] == "NEAg22" or mpec[7] == "NEA1822" or mpec[7] == "NEAI18" or mpec[7] == "PHAI18" or mpec[7] == "PHAg18":
-                    mpec_data[station]['OrbitUpdate'][year]["NEA"] = mpec_data[station]['OrbitUpdate'][year].get("NEA",0)+1
-                else:
-                    mpec_data[station]['OrbitUpdate'][year][mpec[7]] = mpec_data[station]['OrbitUpdate'][year].get(mpec[7],0)+1 #object type
-
-            # listing all the MPECs from one station:
-            # adds MPEC if the current MPEC object has not been added for the current station
-            temp = [] #[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH]
-            name = mpec[0] + "\t" + mpec[1]
-            if name not in mpec_data[station]['MPECs']: #prevents duplication of the same MPEC object
-                id = mpec[0][5::]
-                packed_front = ""
-                packed_back = ""
-
-                #packed front
-                if id[0:2] == "18":
-                    packed_front = "I" + id[2:4]
-                elif id[0:2] == "19":
-                    packed_front = "J" + id[2:4]
-                elif id[0:2] == "20":
-                    packed_front = "K" + id[2:4]
-                    
-                #packed_back
-                if len(id) == 8:
-                    packed_back = packed_front + id[-3::]
-                elif len(id) == 9:
-                    packed_back = packed_front + id[5] + encode(int(id[6:8])) + id[-1]
-                
-                url1 = "\"https://www.minorplanetcenter.net/mpec/{}/{}.html\"".format(packed_front, packed_back)
-                mpec_url = "<a href={}>{}</a>".format(url1, name)
-
-                temp.append(mpec_url) #name w/ url embedded
-                temp.append(int(mpec[2])) #time: date and time
-                #Discovery?
-                if station == mpec[4]:
-                    temp.append("&#x2713") #check mark
-                else:
-                    temp.append("")
-                #First Conf?
-                if station == mpec[5]:
-                    temp.append("&#x2713") #check mark
-                else:
-                    temp.append("")
-                
-                obj_type = mpec[7]
-                if obj_type == "Unk":
-                    obj_type = "Unknown"
-                elif obj_type == "NEAg22":
-                    obj_type = "NEA (H>22)"
-                elif obj_type == "NEA1822":
-                    obj_type = "NEA (18>H>22)"
-                elif obj_type == "NEAI18":
-                    obj_type = "NEA (H<18)"
-                elif obj_type == "PHAI18":
-                    obj_type = "PHA (H<18)"
-                elif obj_type == "PHAg18":
-                    obj_type == "PHA (H>18)"
-                temp.append(obj_type)
-
-
-                if mpec[7]:
-                    #obs_code = cursor.execute("SELECT Object FROM station_{} WHERE MPEC = '{}'".format(station, mpec[0])).fetchall()
-                    #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(obs_code[:3], obs_code[3::])
-                    catch_url = "<a href=https://catch.astro.umd.edu/data?target={}>CATCH</a>".format(mpec_data[station]['MPECId'][mpec[0]])
-                    #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[0].split()[1][:4], mpec[0].split()[1][5::])
-                    temp.append(catch_url)
-                else:
-                    temp.append("")
-
-                mpec_data[station]['MPECs'].append(temp)
-
 
 def createGraph(station_code, includeFirstFU = True):
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
@@ -699,8 +536,6 @@ def monthly(station, year, df_month_graph):
 
 def main():
     print('start...')
-    calcObs()
-    print('begin writing stations')
     # for station in mpccode.keys():
     #     if station == 'XXX':
     #         continue
