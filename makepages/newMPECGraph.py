@@ -63,6 +63,11 @@ def encode(num, alphabet=BASE62):
     arr.reverse()
     return ''.join(arr)
 
+MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
+MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+# main loop that traversed through all stations in obscodestat.py
 for station_code in obscode:
     station = 'station_'+station_code
     page = "../www/byStation/" + str(station) + ".html"
@@ -157,3 +162,70 @@ for station_code in obscode:
         else:
             lon = mpccode[station[-3:]]['lon']
         o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this observatory?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
+
+    o += """<p>
+             <h3>Graphs</h3>
+              <h4>Yearly Breakdown of MPEC Types</h4>
+              <p>
+              <b>Term definition:</b>
+              Editorial - Editorial MPECs associated with this station.<br>
+              Discovery - MPECs associated with discovery made by this station.<br>
+              OrbitUpdate - MPECs associated with orbit updates involving observations made by this station. Typically, these are recoveries of single-opposition objects.<br>
+              DOU - Daily Orbit Update MPECs involving observations made by this station.<br>
+              ListUpdate - MPECs associated with list updates involving observations made by this station. This category has largely been retired since 2012.<br>
+              Retraction - Retracted MPECs involving observations made by this station.<br>
+              Followup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere.<br>
+              FirstFollowup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
+              Other - MPECs that do not fit into categories listed above and involve observations made by this station.
+              </p>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
+              <h4>Yearly Breakdown of Discovery Object Types</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_disc_obj.html" height="525" width="100%"></iframe>
+              <h4>Yearly Breakdown of Orbit Update Object Types</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_OU_obj.html" height="525" width="100%"></iframe>
+              <h4>Breakdown by Observers</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
+              <h4>Breakdown by Measurers</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
+              <h4>Breakdown by Facilities</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+              <h4>Breakdown by Objects</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Objects.html" height="525" width="100%"></iframe>
+              <h4>Annual Breakdown</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_yearly.html" height="525" width="100%"></iframe>
+              <h4>Weekly Breakdown</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_weekly.html" height="525" width="100%"></iframe>
+              <h4>Hourly Breakdown</h4>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_hourly.html" height="525" width="100%"></iframe>
+            </p>
+        </div>
+        <div class="container">
+          <h3>Tables</h3>
+          <h4>Yearly Breakdown of MPEC Types</h4>
+            <table id="year_table" class="table table-striped table-sm" 
+                data-toggle="table"
+                data-show-export="true"
+                data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Total MPECs</th>
+                        <th>Editorial</th>
+                        <th>Discovery</th>
+                        <th>P/R/FU</th>
+                        <th>DOU</th>
+                        <th>List Update</th>
+                        <th>Retraction</th>
+                        <th>Other</th>
+                        <th>Follow-Up</th>
+                        <th>First Follow-Up</th>
+                    </tr>
+                </thead>
+        """.format(station, station, station, station, station, station, station, station, station, station)
+    for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+        # yearly breakdown of MPEC types
+        df_yearly = pd.concat([pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
+        disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['Discovery'][str(year)][obj] for obj in OBJ_TYPES]})])
+        OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['OrbitUpdate'][str(year)][obj] for obj in OBJ_TYPES]})])
+
+        # monthly breakdown of MPEC types
