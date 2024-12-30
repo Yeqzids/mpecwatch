@@ -63,6 +63,69 @@ def encode(num, alphabet=BASE62):
     arr.reverse()
     return ''.join(arr)
 
+def make_monthly_page(df_monthly, station, year):
+    page_monthly = "../www/byStation/monthly/{}_{}.html".format(station, year)
+    o = """
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>MPECWatch: {} Monthly Summary | {}</title>
+
+        <!-- Bootstrap core CSS -->
+        <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Bootstrap theme -->
+        <link href="../../dist/css/bootstrap-theme.min.css" rel="stylesheet">
+        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+        <link href="../../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container" theme-showcase" role="main">
+            <h2>{} {} | {}</h2>
+            <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{}.html" height="525" width="100%"></iframe>
+            <table class="table table-striped table-hover table-sm table-responsive"
+                data-toggle="table"
+                data-show-export="true"
+                data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Editorial</th>
+                        <th>Discovery</th>
+                        <th>P/R/FU</th>
+                        <th>DOU</th>
+                        <th>List Update</th>
+                        <th>Retraction</th>
+                        <th>Other</th>
+                        <th>Follow-Up</th>
+                        <th>First Follow-Up</th>
+                    </tr>
+            </thead>""".format(station[-3:], year, station[-3:], mpccode[station[-3:]]['name'], year, station+"_"+str(year))
+    for month in MONTHS:
+        o += """
+                <tr>
+                    <td>%s</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                        <td>%i</td>
+                    </tr>""" % (month, df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
+    o += """
+            </table>
+        </div>
+    </body>
+</html>"""
+
+    with open(page_monthly, 'w') as f:
+        f.write(o)
+
 MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -222,6 +285,10 @@ for station_code in obscode:
                     </tr>
                 </thead>
         """.format(station, station, station, station, station, station, station, station, station, station)
+    
+    df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
+    disc_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
+    OU_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         # yearly breakdown of MPEC types
         df_yearly = pd.concat([pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
@@ -229,3 +296,187 @@ for station_code in obscode:
         OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['OrbitUpdate'][str(year)][obj] for obj in OBJ_TYPES]})])
 
         # monthly breakdown of MPEC types
+        df_monthly = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
+        for month in MONTHS:
+            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
+        make_monthly_page(df_monthly, station, year)
+
+        o += """
+                <tr>
+                    <td><a href="monthly/%s_%i.html">%i</a></td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                    <td>%i</td>
+                </tr>
+            """ % (station, year, year, obscode[station_code]['total'][str(year)], obscode[station_code]['Editorial'][str(year)], obscode[station_code]['Discovery'][str(year)], obscode[station_code]['OrbitUpdate'][str(year)], obscode[station_code]['DOU'][str(year)], obscode[station_code]['ListUpdate'][str(year)], obscode[station_code]['Retraction'][str(year)], obscode[station_code]['Other'][str(year)], obscode[station_code]['Followup'][str(year)], obscode[station_code]['FirstFollowup'][str(year)])
+    
+    o += """
+            </table>
+            <h4 style="margin-top: 20px;">List of Individual MPECs</h4>
+            <table id="mpec_table" 
+                class="table table-striped table-bordered table-sm"
+                data-height="460"
+                data-toggle="table"
+                data-pagination="true"
+                data-search="true"
+                data-show-export="true"
+                data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="index" data-sortable="true">Index</th>
+                        <th class="th-sm" data-field="name" data-sortable="true">Name</th>
+                        <th class="th-sm" data-field="date" data-sortable="true">Date/Time</th>
+                        <th class="th-sm" data-field="ds" data-sortable="true">Discoverer</th>
+                        <th class="th-sm" data-field="fs" data-sortable="true">First-responding Confirmer</th>
+                        <th class="th-sm" data-field="obj" data-sortable="true">Object Type</th>
+                        <th class="th-sm" data-field="catch" data-sortable="true">Search Archival Image</th>
+                    </tr>
+                </thead>
+    """.format(str(station), str(station))
+
+    index = 1
+    for i in mpec_data[station]['MPECs']:
+        o += """
+                <tbody>
+                    <tr>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                        <td>{}</td>
+                    </tr>
+        """.format(index,i[0],datetime.datetime.fromtimestamp(i[1]),i[2],i[3],i[4],i[5])
+        index += 1
+        
+    o += """
+                </tbody>
+            </table>
+            <h4>List of Observers</h4>
+            <table id="OBS_table" 
+                class="table table-striped table-bordered table-sm"
+                data-toggle="table"
+                data-search="true"
+                data-pagination="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="observer" data-sortable="true">Observers</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
+                    </tr>
+                </thead>
+                <tbody>"""
+    for observer, count in mpec_data[station_code]['OBS'].items():
+        o += """
+                    <tr>
+                        <td>{}</td>
+                        <td>{}</td>
+                    </tr>""".format(observer, count)
+        
+    o += """
+                </tbody>
+            </table>
+            <h4>List of Measurers</h4>
+            <table id="MEA_table" 
+                class="table table-striped table-bordered table-sm"
+                data-toggle="table"
+                data-search="true"
+                data-pagination="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="measurer" data-sortable="true">Measurers</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
+                    </tr>
+                </thead>
+                <tbody>"""
+    for measurer, count in mpec_data[station_code]['MEA'].items():
+        o += """
+                    <tr>
+                        <td>{}</td>
+                        <td>{}</td>
+                    </tr>""".format(measurer, count)
+        
+    o += """
+                </tbody>
+            </table>
+            <h4>List of Facilities</h4>
+            <table id="FAC_table" 
+                class="table table-striped table-bordered table-sm"
+                data-toggle="table"
+                data-search="true"
+                data-pagination="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="facility" data-sortable="true">Facilities</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
+                    </tr>
+                </thead>
+                <tbody>"""
+    for facility, count in mpec_data[station_code]['FAC'].items():
+        o += """
+                    <tr>
+                        <td>{}</td>
+                        <td>{}</td>
+                    </tr>""".format(facility, count)
+        
+    o += """
+                </tbody>
+            </table>
+        <script src="../dist/js/custom_sort.js"></script>
+        </div>
+        <footer class="pt-5 my-5 text-muted border-top">
+        Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
+        <path d="M6.375 7.125V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/>
+        <path d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12V3.545h3.399c1.587 0 2.543.809 2.543 2.11 0 .884-.65 1.675-1.483 1.816v.1c1.143.117 1.904.931 1.904 2.033 0 1.488-1.084 2.396-2.888 2.396H5.062z"/>
+        </svg> Bootstrap</a> and <a href="https://bootstrap-table.com">Bootstrap Table</a>.
+            <a href="https://pdssbn.astro.umd.edu/"><img src="../sbn_logo5_v0.png" width="100" style="vertical-align:bottom"></a>
+            <a href="https://github.com/Small-Bodies-Node/mpecwatch"><svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+        </svg></a>
+        </footer>
+
+        <!-- Bootstrap core JavaScript
+        ================================================== -->
+        <!-- Placed at the end of the document so the pages load faster -->
+        <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
+        <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"><\/script>')</script>
+        <script src="../dist/js/bootstrap.min.js"></script>
+        <script src="../assets/js/docs.min.js"></script>
+        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+        <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
+
+        <!-- Bootstrap Table -->
+        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/tableExport.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/libs/jsPDF/jspdf.umd.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/bootstrap-table.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/extensions/export/bootstrap-table-export.min.js"></script>
+    </div>
+  </body>
+</html>"""    
+     
+    ## figures ##
+     # figure: yearly breakdown of MPEC types   
+    fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
+    fig.update_layout(barmode='stack')
+    fig.write_html("../www/byStation/Graphs/{}.html".format(station))
+
+    # figure: yearly breakdown of Discovery object types
+    fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjectType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number of Discovery MPECs by object type")
+    fig.update_layout(barmode='stack')
+    fig.write_html("../www/byStation/Graphs/{}_disc_obj.html".format(station))
+
+    # figure: yearly breakdown of Orbit Update object types
+    fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjectType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number of Orbit Update MPECs by object type")
+    fig.update_layout(barmode='stack')
+    fig.write_html("../www/byStation/Graphs/{}_OU_obj.html".format(station))
+
+    print(station)
+    with open(page, 'w') as f:
+        f.write(o)

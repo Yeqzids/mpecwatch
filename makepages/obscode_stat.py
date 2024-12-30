@@ -50,7 +50,7 @@ def encode(num, alphabet=BASE62):
     return ''.join(arr)
 
 def getMonthName(month):
-    return calendar.month_name[month]
+    return calendar.month_name[month][::3]
 
 # fix browser.py and survey.py after changing dictionary structure
 # "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery" are not in database (calulated from other fields)
@@ -80,10 +80,15 @@ for s in mpccode:
     d[s]['OBS'] = {}
     d[s]['MEA'] = {}
     d[s]['FAC'] = {}
-    d[s]['MPECs'] = {}
-    # old structure used in line 491 StationMPECGraph.py: need to update
-    for i in ["Name", "timestamp", "Discovery?", "First Conf?", "Object Type", "CATCH"]:
-        d[s]['MPECs'][i] = None
+
+    # For individual MPECs table 
+    d[s]['MPECs'] = []
+    # d[s]['MPECs']['Name'] = {}
+    # d[s]['MPECs']['timestamp'] = {}
+    # d[s]['MPECs']['Discovery?'] = {}
+    # d[s]['MPECs']['First Conf?'] = {}
+    # d[s]['MPECs']['Object Type'] = {}
+    # d[s]['MPECs']['CATCH'] = {}
 
     #Grab MPECId
     try:
@@ -252,6 +257,41 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
                 d[station]['1stRecovery'][year]["PHA"] += 1
             else:
                 d[station]['1stRecovery'][year][mpec[7]] += 1
+
+    # name = mpec[0] + "\t" + mpec[1]
+    # if name not in d[station]['MPECs']['Name'].keys():
+    #     id = mpec[0][5::]
+    #     packed_front = ""
+    #     packed_back = ""
+
+    #     #packed front
+    #     if id[0:2] == "18":
+    #         packed_front = "I" + id[2:4]
+    #     elif id[0:2] == "19":
+    #         packed_front = "J" + id[2:4]
+    #     elif id[0:2] == "20":
+    #         packed_front = "K" + id[2:4]
+            
+    #     #packed_back
+    #     if len(id) == 8:
+    #         packed_back = packed_front + id[-3::]
+    #     elif len(id) == 9:
+    #         packed_back = packed_front + id[5] + encode(int(id[6:8])) + id[-1]
+        
+    #     url1 = "\"https://www.minorplanetcenter.net/mpec/{}/{}.html\"".format(packed_front, packed_back)
+    #     name_url = "<a href={}>{}</a>".format(url1, name)
+    #     d[station]['MPECs']['Name'] = name_url #name w/ url embedded
+    #     d[station]['MPECs']['timestamp'] = int(mpec[2])
+    #     # Discovery?
+    #     if station == mpec[4]:
+    #         d[station]['MPECs']['Discovery?'] = "&#x2713" #check mark
+    #     else:
+    #         d[station]['MPECs']['Discovery?'] = ""
+    #     # First Conf?
+    #     if station == mpec[5]:
+    #         d[station]['MPECs']['First Conf?'] = "&#x2713" #check mark
+    #     else:
+    #         d[station]['MPECs']['First Conf?'] = ""
 
     
 with open('obscode_stat.json', 'w') as o:
