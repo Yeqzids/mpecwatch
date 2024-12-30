@@ -43,4 +43,4 @@ This project makes use of [Bootstrap](https://getbootstrap.com/), [Bootstrap Tab
 ## Author
 
 * [Quanzhi Ye](https://www.astro.umd.edu/~qye/)
-* Taegon Hibbitts
+* [Taegon Hibbitts](https://github.com/Taeg03)
