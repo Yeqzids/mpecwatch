@@ -33,8 +33,12 @@ TABLE XXX (observatory code):
 
 import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, threading, concurrent.futures
 from datetime import date
+import signal # for handling exit signal
+import traceback
+import logging
 
-mpec_data=dict()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 mpecconn = sqlite3.connect("../mpecwatch_v3.db")
 cursor = mpecconn.cursor()
 
@@ -64,15 +68,33 @@ def encode(num, alphabet=BASE62):
     return ''.join(arr)
 
 def make_monthly_page(df_monthly, station, year):
-    page_monthly = "../www/byStation/monthly/{}_{}.html".format(station, year)
-    o = """
+    # check if stop_event is set more frequently to avoid unnecessary computation
+    if stop_event.is_set():
+        return
+
+    station_code = station[-3:]
+    station_year = station + "_" + str(year)
+
+    fig = px.bar(df_monthly, x="Month", y="#MPECs", color="MPECType")
+    fig.write_html(f"../www/byStation/monthly/graphs/{station_year}.html")
+    
+
+    if not all(col in df_monthly.columns for col in ["Month", "#MPECs", "MPECType"]):
+        logging.info(f"DataFrame contents for station {station_code}, year {year}:\n{df_monthly}")
+        stop_event.set()
+        return
+
+    indexed_df = df_monthly.copy()
+    indexed_df.set_index(['Month', 'MPECType'], inplace=True) # set index after making the graph to avoid error
+    page_monthly = f"../www/byStation/monthly/{station_year}.html"
+    o = f"""
 <!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>MPECWatch: {} Monthly Summary | {}</title>
+        <title>MPECWatch: {year} Monthly Summary | {station_code}</title>
 
         <!-- Bootstrap core CSS -->
         <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
@@ -82,9 +104,9 @@ def make_monthly_page(df_monthly, station, year):
         <link href="../../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
     </head>
     <body>
-        <div class="container" theme-showcase" role="main">
-            <h2>{} {} | {}</h2>
-            <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{}.html" height="525" width="100%"></iframe>
+        <div class="theme-showcase" role="main">
+            <h2>{mpccode[station_code]['name']} {year} | {station_year}</h2>
+            <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{station_year}.html" height="525" width="100%"></iframe>
             <table class="table table-striped table-hover table-sm table-responsive"
                 data-toggle="table"
                 data-show-export="true"
@@ -102,21 +124,15 @@ def make_monthly_page(df_monthly, station, year):
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
                     </tr>
-            </thead>""".format(station[-3:], year, station[-3:], mpccode[station[-3:]]['name'], year, station+"_"+str(year))
+                </thead>"""
     for month in MONTHS:
-        o += """
+        o += f"""   
                 <tr>
-                    <td>%s</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                    </tr>""" % (month, df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
+                    <td>{month}</td>"""
+        for mpecType in MPEC_TYPES:
+            o += f"""
+                    <td>{indexed_df.loc[(month, mpecType)]['#MPECs']}</td>
+                </tr>"""
     o += """
             </table>
         </div>
@@ -130,12 +146,20 @@ MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Ret
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-# main loop that traversed through all stations in obscodestat.py
-for station_code in obscode:
-    station = 'station_'+station_code
-    page = "../www/byStation/" + str(station) + ".html"
+# Event to signal threads to stop
+stop_event = threading.Event()
+lock = threading.Lock()
 
-    o = """
+# main loop that traversed through all stations in obscodestat.py
+def make_station_page(station_code):
+    # handling stop_event
+    if stop_event.is_set():
+        return
+
+    station = 'station_'+station_code
+    page = f"../www/byStation/{station}.html"
+
+    o = f"""
 <!doctype html>
 <html lang="en">
   <head>
@@ -143,7 +167,7 @@ for station_code in obscode:
           <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTXHKC28G9"></script>
           <script>
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+            function gtag(){{dataLayer.push(arguments);}}
             gtag('js', new Date());
             gtag('config', 'G-WTXHKC28G9');
           </script>
@@ -155,7 +179,7 @@ for station_code in obscode:
     <meta name="author" content="">
     <link rel="icon" href="../favicon.ico">
 
-    <title>MPEC Watch | Station Statistics %s</title>
+    <title>MPEC Watch | Station Statistics {station_code}</title>
 
     <!-- Bootstrap core CSS -->
     <link href="https://unpkg.com/bootstrap-table@1.22.5/dist/bootstrap-table.min.css" rel="stylesheet">
@@ -212,21 +236,20 @@ for station_code in obscode:
     </nav>
 
     <div class="container theme-showcase" role="main">
-
-      <!-- Main jumbotron for a primary marketing message or call to action -->""" % str(station[-3:])
-    o += """<div class="row">
-            <h2>{} {}</h2>""".format(station[-3:], mpccode[station[-3:]]['name'])
+      <!-- Main jumbotron for a primary marketing message or call to action -->
+        <div class="row">
+            <h2>{station_code} {mpccode[station_code]['name']}</h2>"""
               
-    if str(station[-3:]) not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
-        print(station[-3:])
-        print(mpccode[station[-3:]])
-        if mpccode[station[-3:]]['lon'] > 180:
-            lon = mpccode[station[-3:]]['lon'] - 360
+    if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
+        print(station_code)
+        print(mpccode[station_code])
+        if mpccode[station_code]['lon'] > 180:
+            lon = mpccode[station_code]['lon'] - 360
         else:
-            lon = mpccode[station[-3:]]['lon']
-        o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this observatory?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
+            lon = mpccode[station_code]['lon']
+        o += f"""<p><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[station_code]['lat']};{lon}">Where is this observatory?</a></p>"""
 
-    o += """<p>
+    o += f"""<p>
              <h3>Graphs</h3>
               <h4>Yearly Breakdown of MPEC Types</h4>
               <p>
@@ -241,25 +264,25 @@ for station_code in obscode:
               FirstFollowup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
               Other - MPECs that do not fit into categories listed above and involve observations made by this station.
               </p>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}.html" height="525" width="100%"></iframe>
               <h4>Yearly Breakdown of Discovery Object Types</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_disc_obj.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_disc_obj.html" height="525" width="100%"></iframe>
               <h4>Yearly Breakdown of Orbit Update Object Types</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_OU_obj.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_OU_obj.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Observers</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Observers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Measurers</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Measurers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Facilities</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Facilities.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Objects</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Objects.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Objects.html" height="525" width="100%"></iframe>
               <h4>Annual Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_yearly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_yearly.html" height="525" width="100%"></iframe>
               <h4>Weekly Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_weekly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_weekly.html" height="525" width="100%"></iframe>
               <h4>Hourly Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_hourly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_hourly.html" height="525" width="100%"></iframe>
             </p>
         </div>
         <div class="container">
@@ -284,38 +307,31 @@ for station_code in obscode:
                         <th>First Follow-Up</th>
                     </tr>
                 </thead>
-        """.format(station, station, station, station, station, station, station, station, station, station)
+        """
     
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
     disc_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
     OU_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         # yearly breakdown of MPEC types
-        df_yearly = pd.concat([pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
+        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
         disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['Discovery'][str(year)][obj] for obj in OBJ_TYPES]})])
         OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['OrbitUpdate'][str(year)][obj] for obj in OBJ_TYPES]})])
 
-        # monthly breakdown of MPEC types
         df_monthly = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
+        # monthly breakdown of MPEC types
         for month in MONTHS:
-            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
-        make_monthly_page(df_monthly, station, year)
+            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
+        with lock:
+            make_monthly_page(df_monthly, station, year)
 
-        o += """
+        o += f"""
                 <tr>
-                    <td><a href="monthly/%s_%i.html">%i</a></td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                </tr>
-            """ % (station, year, year, obscode[station_code]['total'][str(year)], obscode[station_code]['Editorial'][str(year)], obscode[station_code]['Discovery'][str(year)], obscode[station_code]['OrbitUpdate'][str(year)], obscode[station_code]['DOU'][str(year)], obscode[station_code]['ListUpdate'][str(year)], obscode[station_code]['Retraction'][str(year)], obscode[station_code]['Other'][str(year)], obscode[station_code]['Followup'][str(year)], obscode[station_code]['FirstFollowup'][str(year)])
+                    <td><a href="monthly/{station}_{year}.html">{year}</a></td>
+                    <td>{sum([obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES])}</td>"""
+        for mpecType in MPEC_TYPES:
+            o += f"""
+                    <td>{obscode[station_code][mpecType][str(year)]['total']}</td>"""            
     
     o += """
             </table>
@@ -339,22 +355,22 @@ for station_code in obscode:
                         <th class="th-sm" data-field="catch" data-sortable="true">Search Archival Image</th>
                     </tr>
                 </thead>
-    """.format(str(station), str(station))
-
-    index = 1
-    for i in mpec_data[station]['MPECs']:
-        o += """
                 <tbody>
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
+    """
+
+    index = 1
+    for i in obscode[station_code]['MPECs']:
+        o += f"""
+                        <td>{index}</td>
+                        <td>{i[0]}</td>
+                        <td>{datetime.datetime.fromtimestamp(i[1])}</td>
+                        <td>{i[2]}</td>
+                        <td>{i[3]}</td>
+                        <td>{i[4]}</td>
+                        <td>{i[5]}</td>
                     </tr>
-        """.format(index,i[0],datetime.datetime.fromtimestamp(i[1]),i[2],i[3],i[4],i[5])
+        """
         index += 1
         
     o += """
@@ -373,12 +389,12 @@ for station_code in obscode:
                     </tr>
                 </thead>
                 <tbody>"""
-    for observer, count in mpec_data[station_code]['OBS'].items():
-        o += """
+    for observer, count in obscode[station_code]['OBS'].items():
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                    </tr>""".format(observer, count)
+                        <td>{observer}</td>
+                        <td>{count}</td>
+                    </tr>"""
         
     o += """
                 </tbody>
@@ -396,12 +412,12 @@ for station_code in obscode:
                     </tr>
                 </thead>
                 <tbody>"""
-    for measurer, count in mpec_data[station_code]['MEA'].items():
-        o += """
+    for measurer, count in obscode[station_code]['MEA'].items():
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                    </tr>""".format(measurer, count)
+                        <td>{measurer}</td>
+                        <td>{count}</td>
+                    </tr>"""
         
     o += """
                 </tbody>
@@ -419,12 +435,12 @@ for station_code in obscode:
                     </tr>
                 </thead>
                 <tbody>"""
-    for facility, count in mpec_data[station_code]['FAC'].items():
-        o += """
+    for facility, count in obscode[station_code]['FAC'].items():
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                    </tr>""".format(facility, count)
+                        <td>{facility}</td>
+                        <td>{count}</td>
+                    </tr>"""
         
     o += """
                 </tbody>
@@ -446,7 +462,7 @@ for station_code in obscode:
         ================================================== -->
         <!-- Placed at the end of the document so the pages load faster -->
         <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
-        <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"><\/script>')</script>
+        <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"></script>')</script>
         <script src="../dist/js/bootstrap.min.js"></script>
         <script src="../assets/js/docs.min.js"></script>
         <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
@@ -465,18 +481,43 @@ for station_code in obscode:
      # figure: yearly breakdown of MPEC types   
     fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
     fig.update_layout(barmode='stack')
-    fig.write_html("../www/byStation/Graphs/{}.html".format(station))
+    fig.write_html(f"../www/byStation/Graphs/{station}.html")
 
     # figure: yearly breakdown of Discovery object types
     fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjectType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number of Discovery MPECs by object type")
     fig.update_layout(barmode='stack')
-    fig.write_html("../www/byStation/Graphs/{}_disc_obj.html".format(station))
+    fig.write_html(f"../www/byStation/Graphs/{station}_disc_obj.html")
 
     # figure: yearly breakdown of Orbit Update object types
     fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjectType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number of Orbit Update MPECs by object type")
     fig.update_layout(barmode='stack')
-    fig.write_html("../www/byStation/Graphs/{}_OU_obj.html".format(station))
+    fig.write_html(f"../www/byStation/Graphs/{station}_OU_obj.html")
 
     print(station)
     with open(page, 'w') as f:
         f.write(o)
+
+def signal_handler(sig, frame):
+    print('Exit signal received, shutting down...')
+    stop_event.set()
+
+def main():
+    signal.signal(signal.SIGINT, signal_handler)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {executor.submit(make_station_page, station_code): station_code for station_code in obscode}
+        for future in concurrent.futures.as_completed(futures):
+            station_code = futures[future]
+            try:
+                future.result()
+            except Exception as exc:
+                print(f'Generated an exception: {exc}')
+                traceback.print_exc()
+                stop_event.set()
+                print(f'Error processing station: {station_code}')
+
+# def main():
+#     for station_code in obscode:
+#         make_station_page(station_code)
+
+if __name__ == "__main__":
+    main()

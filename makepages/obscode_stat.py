@@ -50,12 +50,12 @@ def encode(num, alphabet=BASE62):
     return ''.join(arr)
 
 def getMonthName(month):
-    return calendar.month_name[month][::3]
+    return calendar.month_name[month][0:3]
 
 # fix browser.py and survey.py after changing dictionary structure
 # "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery" are not in database (calulated from other fields)
-MPEC_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "1stRecovery"]
-obj_types = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"] #Only used when MPECType is Discovery or OrbitUpdate
+MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "1stRecovery"]
+OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"] #Only used when MPECType is Discovery or OrbitUpdate
 d = dict()
 for s in mpccode:
 #for i in range(1):
@@ -65,7 +65,7 @@ for s in mpccode:
     d[s]['total'] = 0
     d[s]['MPECId'] = {}
     
-    for obs_type in MPEC_types: 
+    for obs_type in MPEC_TYPES: 
         d[s][obs_type] = {'total': 0}
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             year = int(year)
@@ -73,7 +73,7 @@ for s in mpccode:
             for month in np.arange(1, 13, 1):
                 d[s][obs_type][year][getMonthName(month)] = 0
             if obs_type in ["Discovery", "OrbitUpdate", "1stRecovery", "Followup", "FirstFollowup"]:
-                for obj_type in obj_types:
+                for obj_type in OBJ_TYPES:
                     d[s][obs_type][year][obj_type] = 0
     
     # each station has its own OBS, MEA, FAC and will be initialized as empty dictionaries
@@ -82,13 +82,8 @@ for s in mpccode:
     d[s]['FAC'] = {}
 
     # For individual MPECs table 
+    # nested array of the following (for each MPEC): [Name, timestamp, Discovery?, First Conf?, Object Type, CATCH]
     d[s]['MPECs'] = []
-    # d[s]['MPECs']['Name'] = {}
-    # d[s]['MPECs']['timestamp'] = {}
-    # d[s]['MPECs']['Discovery?'] = {}
-    # d[s]['MPECs']['First Conf?'] = {}
-    # d[s]['MPECs']['Object Type'] = {}
-    # d[s]['MPECs']['CATCH'] = {}
 
     #Grab MPECId
     try:
@@ -122,6 +117,7 @@ for s in mpccode:
         pass
 
 for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
+#for mpec in cursor.execute("SELECT * FROM MPEC WHERE Station = 'G96'").fetchall():
     year = int(date.fromtimestamp(mpec[2]).year)
     month = getMonthName(int(date.fromtimestamp(mpec[2]).month))
 
@@ -183,64 +179,69 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
             else:
                 d[station]['OrbitUpdate'][year][mpec[7]] += 1 #object type
 
-        # "Name", "timestamp", "Discovery?", "First Conf?", "Object Type", "CATCH"
         temp = [] #[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH]
         name = mpec[0] + "\t" + mpec[1]
         if name not in d[station]['MPECs']: #prevents duplication of the same MPEC object
-            id = mpec[0][5::]
-            packed_front = ""
-            packed_back = ""
+                id = mpec[0][5::]
+                packed_front = ""
+                packed_back = ""
 
-            #packed front
-            if id[0:2] == "18":
-                packed_front = "I" + id[2:4]
-            elif id[0:2] == "19":
-                packed_front = "J" + id[2:4]
-            elif id[0:2] == "20":
-                packed_front = "K" + id[2:4]
+                #packed front
+                if id[0:2] == "18":
+                    packed_front = "I" + id[2:4]
+                elif id[0:2] == "19":
+                    packed_front = "J" + id[2:4]
+                elif id[0:2] == "20":
+                    packed_front = "K" + id[2:4]
+                    
+                #packed_back
+                if len(id) == 8:
+                    packed_back = packed_front + id[-3::]
+                elif len(id) == 9:
+                    packed_back = packed_front + id[5] + encode(int(id[6:8])) + id[-1]
                 
-            #packed_back
-            if len(id) == 8:
-                packed_back = packed_front + id[-3::]
-            elif len(id) == 9:
-                packed_back = packed_front + id[5] + encode(int(id[6:8])) + id[-1]
-            
-            url1 = "\"https://www.minorplanetcenter.net/mpec/{}/{}.html\"".format(packed_front, packed_back)
-            mpec_url = "<a href={}>{}</a>".format(url1, name)
+                url1 = "\"https://www.minorplanetcenter.net/mpec/{}/{}.html\"".format(packed_front, packed_back)
+                mpec_url = "<a href={}>{}</a>".format(url1, name)
 
-            d[station]['MPECs']["Name"] = mpec_url
-            d[station]['MPECs']["timestamp"] = int(mpec[2])
-            #Discovery?
-            if station == mpec[4]:
-                d[station]['MPECs']["Discovery?"] = "&#x2713" #check mark
-            else:
-                d[station]['MPECs']["Discovery?"] = ""
-            #First Conf?
-            if station == mpec[5]:
-                d[station]['MPECs']["First Conf?"] = "&#x2713" #check mark
-            else:
-                d[station]['MPECs']["First Conf?"] = ""
-            
-            obj_type = mpec[7]
-            if obj_type == "Unk":
-                obj_type = "Unknown"
-            elif obj_type == "NEAg22":
-                obj_type = "NEA (H>22)"
-            elif obj_type == "NEA1822":
-                obj_type = "NEA (18>H>22)"
-            elif obj_type == "NEAl18":
-                obj_type = "NEA (H<18)"
-            elif obj_type == "PHAl18":
-                obj_type = "PHA (H<18)"
-            elif obj_type == "PHAg18":
-                obj_type == "PHA (H>18)"
-            d[station]['MPECs']["Object Type"] = obj_type
+                temp.append(mpec_url) #name w/ url embedded
+                temp.append(int(mpec[2])) #time: date and time
+                #Discovery?
+                if station == mpec[4]:
+                    temp.append("&#x2713") #check mark
+                else:
+                    temp.append("")
+                #First Conf?
+                if station == mpec[5]:
+                    temp.append("&#x2713") #check mark
+                else:
+                    temp.append("")
+                
+                obj_type = mpec[7]
+                if obj_type == "Unk":
+                    obj_type = "Unknown"
+                elif obj_type == "NEAg22":
+                    obj_type = "NEA (H>22)"
+                elif obj_type == "NEA1822":
+                    obj_type = "NEA (18>H>22)"
+                elif obj_type == "NEAI18":
+                    obj_type = "NEA (H<18)"
+                elif obj_type == "PHAI18":
+                    obj_type = "PHA (H<18)"
+                elif obj_type == "PHAg18":
+                    obj_type == "PHA (H>18)"
+                temp.append(obj_type)
 
-            if mpec[7]:
-                catch_url = "<a href=https://catch.astro.umd.edu/data?target={}>CATCH</a>".format(d[station]['MPECId'][mpec[0]])
-                d[station]['MPECs']["CATCH"] = catch_url
-            else:
-                d[station]['MPECs']["CATCH"] = ""
+
+                if mpec[7]:
+                    #obs_code = cursor.execute("SELECT Object FROM station_{} WHERE MPEC = '{}'".format(station, mpec[0])).fetchall()
+                    #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(obs_code[:3], obs_code[3::])
+                    catch_url = "<a href=https://catch.astro.umd.edu/data?target={}>CATCH</a>".format(d[station]['MPECId'][mpec[0]])
+                    #catch_url = "<a href=https://catch.astro.umd.edu/data?objid={}%20{}>CATCH</a>".format(mpec[0].split()[1][:4], mpec[0].split()[1][5::])
+                    temp.append(catch_url)
+                else:
+                    temp.append("")
+
+                d[station]['MPECs'].append(temp)
 
         # numbers of precovery MPECs'
         if bool(re.match('.*' + station + '.*' + mpec[4] + '.*', mpec[3])):
