@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Wed Jul  6 14:49:19 2022
 
@@ -32,10 +31,12 @@ TABLE XXX (observatory code):
     Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
-import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, threading, concurrent.futures
+import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, signal, concurrent.futures, multiprocessing, traceback
 from datetime import date
+import logging
 
-mpec_data=dict()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 mpecconn = sqlite3.connect("../mpecwatch_v3.db")
 cursor = mpecconn.cursor()
 
@@ -43,7 +44,7 @@ mpccode = '../mpccode.json'
 with open(mpccode) as mpccode:
     mpccode = json.load(mpccode)
 
-obscode = '../obscode_stat.json'
+obscode = 'obscode_stat.json'
 with open(obscode) as obscode:
     obscode = json.load(obscode)
 
@@ -64,14 +65,101 @@ def encode(num, alphabet=BASE62):
     arr.reverse()
     return ''.join(arr)
 
-def createGraph(station_code, includeFirstFU = True):
-    df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
-    disc_obj = pd.DataFrame({"Year": [], "ObjType": [], "#MPECs": []})
-    OU_obj = pd.DataFrame({"Year": [], "ObjType": [], "#MPECs": []})
-    station = 'station_'+station_code
-    page = "../www/byStation/" + str(station) + ".html"
+MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
+MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-    o = """
+stop_event = multiprocessing.Event()
+
+def signal_handler(sig, frame):
+    logging.info('Exit signal received, shutting down...')
+    stop_event.set()
+
+def make_monthly_page(df_monthly, station, year):
+    if stop_event.is_set():
+        return
+
+    station_code = station[-3:]
+    station_year = station + "_" + str(year)
+
+    fig = px.bar(df_monthly, x="Month", y="#MPECs", color="MPECType")
+    fig.write_html(f"../www/byStation/monthly/graphs/{station_year}.html")
+    
+    # Log DataFrame contents if it does not contain the expected columns
+    if not all(col in df_monthly.columns for col in ["Month", "#MPECs", "MPECType"]):
+        logging.info(f"DataFrame contents for station {station_code}, year {year}:\n{df_monthly}")
+        stop_event.set()
+        return
+
+    df_monthly.set_index(['Month', 'MPECType'], inplace=True) # set index after making the graph to avoid error
+    page_monthly = f"../www/byStation/monthly/{station_year}.html"
+    o = f"""
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>MPECWatch: {year} Monthly Summary | {station_code}</title>
+
+        <!-- Bootstrap core CSS -->
+        <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Bootstrap theme -->
+        <link href="../../dist/css/bootstrap-theme.min.css" rel="stylesheet">
+        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+        <link href="../../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="theme-showcase" role="main">
+            <h2>{mpccode[station_code]['name']} {year} | {station_year}</h2>
+            <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{station_year}.html" height="525" width="100%"></iframe>
+            <table class="table table-striped table-hover table-sm table-responsive"
+                data-toggle="table"
+                data-show-export="true"
+                data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Editorial</th>
+                        <th>Discovery</th>
+                        <th>P/R/FU</th>
+                        <th>DOU</th>
+                        <th>List Update</th>
+                        <th>Retraction</th>
+                        <th>Other</th>
+                        <th>Follow-Up</th>
+                        <th>First Follow-Up</th>
+                    </tr>
+                </thead>"""
+    for month in MONTHS:
+        o += f"""   
+                <tr>
+                    <td>{month}</td>"""
+        for mpecType in MPEC_TYPES:
+            o += f"""
+                    <td>{df_monthly.loc[(month, mpecType)]['#MPECs']}</td>
+                </tr>"""
+    o += """
+            </table>
+        </div>
+    </body>
+</html>"""
+
+    with open(page_monthly, 'w') as f:
+        f.write(o)
+
+# main loop that traversed through all stations in obscodestat.py
+def make_station_page(station_code):
+    # handling stop_event
+    if stop_event.is_set():
+        return
+    
+    logging.info(f"Starting processing for station: {station_code}")
+
+    station = 'station_'+station_code
+    page = f"../www/byStation/{station}.html"
+
+    o = f"""
 <!doctype html>
 <html lang="en">
   <head>
@@ -79,7 +167,7 @@ def createGraph(station_code, includeFirstFU = True):
           <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTXHKC28G9"></script>
           <script>
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+            function gtag(){{dataLayer.push(arguments);}}
             gtag('js', new Date());
             gtag('config', 'G-WTXHKC28G9');
           </script>
@@ -91,7 +179,7 @@ def createGraph(station_code, includeFirstFU = True):
     <meta name="author" content="">
     <link rel="icon" href="../favicon.ico">
 
-    <title>MPEC Watch | Station Statistics %s</title>
+    <title>MPEC Watch | Station Statistics {station_code}</title>
 
     <!-- Bootstrap core CSS -->
     <link href="https://unpkg.com/bootstrap-table@1.22.5/dist/bootstrap-table.min.css" rel="stylesheet">
@@ -148,21 +236,20 @@ def createGraph(station_code, includeFirstFU = True):
     </nav>
 
     <div class="container theme-showcase" role="main">
-
-      <!-- Main jumbotron for a primary marketing message or call to action -->""" % str(station[-3:])
-    o += """<div class="row">
-            <h2>{} {}</h2>""".format(station[-3:], mpccode[station[-3:]]['name'])
+      <!-- Main jumbotron for a primary marketing message or call to action -->
+        <div class="row">
+            <h2>{station_code} {mpccode[station_code]['name']}</h2>"""
               
-    if str(station[-3:]) not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
-        print(station[-3:])
-        print(mpccode[station[-3:]])
-        if mpccode[station[-3:]]['lon'] > 180:
-            lon = mpccode[station[-3:]]['lon'] - 360
+    if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
+        print(station_code)
+        print(mpccode[station_code])
+        if mpccode[station_code]['lon'] > 180:
+            lon = mpccode[station_code]['lon'] - 360
         else:
-            lon = mpccode[station[-3:]]['lon']
-        o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this observatory?</a></p>""".format(mpccode[station[-3:]]['lat'], lon)
-              
-    o += """<p>
+            lon = mpccode[station_code]['lon']
+        o += f"""<p><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[station_code]['lat']};{lon}">Where is this observatory?</a></p>"""
+
+    o += f"""<p>
              <h3>Graphs</h3>
               <h4>Yearly Breakdown of MPEC Types</h4>
               <p>
@@ -177,25 +264,25 @@ def createGraph(station_code, includeFirstFU = True):
               FirstFollowup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
               Other - MPECs that do not fit into categories listed above and involve observations made by this station.
               </p>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}.html" height="525" width="100%"></iframe>
               <h4>Yearly Breakdown of Discovery Object Types</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_disc_obj.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_disc_obj.html" height="525" width="100%"></iframe>
               <h4>Yearly Breakdown of Orbit Update Object Types</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{}_OU_obj.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_OU_obj.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Observers</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Observers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Measurers</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Measurers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Facilities</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Facilities.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Objects</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Objects.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Objects.html" height="525" width="100%"></iframe>
               <h4>Annual Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_yearly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_yearly.html" height="525" width="100%"></iframe>
               <h4>Weekly Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_weekly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_weekly.html" height="525" width="100%"></iframe>
               <h4>Hourly Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_hourly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_hourly.html" height="525" width="100%"></iframe>
             </p>
         </div>
         <div class="container">
@@ -220,77 +307,34 @@ def createGraph(station_code, includeFirstFU = True):
                         <th>First Follow-Up</th>
                     </tr>
                 </thead>
-        """.format(station, station, station, station, station, station, station, station, station, station) 
-        
+        """
+    
+    df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
+    disc_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
+    OU_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-        year = int(year)
-        year_counts = []
-        for mpecType in obs_types:
-            if year in mpec_data[station[8::]][mpecType].keys():
-                total = mpec_data[station[8::]][mpecType][year]['total']
-            else:
-                total = 0
-            year_counts.append(total)
-        if includeFirstFU:
-            year_counts[7] -= year_counts[8]
-        else:
-            year_counts[8] = 0
+        # yearly breakdown of MPEC types
+        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
+        disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['Discovery'][str(year)][obj] for obj in OBJ_TYPES]})])
+        OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['OrbitUpdate'][str(year)][obj] for obj in OBJ_TYPES]})])
 
-        #for objType in obj_types:
-        
-        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
-        disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [mpec_data[station[8::]]['Discovery'][year]['NEA'], mpec_data[station[8::]]['Discovery'][year]['Comet'], mpec_data[station[8::]]['Discovery'][year]['Satellite'], mpec_data[station[8::]]['Discovery'][year]['TNO'], mpec_data[station[8::]]['Discovery'][year]['Unusual'], mpec_data[station[8::]]['Discovery'][year]['Interstellar'], mpec_data[station[8::]]['Discovery'][year]['unk']]})])
-        OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [mpec_data[station[8::]]['OrbitUpdate'][year]['NEA'], mpec_data[station[8::]]['OrbitUpdate'][year]['Comet'], mpec_data[station[8::]]['OrbitUpdate'][year]['Satellite'], mpec_data[station[8::]]['OrbitUpdate'][year]['TNO'], mpec_data[station[8::]]['OrbitUpdate'][year]['Unusual'], mpec_data[station[8::]]['OrbitUpdate'][year]['Interstellar'], mpec_data[station[8::]]['OrbitUpdate'][year]['unk']]})])
-        
-        df_monthly_graph = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
-        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        month_index = 1
-        for month in months:
-            month_counts = []
-            for mpecType in obs_types:
-                month_counts.append(mpec_data[station[8::]][mpecType][year][month_index])
-            df_monthly_graph = pd.concat([df_monthly_graph, pd.DataFrame({"Month": [month, month, month, month, month, month, month, month, month], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": month_counts})])
-            month_index += 1
-        monthly(station, year, df_monthly_graph)
+        df_monthly = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
+        # monthly breakdown of MPEC types
+        for month in MONTHS:
+            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
+        make_monthly_page(df_monthly, station, year)
 
-        o += """
+        o += f"""
                 <tr>
-                    <td><a href="monthly/%s_%i.html">%i</a></td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                </tr>
-        """ % (station, year, year, sum(year_counts), year_counts[0], year_counts[1], year_counts[2], year_counts[3], year_counts[4], year_counts[5], year_counts[6], year_counts[7], year_counts[8])
-    try:
-        fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
-        fig.write_html("../www/byStation/Graphs/"+station+".html")
-    except Exception as e:
-        print(e)
-
-    try:
-        fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Discovery: Number and type of Object by year")
-        fig.write_html("../www/byStation/Graphs/"+station+"_disc_obj.html")
-    except Exception as e:
-        print(e)
-
-    try:
-        fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Orbit Update: Number and type of Object by year")
-        fig.write_html("../www/byStation/Graphs/"+station+"_OU_obj.html")
-    except Exception as e:
-        print(e)
+                    <td><a href="monthly/{station}_{year}.html">{year}</a></td>
+                    <td>{sum([obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES])}</td>"""
+        for mpecType in MPEC_TYPES:
+            o += f"""
+                    <td>{obscode[station_code][mpecType][str(year)]['total']}</td>"""            
     
     o += """
             </table>
-        </div>
-        <div class="containter">
-            <h4>List of Individual MPECs</h4>
+            <h4 style="margin-top: 20px;">List of Individual MPECs</h4>
             <table id="mpec_table" 
                 class="table table-striped table-bordered table-sm"
                 data-height="460"
@@ -311,23 +355,23 @@ def createGraph(station_code, includeFirstFU = True):
                     </tr>
                 </thead>
                 <tbody>
-    """.format(str(station), str(station))
-    
-    index = 1
-    for i in reversed(mpec_data[station[-3::]]['MPECs']):
-        o += """
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                    </tr>
-        """.format(index,i[0],datetime.datetime.fromtimestamp(i[1]),i[2],i[3],i[4],i[5])
-        index += 1
+    """
 
+    index = 1
+    for i in obscode[station_code]['MPECs']:
+        o += f"""
+                        <td>{index}</td>
+                        <td>{i[0]}</td>
+                        <td>{datetime.datetime.fromtimestamp(i[1])}</td>
+                        <td>{i[2]}</td>
+                        <td>{i[3]}</td>
+                        <td>{i[4]}</td>
+                        <td>{i[5]}</td>
+                    </tr>
+        """
+        index += 1
+        
     o += """
                 </tbody>
             </table>
@@ -344,13 +388,12 @@ def createGraph(station_code, includeFirstFU = True):
                     </tr>
                 </thead>
                 <tbody>"""
-    for observer, count in mpec_data[station[-3::]]['OBS'].items():
-        o += """
+    for observer, count in obscode[station_code]['OBS'].items():
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                    </tr>
-    """.format(observer, count)
+                        <td>{observer}</td>
+                        <td>{count}</td>
+                    </tr>"""
         
     o += """
                 </tbody>
@@ -368,14 +411,12 @@ def createGraph(station_code, includeFirstFU = True):
                     </tr>
                 </thead>
                 <tbody>"""
-    
-    for measurer, count in mpec_data[station[-3::]]['MEA'].items():
-        o += """
+    for measurer, count in obscode[station_code]['MEA'].items():
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                    </tr>
-    """.format(measurer, count)
+                        <td>{measurer}</td>
+                        <td>{count}</td>
+                    </tr>"""
         
     o += """
                 </tbody>
@@ -393,27 +434,18 @@ def createGraph(station_code, includeFirstFU = True):
                     </tr>
                 </thead>
                 <tbody>"""
-    
-    for facility, count in mpec_data[station[-3::]]['Facilities'].items():
-        o += """
-                <tr>
-                    <td>{}</td>
-                    <td>{}</td>
-                </tr>
-    """.format(facility, count)
-
+    for facility, count in obscode[station_code]['FAC'].items():
+        o += f"""
+                    <tr>
+                        <td>{facility}</td>
+                        <td>{count}</td>
+                    </tr>"""
+        
     o += """
                 </tbody>
             </table>
-        
-        <!--
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
-        -->
-
         <script src="../dist/js/custom_sort.js"></script>
-        </div>"""
-    
-    o += """
+        </div>
         <footer class="pt-5 my-5 text-muted border-top">
         Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
         <path d="M6.375 7.125V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/>
@@ -429,7 +461,7 @@ def createGraph(station_code, includeFirstFU = True):
         ================================================== -->
         <!-- Placed at the end of the document so the pages load faster -->
         <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
-        <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"><\/script>')</script>
+        <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"></script>')</script>
         <script src="../dist/js/bootstrap.min.js"></script>
         <script src="../assets/js/docs.min.js"></script>
         <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
@@ -442,110 +474,43 @@ def createGraph(station_code, includeFirstFU = True):
         <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/extensions/export/bootstrap-table-export.min.js"></script>
     </div>
   </body>
-</html>"""
+</html>"""    
+     
+    ## figures ##
+     # figure: yearly breakdown of MPEC types   
+    fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
+    fig.update_layout(barmode='stack')
+    fig.write_html(f"../www/byStation/Graphs/{station}.html")
+
+    # figure: yearly breakdown of Discovery object types
+    fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjectType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number of Discovery MPECs by object type")
+    fig.update_layout(barmode='stack')
+    fig.write_html(f"../www/byStation/Graphs/{station}_disc_obj.html")
+
+    # figure: yearly breakdown of Orbit Update object types
+    fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjectType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number of Orbit Update MPECs by object type")
+    fig.update_layout(barmode='stack')
+    fig.write_html(f"../www/byStation/Graphs/{station}_OU_obj.html")
 
     print(station)
-    with open(page, 'w', encoding='utf-8') as f:
+    with open(page, 'w') as f:
         f.write(o)
 
+    logging.info(f"Finished processing for station: {station_code}")
 
-def monthly(station, year, df_month_graph):
-    fig = px.bar(df_month_graph, x="Month", y="#MPECs", color="MPECType")
-    fig.write_html("../www/byStation/monthly/graphs/"+station+"_"+str(year)+".html")
-
-    df_monthly = pd.DataFrame({"Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
-    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    month_index = 1
-    for month in months:
-        new_row = []
-        for mpecType in obs_types:
-            #if year in mpec_data[station[8::]][mpecType].keys():
-            if month_index in mpec_data[station[-3:]][mpecType][year].keys():
-                new_row.append(mpec_data[station[-3:]][mpecType][year][month_index])
-            else:
-                new_row.append(0)
-        month_index+=1
-        df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=obs_types)])
-    
-    page = '../www/byStation/monthly/{}.html'.format(station+"_"+str(year))
-    o = """
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>MPECWatch: Monthly Summary | {}</title>
-
-        <!-- Bootstrap core CSS -->
-        <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
-        <!-- Bootstrap theme -->
-        <link href="../../dist/css/bootstrap-theme.min.css" rel="stylesheet">
-        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-        <link href="../../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
-    </head>
-    <body>
-        <div class="container" theme-showcase" role="main">
-            <h2>{} {} | {}</h2>
-            <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{}.html" height="525" width="100%"></iframe>
-            <table class="table table-striped table-hover table-condensed table-responsive">
-                <thead>
-                    <tr>
-                        <th>Month</th>
-                        <th>Editorial</th>
-                        <th>Discovery</th>
-                        <th>P/R/FU</th>
-                        <th>DOU</th>
-                        <th>List Update</th>
-                        <th>Retraction</th>
-                        <th>Other</th>
-                        <th>Follow-Up</th>
-                        <th>First Follow-Up</th>
-                    </tr>
-            </thead>""".format(year, station[-3:], mpccode[station[-3:]]['name'], year, station+"_"+str(year))
-    
-    for month in ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
-        o += """
-                <tbody>
-                    <tr>
-                        <td>%s</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                    </tr>""" % (month, df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
-        
-    df_monthly.to_csv("../www/byStation/monthly/csv/{}.csv".format(station+"_"+str(year)))
-    o += """      
-                </tbody>
-            </table>
-            <a href="csv/{}.csv" download="{}">
-                <p style="padding-bottom: 30px;">Download as csv</p>
-            </a>
-        </div>
-    </body>
-</html>""".format(station+"_"+str(year), station+"_"+str(year))
-    
-    with open(page, 'w', encoding='utf-8') as f:
-            f.write(o)    
-
-def main():
-    print('start...')
-    # for station in mpccode.keys():
-    #     if station == 'XXX':
-    #         continue
-    #     createGraph(station)
-    createGraph('G96')
-
-    # Export mpec_data to json 
-    # with open('../mpec_data.json', 'w') as f:
-    #     json.dump(mpec_data, f)
-
-main()
-mpecconn.close()
-print('finished')
+if __name__ == "__main__":
+    time_start = datetime.datetime.now()
+    signal.signal(signal.SIGINT, signal_handler)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:  # Specify the number of worker processes
+        futures = {executor.submit(make_station_page, station_code): station_code for station_code in obscode}
+        for future in concurrent.futures.as_completed(futures):
+            station_code = futures[future]
+            try:
+                future.result()
+            except Exception as exc:
+                print(f'Generated an exception: {exc}')
+                traceback.print_exc()
+                stop_event.set()
+                print(f'Error processing station: {station_code}')
+    time_end = datetime.datetime.now()
+    logging.info(f"Total time taken: {time_end - time_start}")
