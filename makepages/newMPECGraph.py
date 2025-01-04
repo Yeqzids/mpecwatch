@@ -31,10 +31,8 @@ TABLE XXX (observatory code):
     Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
-import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, threading, concurrent.futures
+import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, signal, concurrent.futures, multiprocessing, traceback
 from datetime import date
-import signal # for handling exit signal
-import traceback
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -67,8 +65,17 @@ def encode(num, alphabet=BASE62):
     arr.reverse()
     return ''.join(arr)
 
+MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
+MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+stop_event = multiprocessing.Event()
+
+def signal_handler(sig, frame):
+    logging.info('Exit signal received, shutting down...')
+    stop_event.set()
+
 def make_monthly_page(df_monthly, station, year):
-    # check if stop_event is set more frequently to avoid unnecessary computation
     if stop_event.is_set():
         return
 
@@ -78,14 +85,13 @@ def make_monthly_page(df_monthly, station, year):
     fig = px.bar(df_monthly, x="Month", y="#MPECs", color="MPECType")
     fig.write_html(f"../www/byStation/monthly/graphs/{station_year}.html")
     
-
+    # Log DataFrame contents if it does not contain the expected columns
     if not all(col in df_monthly.columns for col in ["Month", "#MPECs", "MPECType"]):
         logging.info(f"DataFrame contents for station {station_code}, year {year}:\n{df_monthly}")
         stop_event.set()
         return
 
-    indexed_df = df_monthly.copy()
-    indexed_df.set_index(['Month', 'MPECType'], inplace=True) # set index after making the graph to avoid error
+    df_monthly.set_index(['Month', 'MPECType'], inplace=True) # set index after making the graph to avoid error
     page_monthly = f"../www/byStation/monthly/{station_year}.html"
     o = f"""
 <!DOCTYPE html>
@@ -131,7 +137,7 @@ def make_monthly_page(df_monthly, station, year):
                     <td>{month}</td>"""
         for mpecType in MPEC_TYPES:
             o += f"""
-                    <td>{indexed_df.loc[(month, mpecType)]['#MPECs']}</td>
+                    <td>{df_monthly.loc[(month, mpecType)]['#MPECs']}</td>
                 </tr>"""
     o += """
             </table>
@@ -142,19 +148,13 @@ def make_monthly_page(df_monthly, station, year):
     with open(page_monthly, 'w') as f:
         f.write(o)
 
-MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
-OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
-MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-# Event to signal threads to stop
-stop_event = threading.Event()
-lock = threading.Lock()
-
 # main loop that traversed through all stations in obscodestat.py
 def make_station_page(station_code):
     # handling stop_event
     if stop_event.is_set():
         return
+    
+    logging.info(f"Starting processing for station: {station_code}")
 
     station = 'station_'+station_code
     page = f"../www/byStation/{station}.html"
@@ -322,8 +322,7 @@ def make_station_page(station_code):
         # monthly breakdown of MPEC types
         for month in MONTHS:
             df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
-        with lock:
-            make_monthly_page(df_monthly, station, year)
+        make_monthly_page(df_monthly, station, year)
 
         o += f"""
                 <tr>
@@ -497,13 +496,12 @@ def make_station_page(station_code):
     with open(page, 'w') as f:
         f.write(o)
 
-def signal_handler(sig, frame):
-    print('Exit signal received, shutting down...')
-    stop_event.set()
+    logging.info(f"Finished processing for station: {station_code}")
 
-def main():
+if __name__ == "__main__":
+    time_start = datetime.datetime.now()
     signal.signal(signal.SIGINT, signal_handler)
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:  # Specify the number of worker processes
         futures = {executor.submit(make_station_page, station_code): station_code for station_code in obscode}
         for future in concurrent.futures.as_completed(futures):
             station_code = futures[future]
@@ -514,10 +512,5 @@ def main():
                 traceback.print_exc()
                 stop_event.set()
                 print(f'Error processing station: {station_code}')
-
-# def main():
-#     for station_code in obscode:
-#         make_station_page(station_code)
-
-if __name__ == "__main__":
-    main()
+    time_end = datetime.datetime.now()
+    logging.info(f"Total time taken: {time_end - time_start}")
