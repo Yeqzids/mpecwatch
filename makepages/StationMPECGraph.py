@@ -31,9 +31,10 @@ TABLE XXX (observatory code):
     Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
-import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, signal, concurrent.futures, multiprocessing, traceback
+import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, signal, concurrent.futures, multiprocessing, traceback, os
 from datetime import date
 import logging
+import ctypes, time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -145,12 +146,14 @@ def make_monthly_page(df_monthly, station, year):
     </body>
 </html>"""
 
+    if stop_event.is_set():
+        return
+
     with open(page_monthly, 'w') as f:
         f.write(o)
 
 # main loop that traversed through all stations in obscodestat.py
 def make_station_page(station_code):
-    # handling stop_event
     if stop_event.is_set():
         return
     
@@ -241,8 +244,8 @@ def make_station_page(station_code):
             <h2>{station_code} {mpccode[station_code]['name']}</h2>"""
               
     if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
-        print(station_code)
-        print(mpccode[station_code])
+        #print(station_code)
+        #print(mpccode[station_code])
         if mpccode[station_code]['lon'] > 180:
             lon = mpccode[station_code]['lon'] - 360
         else:
@@ -492,25 +495,44 @@ def make_station_page(station_code):
     fig.update_layout(barmode='stack')
     fig.write_html(f"../www/byStation/Graphs/{station}_OU_obj.html")
 
-    print(station)
+    if stop_event.is_set():
+        return
+
+    #print(station)
     with open(page, 'w') as f:
         f.write(o)
 
     logging.info(f"Finished processing for station: {station_code}")
 
+ES_CONTINUOUS = 0x80000000
+ES_SYSTEM_REQUIRED = 0x00000001
+
+def prevent_sleep():
+    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+
+def allow_sleep():
+    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+
 if __name__ == "__main__":
-    time_start = datetime.datetime.now()
-    signal.signal(signal.SIGINT, signal_handler)
-    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:  # Specify the number of worker processes
-        futures = {executor.submit(make_station_page, station_code): station_code for station_code in obscode}
-        for future in concurrent.futures.as_completed(futures):
-            station_code = futures[future]
-            try:
-                future.result()
-            except Exception as exc:
-                print(f'Generated an exception: {exc}')
-                traceback.print_exc()
-                stop_event.set()
-                print(f'Error processing station: {station_code}')
-    time_end = datetime.datetime.now()
-    logging.info(f"Total time taken: {time_end - time_start}")
+    prevent_sleep()
+    try:
+        time_start = datetime.datetime.now()
+        signal.signal(signal.SIGINT, signal_handler)
+        max_workers = os.cpu_count()
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(make_station_page, station_code): station_code for station_code in obscode}
+            for future in concurrent.futures.as_completed(futures):
+                station_code = futures[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    print(f'Generated an exception: {exc}')
+                    traceback.print_exc()
+                    stop_event.set()
+                    print(f'Error processing station: {station_code}')
+        time_end = datetime.datetime.now()
+        logging.info(f"Total time taken: {time_end - time_start}")
+    finally:
+        allow_sleep()
+        mpecconn.close()
+        logging.shutdown()
