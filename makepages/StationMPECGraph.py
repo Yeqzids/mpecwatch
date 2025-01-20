@@ -102,19 +102,16 @@ def make_monthly_page(df_monthly, station, year):
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>MPECWatch: {year} Monthly Summary | {station_code}</title>
-
-        <!-- Bootstrap core CSS -->
-        <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
-        <!-- Bootstrap theme -->
-        <link href="../../dist/css/bootstrap-theme.min.css" rel="stylesheet">
-        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-        <link href="../../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+        <!-- Bootstrap Table CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table.min.css">
     </head>
     <body>
-        <div class="theme-showcase" role="main">
-            <h2>{mpccode[station_code]['name']} {year} | {station_year}</h2>
+        <div class="container" role="main">
+            <h2 style="margin-top: 20px;">{mpccode[station_code]['name']} {year} | Monthly Breakdown</h2>
             <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{station_year}.html" height="525" width="100%"></iframe>
-            <table class="table table-striped table-hover table-sm table-responsive"
+            <table id="month_table" class="table table-striped table-hover table-sm table-responsive"
                 data-toggle="table"
                 data-show-export="true"
                 data-show-columns="true">
@@ -138,11 +135,20 @@ def make_monthly_page(df_monthly, station, year):
                     <td>{month}</td>"""
         for mpecType in MPEC_TYPES:
             o += f"""
-                    <td>{df_monthly.loc[(month, mpecType)]['#MPECs']}</td>
-                </tr>"""
+                    <td>{int(df_monthly.loc[(month, mpecType)]['#MPECs'])}</td>"""
+        o+= """</tr>"""
     o += """
-            </table>
+            </table>            
         </div>
+        <!-- jQuery -->
+        <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+        <!-- Bootrap & Popper JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+        <!-- Bootstrap Table JS -->
+        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/tableExport.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table-locale-all.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
     </body>
 </html>"""
 
@@ -460,13 +466,6 @@ def make_station_page(station_code):
         </svg></a>
         </footer>
 
-        <!-- Bootstrap core JavaScript
-        ================================================== -->
-        <!-- Placed at the end of the document so the pages load faster -->
-        <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
-        <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"></script>')</script>
-        <script src="../dist/js/bootstrap.min.js"></script>
-        <script src="../assets/js/docs.min.js"></script>
         <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
         <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
 
@@ -504,35 +503,37 @@ def make_station_page(station_code):
 
     logging.info(f"Finished processing for station: {station_code}")
 
-ES_CONTINUOUS = 0x80000000
-ES_SYSTEM_REQUIRED = 0x00000001
+make_station_page('G96')
 
-def prevent_sleep():
-    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+# ES_CONTINUOUS = 0x80000000
+# ES_SYSTEM_REQUIRED = 0x00000001
 
-def allow_sleep():
-    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+# def prevent_sleep():
+#     ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
 
-if __name__ == "__main__":
-    prevent_sleep()
-    try:
-        time_start = datetime.datetime.now()
-        signal.signal(signal.SIGINT, signal_handler)
-        max_workers = os.cpu_count()
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(make_station_page, station_code): station_code for station_code in obscode}
-            for future in concurrent.futures.as_completed(futures):
-                station_code = futures[future]
-                try:
-                    future.result()
-                except Exception as exc:
-                    print(f'Generated an exception: {exc}')
-                    traceback.print_exc()
-                    stop_event.set()
-                    print(f'Error processing station: {station_code}')
-        time_end = datetime.datetime.now()
-        logging.info(f"Total time taken: {time_end - time_start}")
-    finally:
-        allow_sleep()
-        mpecconn.close()
-        logging.shutdown()
+# def allow_sleep():
+#     ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+
+# if __name__ == "__main__":
+#     prevent_sleep()
+#     try:
+#         time_start = datetime.datetime.now()
+#         signal.signal(signal.SIGINT, signal_handler)
+#         max_workers = os.cpu_count()
+#         with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+#             futures = {executor.submit(make_station_page, station_code): station_code for station_code in obscode}
+#             for future in concurrent.futures.as_completed(futures):
+#                 station_code = futures[future]
+#                 try:
+#                     future.result()
+#                 except Exception as exc:
+#                     print(f'Generated an exception: {exc}')
+#                     traceback.print_exc()
+#                     stop_event.set()
+#                     print(f'Error processing station: {station_code}')
+#         time_end = datetime.datetime.now()
+#         logging.info(f"Total time taken: {time_end - time_start}")
+#     finally:
+#         allow_sleep()
+#         mpecconn.close()
+#         logging.shutdown()
