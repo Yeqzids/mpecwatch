@@ -103,15 +103,30 @@ def make_monthly_page(df_monthly, station, year):
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>MPECWatch: {year} Monthly Summary | {station_code}</title>
         <!-- Bootstrap CSS -->
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+        <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Bootstrap Theme CSS -->
+        <link href="../../dist/css/bootstrap-theme.min.css" rel="stylesheet">
         <!-- Bootstrap Table CSS -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table.min.css">
+
+        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+        <link href="../../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+
+        <!-- Custom styles for this template -->
+        <link href="../../theme.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+        <![endif]-->
     </head>
     <body>
-        <div class="container" role="main">
+        <div class="container" role="main" style="padding-bottom: 20px;">
             <h2 style="margin-top: 20px;">{mpccode[station_code]['name']} {year} | Monthly Breakdown</h2>
             <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{station_year}.html" height="525" width="100%"></iframe>
-            <table id="month_table" class="table table-striped table-hover table-sm table-responsive"
+            <table id="month_table"
+                class="table table-striped table-hover table-sm table-responsive"
                 data-toggle="table"
                 data-show-export="true"
                 data-show-columns="true">
@@ -142,12 +157,15 @@ def make_monthly_page(df_monthly, station, year):
         </div>
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-        <!-- Bootrap & Popper JS -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+        <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"><\/script>')</script>
+        <!-- Popper JS -->
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+        <!-- Bootrap JS -->
+        <script src="../../dist/js/bootstrap.min.js"></script>
         <!-- Bootstrap Table JS -->
         <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/tableExport.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/libs/jsPDF/jspdf.umd.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table-locale-all.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
     </body>
 </html>"""
@@ -190,24 +208,18 @@ def make_station_page(station_code):
 
     <title>MPEC Watch | Station Statistics {station_code}</title>
 
-    <!-- Bootstrap core CSS -->
-    <link href="https://unpkg.com/bootstrap-table@1.22.5/dist/bootstrap-table.min.css" rel="stylesheet">
+    <!-- Bootstrap CSS -->
     <link href="../dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap theme -->
+    <!-- Bootstrap Theme CSS -->
     <link href="../dist/css/bootstrap-theme.min.css" rel="stylesheet">
+    <!-- Bootstrap Table CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table.min.css">
+
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <link href="../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
     <link href="../theme.css" rel="stylesheet">
-    
-    <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
-    <!--[if lt IE 9]><script src="../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
-    <script src="../assets/js/ie-emulation-modes-warning.js"></script>
-    <!--
-    <script src="../dist/extensions/export/tableExport.min.js"></script>
-    <script src="../dist/extensions/export/tableExport.js"></script>
-    -->
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -215,38 +227,36 @@ def make_station_page(station_code):
       <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
     <![endif]-->
   </head>
-
   <body>
-
     <!-- Fixed navbar -->
     <nav class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container">
-        <div class="navbar-header">
-          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-            <span class="sr-only">Toggle navigation</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="navbar-brand" href="#">MPEC Watch</a>
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#">MPEC Watch</a>
+            </div>
+            <div id="navbar" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav">
+                    <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
+                    <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+                    <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
+                    <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
+                    <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
+                    <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
+                    <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
+                </ul>
+            </div><!--/.nav-collapse -->
         </div>
-        <div id="navbar" class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
-            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
-            <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
-            <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
-            <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
-          </ul>
-        </div><!--/.nav-collapse -->
-      </div>
     </nav>
 
     <div class="container theme-showcase" role="main">
-      <!-- Main jumbotron for a primary marketing message or call to action -->
         <div class="row">
+            <!-- Main jumbotron for a primary marketing message or call to action -->
             <h2>{station_code} {mpccode[station_code]['name']}</h2>"""
               
     if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
@@ -256,47 +266,48 @@ def make_station_page(station_code):
             lon = mpccode[station_code]['lon'] - 360
         else:
             lon = mpccode[station_code]['lon']
-        o += f"""<p><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[station_code]['lat']};{lon}">Where is this observatory?</a></p>"""
+        o += f"""
+            <p><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[station_code]['lat']};{lon}">Where is this observatory?</a></p>"""
 
-    o += f"""<p>
-             <h3>Graphs</h3>
-              <h4>Yearly Breakdown of MPEC Types</h4>
-              <p>
-              <b>Term definition:</b>
-              Editorial - Editorial MPECs associated with this station.<br>
-              Discovery - MPECs associated with discovery made by this station.<br>
-              OrbitUpdate - MPECs associated with orbit updates involving observations made by this station. Typically, these are recoveries of single-opposition objects.<br>
-              DOU - Daily Orbit Update MPECs involving observations made by this station.<br>
-              ListUpdate - MPECs associated with list updates involving observations made by this station. This category has largely been retired since 2012.<br>
-              Retraction - Retracted MPECs involving observations made by this station.<br>
-              Followup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere.<br>
-              FirstFollowup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
-              Other - MPECs that do not fit into categories listed above and involve observations made by this station.
-              </p>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}.html" height="525" width="100%"></iframe>
-              <h4>Yearly Breakdown of Discovery Object Types</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_disc_obj.html" height="525" width="100%"></iframe>
-              <h4>Yearly Breakdown of Orbit Update Object Types</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_OU_obj.html" height="525" width="100%"></iframe>
-              <h4>Breakdown by Observers</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Observers.html" height="525" width="100%"></iframe>
-              <h4>Breakdown by Measurers</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Measurers.html" height="525" width="100%"></iframe>
-              <h4>Breakdown by Facilities</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Facilities.html" height="525" width="100%"></iframe>
-              <h4>Breakdown by Objects</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Objects.html" height="525" width="100%"></iframe>
-              <h4>Annual Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_yearly.html" height="525" width="100%"></iframe>
-              <h4>Weekly Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_weekly.html" height="525" width="100%"></iframe>
-              <h4>Hourly Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_hourly.html" height="525" width="100%"></iframe>
+    o += f"""
+            <p>
+                <h3>Graphs</h3>
+                <h4>Yearly Breakdown of MPEC Types</h4>
+                <b>Term definition:</b>
+                <br>
+                Editorial - Editorial MPECs associated with this station.<br>
+                Discovery - MPECs associated with discovery made by this station.<br>
+                OrbitUpdate - MPECs associated with orbit updates involving observations made by this station. Typically, these are recoveries of single-opposition objects.<br>
+                DOU - Daily Orbit Update MPECs involving observations made by this station.<br>
+                ListUpdate - MPECs associated with list updates involving observations made by this station. This category has largely been retired since 2012.<br>
+                Retraction - Retracted MPECs involving observations made by this station.<br>
+                Followup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere.<br>
+                FirstFollowup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
+                Other - MPECs that do not fit into categories listed above and involve observations made by this station.
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}.html" height="525" width="100%"></iframe>
+                <h4>Yearly Breakdown of Discovery Object Types</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_disc_obj.html" height="525" width="100%"></iframe>
+                <h4>Yearly Breakdown of Orbit Update Object Types</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_OU_obj.html" height="525" width="100%"></iframe>
+                <h4>Breakdown by Observers</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Observers.html" height="525" width="100%"></iframe>
+                <h4>Breakdown by Measurers</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Measurers.html" height="525" width="100%"></iframe>
+                <h4>Breakdown by Facilities</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+                <h4>Breakdown by Objects</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Objects.html" height="525" width="100%"></iframe>
+                <h4>Annual Breakdown</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_yearly.html" height="525" width="100%"></iframe>
+                <h4>Weekly Breakdown</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_weekly.html" height="525" width="100%"></iframe>
+                <h4>Hourly Breakdown</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_hourly.html" height="525" width="100%"></iframe>
             </p>
         </div>
-        <div class="container">
-          <h3>Tables</h3>
-          <h4>Yearly Breakdown of MPEC Types</h4>
+        <div class="row">
+            <h3>Tables</h3>
+            <h4>Yearly Breakdown of MPEC Types</h4>
             <table id="year_table" class="table table-striped table-sm" 
                 data-toggle="table"
                 data-show-export="true"
@@ -315,8 +326,7 @@ def make_station_page(station_code):
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
                     </tr>
-                </thead>
-        """
+                </thead>"""
     
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
     disc_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
@@ -339,11 +349,15 @@ def make_station_page(station_code):
                     <td>{sum([obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES])}</td>"""
         for mpecType in MPEC_TYPES:
             o += f"""
-                    <td>{obscode[station_code][mpecType][str(year)]['total']}</td>"""            
+                    <td>{obscode[station_code][mpecType][str(year)]['total']}</td>"""
+        o += """
+                </tr>"""            
     
     o += """
             </table>
-            <h4 style="margin-top: 20px;">List of Individual MPECs</h4>
+        </div>
+        <div class="row">
+            <h4 style="padding-top: 20px;">List of Individual MPECs</h4>
             <table id="mpec_table" 
                 class="table table-striped table-bordered table-sm"
                 data-height="460"
@@ -453,10 +467,9 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
-        <script src="../dist/js/custom_sort.js"></script>
         </div>
         <footer class="pt-5 my-5 text-muted border-top">
-        Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and Taegon Hibbitts, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
+        Script by <a href="https://www.astro.umd.edu/~qye/">Quanzhi Ye</a> and <a href="https://taegonhibbitts.com">Taegon Hibbitts</a>, hosted at <a href="https://sbnmpc.astro.umd.edu">SBN-MPC</a>. Powered by <a href="https://getbootstrap.com"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bootstrap-fill" viewBox="0 0 16 16">
         <path d="M6.375 7.125V4.658h1.78c.973 0 1.542.457 1.542 1.237 0 .802-.604 1.23-1.764 1.23H6.375zm0 3.762h1.898c1.184 0 1.81-.48 1.81-1.377 0-.885-.65-1.348-1.886-1.348H6.375v2.725z"/>
         <path d="M4.002 0a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V4a4 4 0 0 0-4-4h-8zm1.06 12V3.545h3.399c1.587 0 2.543.809 2.543 2.11 0 .884-.65 1.675-1.483 1.816v.1c1.143.117 1.904.931 1.904 2.033 0 1.488-1.084 2.396-2.888 2.396H5.062z"/>
         </svg> Bootstrap</a> and <a href="https://bootstrap-table.com">Bootstrap Table</a>.
@@ -465,16 +478,19 @@ def make_station_page(station_code):
         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
         </svg></a>
         </footer>
-
-        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-        <script src="../assets/js/ie10-viewport-bug-workaround.js"></script>
-
-        <!-- Bootstrap Table -->
-        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/tableExport.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/libs/jsPDF/jspdf.umd.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/bootstrap-table.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/extensions/export/bootstrap-table-export.min.js"></script>
-    </div>
+    </div> <!-- /container -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="../assets/js/vendor/jquery.min.js"><\/script>')</script>
+    <!-- Popper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <!-- Bootrap JS -->
+    <script src="../dist/js/bootstrap.min.js"></script>
+    <!-- Bootstrap Table JS -->
+    <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/tableExport.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.29.0/libs/jsPDF/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
   </body>
 </html>"""    
      
@@ -503,7 +519,7 @@ def make_station_page(station_code):
 
     logging.info(f"Finished processing for station: {station_code}")
 
-make_station_page('G96')
+make_station_page('004')
 
 # ES_CONTINUOUS = 0x80000000
 # ES_SYSTEM_REQUIRED = 0x00000001
