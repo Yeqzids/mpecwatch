@@ -5,15 +5,36 @@
  PURPOSE:		Generate statistics for every observatory by year
 
  (C) Quanzhi Ye
- 
+
+Database structure
+---
+    Key            Type        Description
+TABLE MPEC: (summary of each MPEC)
+    MPECId        TEXT        MPEC Number
+    Title        TEXT        MPEC Title
+    Time        INTEGER      Publication Unix timestamp
+    Station        TEXT        List of observatory stations involved in the observation. Only used when MPECType is Discovery, OrbitUpdate, or DOU        
+    DiscStation    TEXT        Observatory station marked by the discovery asterisk. Only used when MPECType is Discovery.
+    FirstConf    TEXT        First observatory station to confirm. Only used when MPECType is Discovery.
+    MPECType    TEXT        Type of the MPEC: Editorial, Discovery, OrbitUpdate, DOU, ListUpdate, Retraction, Other
+    ObjectType    TEXT        Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk. Only used when MPECType is Discovery or OrbitUpdate
+    OrbitComp    TEXT        Orbit computer. Only used when MPECType is Discovery or OrbitUpdate
+    Issuer        TEXT        Issuer of the MPEC
+    
+TABLE XXX (observatory code):
+    Object        TEXT        Object designation in packed form
+    Time        INTEGER        Time of the observation (Unix timestamp)
+    Observer    TEXT        List of observers as published in MPEC
+    Measurer    TEXT        List of measurers as published in MPEC
+    Facility    TEXT        List of telescope/instrument as published in MPEC
+    MPEC        TEXT        MPECId
+    MPECType    TEXT        Type of the MPEC: Discovery, OrbitUpdate, DOU
+    ObjectType    TEXT        Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk
+    Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
 # future improvements:
-# new db structure
-# db[station][year][month][mpecType] = count
-# AND
-# db[station][year][month][objType] = count
-# need to figure out how to get object breakdown by mpecType if this way is used
+# index db for faster queries
 
 import sqlite3, datetime, re, json, numpy as np, calendar
 from datetime import date
@@ -63,11 +84,14 @@ for s in mpccode:
     print(s)
     d[s] = {}
     d[s]['total'] = 0
+    for year in list(np.arange(1993, datetime.datetime.now().year+1, 1)):
+        year = int(year)
+        d[s][year] = 0
     d[s]['MPECId'] = {}
     
     for obs_type in MPEC_TYPES: 
         d[s][obs_type] = {'total': 0}
-        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1)):
             year = int(year)
             d[s][obs_type][year] = {'total': 0}
             for month in np.arange(1, 13, 1):
@@ -130,6 +154,7 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 
         # numbers of MPECs
         d[station]['total'] += 1
+        d[station][year] += 1
 
         if mpec[7] == 'unk':
             mpec[7] = 'Unknown'

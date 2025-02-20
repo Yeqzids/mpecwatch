@@ -8,18 +8,21 @@
  
 """
 
-import sqlite3, datetime, json, numpy as np, pandas as pd, plotly.express as px
+import sqlite3, datetime, json, numpy as np, pandas as pd, plotly.express as px, calendar
 
 survey_data = {}
-mpec_data = {}
-with open('../mpec_data.json') as file:
-    mpec_data = json.load(file)
+stat = 'obscode_stat.json'
+with open(stat) as stat:
+    stat = json.load(stat)
 
 mpecconn = sqlite3.connect("../mpecwatch_v3.db")
 cursor = mpecconn.cursor()
 
 obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
-obj_types = ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "unk"]
+obj_types = ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
+
+def getMonthName(month):
+    return calendar.month_name[month][0:3]
 
 def merge_mpec_dicts(*dicts):
     merged_dict = {}
@@ -99,48 +102,48 @@ def createSurveyPage(surveyName, surveyNameAbbv, codes):
 
   for code in codes:
       #combine object and mpecid information for each station in the survey
-      survey_data[surveyName]['MPECId'] = survey_data[surveyName]['MPECId'] | mpec_data[code]['MPECId']
+      survey_data[surveyName]['MPECId'] = survey_data[surveyName]['MPECId'] | stat[code]['MPECId']
 
       #combine observers for each station in the survey
-      survey_data[surveyName]['OBS'] = merge_mpec_dicts(survey_data[surveyName]['OBS'], mpec_data[code]['OBS'])
+      survey_data[surveyName]['OBS'] = merge_mpec_dicts(survey_data[surveyName]['OBS'], stat[code]['OBS'])
 
       #combine measurers for each station in the survey
-      survey_data[surveyName]['MEA'] = merge_mpec_dicts(survey_data[surveyName]['MEA'], mpec_data[code]['MEA'])
+      survey_data[surveyName]['MEA'] = merge_mpec_dicts(survey_data[surveyName]['MEA'], stat[code]['MEA'])
 
       #combine facilities for each station in the survey
-      survey_data[surveyName]['Facilities'] = merge_mpec_dicts(survey_data[surveyName]['Facilities'], mpec_data[code]['Facilities'])
+      survey_data[surveyName]['Facilities'] = merge_mpec_dicts(survey_data[surveyName]['Facilities'], stat[code]['FAC'])
 
       #combine MPECs for each station in the survey (skip duplicates)
-      for MPEC in mpec_data[code]['MPECs']:
+      for MPEC in stat[code]['MPECs']:
         survey_data[surveyName]['MPECs'].add(tuple(MPEC))
 
       # need to fix this part
       for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-          # Note that mpec_data stores the year as a string while survey_data stores it as an int (json limitation)
-          survey_data[surveyName]['Discovery'][year]['total'] += mpec_data[code]['Discovery'][str(year)]['total']
+          # Note that stat stores the year as a string while survey_data stores it as an int (json limitation)
+          survey_data[surveyName]['Discovery'][year]['total'] += stat[code]['Discovery'][str(year)]['total']
           for obj in obj_types:
-              survey_data[surveyName]['Discovery'][year][obj] += mpec_data[code]['Discovery'][str(year)][obj]
-          survey_data[surveyName]['Editorial'][year]['total'] += mpec_data[code]['Editorial'][str(year)]['total']
-          survey_data[surveyName]['OrbitUpdate'][year]['total'] += mpec_data[code]['OrbitUpdate'][str(year)]['total']
+              survey_data[surveyName]['Discovery'][year][obj] += stat[code]['Discovery'][str(year)][obj]
+          survey_data[surveyName]['Editorial'][year]['total'] += stat[code]['Editorial'][str(year)]['total']
+          survey_data[surveyName]['OrbitUpdate'][year]['total'] += stat[code]['OrbitUpdate'][str(year)]['total']
           for obj in obj_types:
-              survey_data[surveyName]['OrbitUpdate'][year][obj] += mpec_data[code]['OrbitUpdate'][str(year)][obj]
-          survey_data[surveyName]['DOU'][year]['total'] += mpec_data[code]['DOU'][str(year)]['total']
-          survey_data[surveyName]['ListUpdate'][year]['total'] += mpec_data[code]['ListUpdate'][str(year)]['total']
-          survey_data[surveyName]['Retraction'][year]['total'] += mpec_data[code]['Retraction'][str(year)]['total']
-          survey_data[surveyName]['Other'][year]['total'] += mpec_data[code]['Other'][str(year)]['total']
-          survey_data[surveyName]['Followup'][year]['total'] += mpec_data[code]['Followup'][str(year)]['total']
-          survey_data[surveyName]['FirstFollowup'][year]['total'] += mpec_data[code]['FirstFollowup'][str(year)]['total']
-          # Note that mpec_data stores the month as a string while survey_data stores it as an int (json limitation)
+              survey_data[surveyName]['OrbitUpdate'][year][obj] += stat[code]['OrbitUpdate'][str(year)][obj]
+          survey_data[surveyName]['DOU'][year]['total'] += stat[code]['DOU'][str(year)]['total']
+          survey_data[surveyName]['ListUpdate'][year]['total'] += stat[code]['ListUpdate'][str(year)]['total']
+          survey_data[surveyName]['Retraction'][year]['total'] += stat[code]['Retraction'][str(year)]['total']
+          survey_data[surveyName]['Other'][year]['total'] += stat[code]['Other'][str(year)]['total']
+          survey_data[surveyName]['Followup'][year]['total'] += stat[code]['Followup'][str(year)]['total']
+          survey_data[surveyName]['FirstFollowup'][year]['total'] += stat[code]['FirstFollowup'][str(year)]['total']
+          # Note that stat stores the month as a string while survey_data stores it as an int (json limitation)
           for month in range(1, 13):
-              survey_data[surveyName]['Discovery'][year][month] += mpec_data[code]['Discovery'][str(year)][str(month)]
-              survey_data[surveyName]['Editorial'][year][month] += mpec_data[code]['Editorial'][str(year)][str(month)]
-              survey_data[surveyName]['OrbitUpdate'][year][month] += mpec_data[code]['OrbitUpdate'][str(year)][str(month)]
-              survey_data[surveyName]['DOU'][year][month] += mpec_data[code]['DOU'][str(year)][str(month)]
-              survey_data[surveyName]['ListUpdate'][year][month] += mpec_data[code]['ListUpdate'][str(year)][str(month)]
-              survey_data[surveyName]['Retraction'][year][month] += mpec_data[code]['Retraction'][str(year)][str(month)]
-              survey_data[surveyName]['Other'][year][month] += mpec_data[code]['Other'][str(year)][str(month)]
-              survey_data[surveyName]['Followup'][year][month] += mpec_data[code]['Followup'][str(year)][str(month)]
-              survey_data[surveyName]['FirstFollowup'][year][month] += mpec_data[code]['FirstFollowup'][str(year)][str(month)]
+              survey_data[surveyName]['Discovery'][year][month] += stat[code]['Discovery'][str(year)][getMonthName(month)]
+              survey_data[surveyName]['Editorial'][year][month] += stat[code]['Editorial'][str(year)][getMonthName(month)]
+              survey_data[surveyName]['OrbitUpdate'][year][month] += stat[code]['OrbitUpdate'][str(year)][getMonthName(month)]
+              survey_data[surveyName]['DOU'][year][month] += stat[code]['DOU'][str(year)][getMonthName(month)]
+              survey_data[surveyName]['ListUpdate'][year][month] += stat[code]['ListUpdate'][str(year)][getMonthName(month)]
+              survey_data[surveyName]['Retraction'][year][month] += stat[code]['Retraction'][str(year)][getMonthName(month)]
+              survey_data[surveyName]['Other'][year][month] += stat[code]['Other'][str(year)][getMonthName(month)]
+              survey_data[surveyName]['Followup'][year][month] += stat[code]['Followup'][str(year)][getMonthName(month)]
+              survey_data[surveyName]['FirstFollowup'][year][month] += stat[code]['FirstFollowup'][str(year)][getMonthName(month)]
       
 
   # to convert the set back to a list
@@ -331,8 +334,8 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
         #for objType in obj_types:
         
         df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year, year, year, year, year, year, year, year, year], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": year_counts})])
-        disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [survey_data[surveyName]['Discovery'][year]['NEA'], survey_data[surveyName]['Discovery'][year]['Comet'], survey_data[surveyName]['Discovery'][year]['Satellite'], survey_data[surveyName]['Discovery'][year]['TNO'], survey_data[surveyName]['Discovery'][year]['Unusual'], survey_data[surveyName]['Discovery'][year]['Interstellar'], survey_data[surveyName]['Discovery'][year]['unk']]})])
-        OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [survey_data[surveyName]['OrbitUpdate'][year]['NEA'], survey_data[surveyName]['OrbitUpdate'][year]['Comet'], survey_data[surveyName]['OrbitUpdate'][year]['Satellite'], survey_data[surveyName]['OrbitUpdate'][year]['TNO'], survey_data[surveyName]['OrbitUpdate'][year]['Unusual'], survey_data[surveyName]['OrbitUpdate'][year]['Interstellar'], survey_data[surveyName]['OrbitUpdate'][year]['unk']]})])
+        disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [survey_data[surveyName]['Discovery'][year]['NEA'], survey_data[surveyName]['Discovery'][year]['Comet'], survey_data[surveyName]['Discovery'][year]['Satellite'], survey_data[surveyName]['Discovery'][year]['TNO'], survey_data[surveyName]['Discovery'][year]['Unusual'], survey_data[surveyName]['Discovery'][year]['Interstellar'], survey_data[surveyName]['Discovery'][year]['Unknown']]})])
+        OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [survey_data[surveyName]['OrbitUpdate'][year]['NEA'], survey_data[surveyName]['OrbitUpdate'][year]['Comet'], survey_data[surveyName]['OrbitUpdate'][year]['Satellite'], survey_data[surveyName]['OrbitUpdate'][year]['TNO'], survey_data[surveyName]['OrbitUpdate'][year]['Unusual'], survey_data[surveyName]['OrbitUpdate'][year]['Interstellar'], survey_data[surveyName]['OrbitUpdate'][year]['Unknown']]})])
         
         df_monthly_graph = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -632,7 +635,6 @@ survey_def_table = [['Lincoln Near Earth Asteroid Research (LINEAR)', ['704'], '
                     ['Asteroid Terrestrial-impact Last Alert System (ATLAS)', ['T05', 'T08', 'M22', 'W68'], 'atlas']]
 
 dbFile = '../mpecwatch_v3.db'
-stat = 'obscode_stat.json'
 mpccode = '../mpccode.json'
 #survey_data = '../survey_data.json'
 
@@ -641,20 +643,21 @@ cursor = db.cursor()
 
 with open(mpccode) as mpccode:
     mpccode = json.load(mpccode)
-    
-with open(stat) as stat:
-    stat = json.load(stat)
 
 # with open(survey_data) as survey_data:
 #     survey_data = json.load(survey_data)
     
-    
-pages = list(np.arange(1993, 2025, 1))
+years = list(np.arange(1993, datetime.datetime.now().year+1, 1))
+years = [str(year) for year in years]
+pages = years.copy()
 pages.append('All time')
 
 for p in pages:
+    # testing only all time
+    if p != 'All time':
+        continue
 
-    o = """
+    o = f"""
     <!doctype html>
     <html lang="en">
       <head>
@@ -662,7 +665,7 @@ for p in pages:
           <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTXHKC28G9"></script>
           <script>
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+            function gtag(){{dataLayer.push(arguments);}}
             gtag('js', new Date());
             gtag('config', 'G-WTXHKC28G9');
           </script>
@@ -674,7 +677,7 @@ for p in pages:
         <meta name="author" content="">
         <link rel="icon" href="favicon.ico">
     
-        <title>MPEC Watch | Global Statistics %s</title>
+        <title>MPEC Watch | Global Statistics {p}</title>
     
         <!-- Bootstrap core CSS -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/bootstrap-table.min.css">
@@ -734,17 +737,18 @@ for p in pages:
       <div class="jumbotron">
         <p>This page is still under active development and testing. Comments, suggestions and bug reports are welcome (via Issue Tracker or by email). Quanzhi 05/31/24</p>
       </div>
-    """ % str(p)
+    """
     
     # Table of MPECs by year and type
     
-    o += """
+    o += f"""
           <div class="page-header">
-            <h1>Statistics by Survey - %s</h1>
-            <p><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">All time</a> """ % str(p)
+            <h1>Statistics by Survey - {p}</h1>
+            <p><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">All time</a> """
             
     for pp in pages[:-1]:
-        o += """ | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey-%s.html">%s</a>""" % (str(pp), str(pp))
+        pp = str(pp)
+        o += f""" | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey-{p}.html">{p}</a>"""
         
     o += """
             </p>
@@ -804,7 +808,6 @@ for p in pages:
     for s in survey_def_table:
         
         survey = s[0]
-        data = [stat[i] for i in s[1]]
         survey_abbv = s[2]
         
         
@@ -856,7 +859,30 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                 </tr>
-            """ % (str(sum([sum(stat[i]['mpec'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_discovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['NEA_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['PHA_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Comet_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Satellite_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['TNO_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Unusual_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Interstellar_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['Unknown_Disc'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['NEA_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['PHA_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Comet_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Satellite_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['TNO_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Unusual_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Interstellar_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['Unknown_FU'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_followup'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_precovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_recovery'].values()) for i in s[1]])), str(sum([sum(stat[i]['mpec_1st_recovery'].values()) for i in s[1]])))
+            """ % (str(sum([stat[i]['total'] for i in s[1]])), 
+                   str(sum([stat[i]['Discovery']['total'] for i in s[1]])), 
+                   str(sum([sum(stat[i]['Discovery'][year]['NEA'] for year in years) for i in s[1]])), 
+                   str(sum([sum(stat[i]['Discovery'][year]['PHA'] for year in years) for i in s[1]])), 
+                   str(sum([sum(stat[i]['Discovery'][year]['Comet'] for year in years) for i in s[1]])), 
+                   str(sum([sum(stat[i]['Discovery'][year]['Satellite'] for year in years) for i in s[1]])), 
+                   str(sum([sum(stat[i]['Discovery'][year]['TNO'] for year in years) for i in s[1]])), 
+                   str(sum([sum(stat[i]['Discovery'][year]['Unusual'] for year in years) for i in s[1]])),
+                   str(sum([sum(stat[i]['Discovery'][year]['Interstellar'] for year in years) for i in s[1]])), 
+                   str(sum([sum(stat[i]['Discovery'][year]['Unknown'] for year in years) for i in s[1]])), 
+                   str(sum([stat[i]['Followup']['total'] for i in s[1]])),
+                   str(sum([sum(stat[i]['Followup'][year]['NEA'] for year in years) for i in s[1]])), 
+                   str(sum([sum(stat[i]['Followup'][year]['PHA'] for year in years) for i in s[1]])),
+                   str(sum([sum(stat[i]['Followup'][year]['Comet'] for year in years) for i in s[1]])),
+                   str(sum([sum(stat[i]['Followup'][year]['Satellite'] for year in years) for i in s[1]])),
+                   str(sum([sum(stat[i]['Followup'][year]['TNO'] for year in years) for i in s[1]])),
+                   str(sum([sum(stat[i]['Followup'][year]['Unusual'] for year in years) for i in s[1]])),
+                   str(sum([sum(stat[i]['Followup'][year]['Interstellar'] for year in years) for i in s[1]])),
+                   str(sum([sum(stat[i]['Followup'][year]['Unknown'] for year in years) for i in s[1]])),
+                   str(sum([stat[i]['FirstFollowup']['total'] for i in s[1]])), 
+                   str(sum([stat[i]['Precovery']['total'] for i in s[1]])), 
+                   str(sum([stat[i]['OrbitUpdate']['total'] for i in s[1]])),  #recovery = orbit update
+                   str(sum([stat[i]['1stRecovery']['total'] for i in s[1]]))
+                   )
         else:
             o += """
                     <td>%s</td>
@@ -883,7 +909,29 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                 </tr>
-            """ % (str(sum(stat[i]['mpec'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_discovery'][str(p)] for i in s[1])), str(sum(stat[i]['NEA_Disc'][str(p)] for i in s[1])), str(sum(stat[i]['PHA_Disc'][str(p)] for i in s[1])), str(sum(stat[i]['Comet_Disc'][str(p)] for i in s[1])), str(sum(stat[i]['Satellite_Disc'][str(p)] for i in s[1])), str(sum(stat[i]['TNO_Disc'][str(p)] for i in s[1])), str(sum(stat[i]['Unusual_Disc'][str(p)] for i in s[1])), str(sum(stat[i]['Interstellar_Disc'][str(p)] for i in s[1])), str(sum(stat[i]['Unknown_Disc'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_followup'][str(p)] for i in s[1])), str(sum(stat[i]['NEA_FU'][str(p)] for i in s[1])), str(sum(stat[i]['PHA_FU'][str(p)] for i in s[1])), str(sum(stat[i]['Comet_FU'][str(p)] for i in s[1])), str(sum(stat[i]['Satellite_FU'][str(p)] for i in s[1])), str(sum(stat[i]['TNO_FU'][str(p)] for i in s[1])), str(sum(stat[i]['Unusual_FU'][str(p)] for i in s[1])), str(sum(stat[i]['Interstellar_FU'][str(p)] for i in s[1])), str(sum(stat[i]['Unknown_FU'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_1st_followup'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_precovery'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_recovery'][str(p)] for i in s[1])), str(sum(stat[i]['mpec_1st_recovery'][str(p)] for i in s[1])))
+            """ % (str(sum(stat[i][str(p)] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['total'] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['NEA'] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['PHA'] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['Comet'] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['Satellite'] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['TNO'] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['Unusual'] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['Interstellar'] for i in s[1])), 
+                   str(sum(stat[i]['Discovery'][str(p)]['Unknown'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['total'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['NEA'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['PHA'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['Comet'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['Satellite'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['TNO'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['Unusual'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['Interstellar'] for i in s[1])), 
+                   str(sum(stat[i]['Followup'][str(p)]['Unknown'] for i in s[1])), 
+                   str(sum(stat[i]['FirstFollowup'][str(p)]['total'] for i in s[1])),
+                   str(sum(stat[i]['Precovery'][str(p)]['total'] for i in s[1])), 
+                   str(sum(stat[i]['OrbitUpdate'][str(p)]['total'] for i in s[1])), 
+                   str(sum(stat[i]['1stRecovery'][str(p)]['total'] for i in s[1])))
         
     o += """
         </tbody>

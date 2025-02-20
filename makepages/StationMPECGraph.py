@@ -3,32 +3,6 @@ Created on Wed Jul  6 14:49:19 2022
 
 Generates individual station webpages including tables and statistics. Graphs are generated in IndividualOMF.py
 Run this script AFTER IndividualOMF.py
-
-Database structure
----
-    Key            Type        Description
-TABLE MPEC: (summary of each MPEC)
-    MPECId        TEXT        MPEC Number
-    Title        TEXT        MPEC Title
-    Time        INTEGER      Publication Unix timestamp
-    Station        TEXT        List of observatory stations involved in the observation. Only used when MPECType is Discovery, OrbitUpdate, or DOU        
-    DiscStation    TEXT        Observatory station marked by the discovery asterisk. Only used when MPECType is Discovery.
-    FirstConf    TEXT        First observatory station to confirm. Only used when MPECType is Discovery.
-    MPECType    TEXT        Type of the MPEC: Editorial, Discovery, OrbitUpdate, DOU, ListUpdate, Retraction, Other
-    ObjectType    TEXT        Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk. Only used when MPECType is Discovery or OrbitUpdate
-    OrbitComp    TEXT        Orbit computer. Only used when MPECType is Discovery or OrbitUpdate
-    Issuer        TEXT        Issuer of the MPEC
-    
-TABLE XXX (observatory code):
-    Object        TEXT        Object designation in packed form
-    Time        INTEGER        Time of the observation (Unix timestamp)
-    Observer    TEXT        List of observers as published in MPEC
-    Measurer    TEXT        List of measurers as published in MPEC
-    Facility    TEXT        List of telescope/instrument as published in MPEC
-    MPEC        TEXT        MPECId
-    MPECType    TEXT        Type of the MPEC: Discovery, OrbitUpdate, DOU
-    ObjectType    TEXT        Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk
-    Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
 import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, signal, concurrent.futures, multiprocessing, traceback, os
@@ -37,9 +11,6 @@ import logging
 import ctypes, time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-mpecconn = sqlite3.connect("../mpecwatch_v3.db")
-cursor = mpecconn.cursor()
 
 mpccode = '../mpccode.json'
 with open(mpccode) as mpccode:
@@ -551,5 +522,4 @@ if __name__ == "__main__":
         logging.info(f"Total time taken: {time_end - time_start}")
     finally:
         allow_sleep()
-        mpecconn.close()
         logging.shutdown()
