@@ -161,11 +161,13 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 
         # numbers of first followups: MPECType = 'Discovery' and DiscStation != '{}' and "disc_station, station" in stations
         if mpec[6] == 'Discovery' and station not in mpec[4] and mpec[4] + ', ' + station in mpec[3]:
+            d[station]['FirstFollowup']['total'] += 1
             d[station]['FirstFollowup'][year]['total'] += 1
             d[station]['FirstFollowup'][year][month] += 1
 
         # numbers of Discovery MPECs by object type
         if station == mpec[4] and mpec[6] == 'Discovery':
+            d[station]['Discovery']['total'] += 1 
             d[station]['Discovery'][year]['total'] += 1
             d[station]['Discovery'][year][month] += 1
             # Include NEA
@@ -178,6 +180,7 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 
         # numbers of follow-up MPECs by object type
         if mpec[6] == 'Discovery' and station != mpec[4]:
+            d[station]['Followup']['total'] += 1
             d[station]['Followup'][year]['total'] += 1
             d[station]['Followup'][year][month] += 1
             if 'NEA' in mpec[7]:
@@ -190,11 +193,13 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
         # numbers of Editorial, DOU, ListUpdate, Retraction, and Other MPECs
         for mpecType in ["Editorial", "DOU", "ListUpdate", "Retraction", "Other"]:
             if mpec[6] == mpecType:
+                d[station][mpecType]['total'] += 1
                 d[station][mpecType][year]['total'] += 1
                 d[station][mpecType][year][month] += 1
 
         # recovery = orbit update
         if mpec[6] == "OrbitUpdate":
+            d[station]['OrbitUpdate']['total'] += 1
             d[station]['OrbitUpdate'][year]['total'] += 1
             d[station]['OrbitUpdate'][year][month] += 1
             if 'NEA' in mpec[7]:
@@ -270,11 +275,13 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 
         # numbers of precovery MPECs'
         if bool(re.match('.*' + station + '.*' + mpec[4] + '.*', mpec[3])):
+            d[station]['Precovery']['total'] += 1
             d[station]['Precovery'][year]['total'] += 1
             d[station]['Precovery'][year][month] += 1
 
         # numbers of "1st spotter" orbit update MPECs
         if mpec[6] == 'OrbitUpdate' and station == mpec[4]:
+            d[station]['1stRecovery']['total'] += 1
             d[station]['1stRecovery'][year]['total'] += 1
             d[station]['1stRecovery'][year][month] += 1
             if 'NEA' in mpec[7]:

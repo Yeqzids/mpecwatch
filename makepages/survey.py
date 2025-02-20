@@ -748,7 +748,7 @@ for p in pages:
             
     for pp in pages[:-1]:
         pp = str(pp)
-        o += f""" | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey-{p}.html">{p}</a>"""
+        o += f""" | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey-{pp}.html">{pp}</a>"""
         
     o += """
             </p>
