@@ -25,10 +25,15 @@ with open(stat) as stat:
     stat = json.load(stat)
     
 pages = list(np.arange(1993, datetime.now().year+1, 1))
+pages = [str(p) for p in pages]
 pages.append('All time')
+years = pages[:-1]
 
 for p in pages:
-
+    # test only all time
+    if p != 'All time':
+        continue
+    
     o = """
     <!doctype html>
     <html lang="en">
@@ -237,7 +242,28 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                 </tr>
-            """ % (str(sum(stat[s]['mpec'].values())), str(sum(stat[s]['mpec_discovery'].values())), str(sum(stat[s]['NEA_Disc'].values())), str(sum(stat[s]['PHA_Disc'].values())), str(sum(stat[s]['Comet_Disc'].values())), str(sum(stat[s]['Satellite_Disc'].values())), str(sum(stat[s]['TNO_Disc'].values())), str(sum(stat[s]['Unusual_Disc'].values())), str(sum(stat[s]['Interstellar_Disc'].values())), str(sum(stat[s]['Unknown_Disc'].values())), str(sum(stat[s]['mpec_followup'].values())), str(sum(stat[s]['NEA_FU'].values())), str(sum(stat[s]['PHA_FU'].values())), str(sum(stat[s]['Comet_FU'].values())), str(sum(stat[s]['Satellite_FU'].values())), str(sum(stat[s]['TNO_FU'].values())), str(sum(stat[s]['Unusual_FU'].values())), str(sum(stat[s]['Interstellar_FU'].values())), str(sum(stat[s]['Unknown_FU'].values())), str(sum(stat[s]['mpec_1st_followup'].values())), str(sum(stat[s]['mpec_precovery'].values())))
+            """ % (str(stat[s]['total']), 
+                   str(stat[s]['Discovery']['total']), 
+                   str(sum(stat[s]['Discovery'][year]['NEA'] for year in years)),
+                   str(sum(stat[s]['Discovery'][year]['PHA'] for year in years)),
+                   str(sum(stat[s]['Discovery'][year]['Comet'] for year in years)),
+                   str(sum(stat[s]['Discovery'][year]['Satellite'] for year in years)),
+                   str(sum(stat[s]['Discovery'][year]['TNO'] for year in years)),
+                   str(sum(stat[s]['Discovery'][year]['Unusual'] for year in years)),
+                   str(sum(stat[s]['Discovery'][year]['Interstellar'] for year in years)),
+                   str(sum(stat[s]['Discovery'][year]['Unknown'] for year in years)),
+                   str(stat[s]['Followup']['total']),
+                   str(sum(stat[s]['Followup'][year]['NEA'] for year in years)),
+                   str(sum(stat[s]['Followup'][year]['PHA'] for year in years)),
+                   str(sum(stat[s]['Followup'][year]['Comet'] for year in years)),
+                   str(sum(stat[s]['Followup'][year]['Satellite'] for year in years)),
+                   str(sum(stat[s]['Followup'][year]['TNO'] for year in years)),
+                   str(sum(stat[s]['Followup'][year]['Unusual'] for year in years)),
+                   str(sum(stat[s]['Followup'][year]['Interstellar'] for year in years)),
+                   str(sum(stat[s]['Followup'][year]['Unknown'] for year in years)),
+                   str(stat[s]['FirstFollowup']['total']),
+                   str(stat[s]['Precovery']['total']))
+    
         else:
             o += """
                     <td>%s</td>
@@ -262,7 +288,27 @@ for p in pages:
                     <td>%s</td>
                     <td>%s</td>
                 </tr>
-            """ % (str(stat[s]['mpec'][str(p)]), str(stat[s]['mpec_discovery'][str(p)]), str(stat[s]['NEA_Disc'][str(p)]), str(stat[s]['PHA_Disc'][str(p)]), str(stat[s]['Comet_Disc'][str(p)]), str(stat[s]['Satellite_Disc'][str(p)]), str(stat[s]['TNO_Disc'][str(p)]), str(stat[s]['Unusual_Disc'][str(p)]), str(stat[s]['Interstellar_Disc'][str(p)]), str(stat[s]['Unknown_Disc'][str(p)]), str(stat[s]['mpec_followup'][str(p)]), str(stat[s]['NEA_FU'][str(p)]), str(stat[s]['PHA_FU'][str(p)]), str(stat[s]['Comet_FU'][str(p)]), str(stat[s]['Satellite_FU'][str(p)]), str(stat[s]['TNO_FU'][str(p)]), str(stat[s]['Unusual_FU'][str(p)]), str(stat[s]['Interstellar_FU'][str(p)]), str(stat[s]['Unknown_FU'][str(p)]), str(stat[s]['mpec_1st_followup'][str(p)]), str(stat[s]['mpec_precovery'][str(p)]))
+            """ % (str(stat[s][str(p)]), 
+                   str(stat[s]['Discovery'][str(p)]['total']), 
+                   str(stat[s]['Discovery'][str(p)]['NEA']), 
+                   str(stat[s]['Discovery'][str(p)]['PHA']), 
+                   str(stat[s]['Discovery'][str(p)]['Comet']), 
+                   str(stat[s]['Discovery'][str(p)]['Satellite']),
+                   str(stat[s]['Discovery'][str(p)]['TNO']),
+                   str(stat[s]['Discovery'][str(p)]['Unusual']), 
+                   str(stat[s]['Discovery'][str(p)]['Interstellar']), 
+                   str(stat[s]['Discovery'][str(p)]['Unknown']),
+                   str(stat[s]['Followup'][str(p)]['total']), 
+                   str(stat[s]['Followup'][str(p)]['NEA']), 
+                   str(stat[s]['Followup'][str(p)]['PHA']), 
+                   str(stat[s]['Followup'][str(p)]['Comet']), 
+                   str(stat[s]['Followup'][str(p)]['Satellite']), 
+                   str(stat[s]['Followup'][str(p)]['TNO']), 
+                   str(stat[s]['Followup'][str(p)]['Unusual']), 
+                   str(stat[s]['Followup'][str(p)]['Interstellar']), 
+                   str(stat[s]['Followup'][str(p)]['Unknown']), 
+                   str(stat[s]['FirstFollowup'][str(p)]['total']), 
+                   str(stat[s]['Precovery'][str(p)]['total']))
         
     o += """
         </tbody>
