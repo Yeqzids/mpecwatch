@@ -18,8 +18,8 @@ with open(stat) as stat:
 mpecconn = sqlite3.connect("../mpecwatch_v3.db")
 cursor = mpecconn.cursor()
 
-obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
-obj_types = ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
+MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+OBJ_TYPES = ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
 
 def getMonthName(month):
     return calendar.month_name[month][0:3]
@@ -59,98 +59,73 @@ def merge_dictionaries(dict1, dict2):
 
 # Creates a sruvey page by combining the stats of all stations in the survey
 def createSurveyPage(surveyName, surveyNameAbbv, codes):
-  survey_data[surveyName] = {}
-  survey_data[surveyName]['MPECId'] = {} # single 'MPECId' key: {MPECId: Object designation in packed form}
-  survey_data[surveyName]['Discovery'] = {} 
-  survey_data[surveyName]['Editorial'] = {}
-  survey_data[surveyName]['OrbitUpdate'] = {}
-  survey_data[surveyName]['DOU'] = {}
-  survey_data[surveyName]['ListUpdate'] = {}
-  survey_data[surveyName]['Retraction'] = {}
-  survey_data[surveyName]['Other'] = {}
-  survey_data[surveyName]['Followup'] = {}
-  survey_data[surveyName]['FirstFollowup'] = {}
-  for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-      year = int(year)
-      survey_data[surveyName]['Discovery'][year] = {'total':0} 
-      for obj in obj_types:
-          survey_data[surveyName]['Discovery'][year][obj] = 0 #object type count
-      survey_data[surveyName]['Editorial'][year] = {'total':0}
-      survey_data[surveyName]['OrbitUpdate'][year] = {'total':0} 
-      for obj in obj_types:
-          survey_data[surveyName]['OrbitUpdate'][year][obj] = 0 #object type count
-      survey_data[surveyName]['DOU'][year] = {'total':0}
-      survey_data[surveyName]['ListUpdate'][year] = {'total':0}
-      survey_data[surveyName]['Retraction'][year] = {'total':0}
-      survey_data[surveyName]['Other'][year] = {'total':0}
-      survey_data[surveyName]['Followup'][year] = {'total':0}
-      survey_data[surveyName]['FirstFollowup'][year] = {'total':0}
-      for month in range(1, 13):
-          survey_data[surveyName]['Discovery'][year][month] = 0
-          survey_data[surveyName]['Editorial'][year][month] = 0
-          survey_data[surveyName]['OrbitUpdate'][year][month] = 0
-          survey_data[surveyName]['DOU'][year][month] = 0
-          survey_data[surveyName]['ListUpdate'][year][month] = 0
-          survey_data[surveyName]['Retraction'][year][month] = 0
-          survey_data[surveyName]['Other'][year][month] = 0
-          survey_data[surveyName]['Followup'][year][month] = 0
-          survey_data[surveyName]['FirstFollowup'][year][month] = 0
-  survey_data[surveyName]['MPECs'] = set() #[[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH], ...]
-  survey_data[surveyName]['OBS'] = {} #contains all observers for each surveyName
-  survey_data[surveyName]['MEA'] = {} #contains all measurers for each station
-  survey_data[surveyName]['Facilities'] = {} #contains all facilities for each station
+    survey_data[surveyName] = {}
+    survey_data[surveyName]['MPECId'] = {} # single 'MPECId' key: {MPECId: Object designation in packed form}
+    for mpecType in MPEC_TYPES:
+        survey_data[surveyName][mpecType] = {} # single 'MPECType' key: {Year: {Month: count, total: count, objType: count}}
+        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+            year = int(year)
+            survey_data[surveyName][mpecType][year] = {}
+            for month in range(1, 13):
+                survey_data[surveyName][mpecType][year][getMonthName(month)] = 0
+            for obj in OBJ_TYPES:
+                survey_data[surveyName][mpecType][year][obj] = 0
+    survey_data[surveyName]['MPECs'] = set() #[[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH], ...]
+    survey_data[surveyName]['OBS'] = {} #contains all observers for each surveyName
+    survey_data[surveyName]['MEA'] = {} #contains all measurers for each station
+    survey_data[surveyName]['Facilities'] = {} #contains all facilities for each station
 
-  for code in codes:
-      #combine object and mpecid information for each station in the survey
-      survey_data[surveyName]['MPECId'] = survey_data[surveyName]['MPECId'] | stat[code]['MPECId']
+    for code in codes:
+        #combine object and mpecid information for each station in the survey
+        survey_data[surveyName]['MPECId'] = survey_data[surveyName]['MPECId'] | stat[code]['MPECId']
 
-      #combine observers for each station in the survey
-      survey_data[surveyName]['OBS'] = merge_mpec_dicts(survey_data[surveyName]['OBS'], stat[code]['OBS'])
+        #combine observers for each station in the survey
+        survey_data[surveyName]['OBS'] = merge_mpec_dicts(survey_data[surveyName]['OBS'], stat[code]['OBS'])
 
-      #combine measurers for each station in the survey
-      survey_data[surveyName]['MEA'] = merge_mpec_dicts(survey_data[surveyName]['MEA'], stat[code]['MEA'])
+        #combine measurers for each station in the survey
+        survey_data[surveyName]['MEA'] = merge_mpec_dicts(survey_data[surveyName]['MEA'], stat[code]['MEA'])
 
-      #combine facilities for each station in the survey
-      survey_data[surveyName]['Facilities'] = merge_mpec_dicts(survey_data[surveyName]['Facilities'], stat[code]['FAC'])
+        #combine facilities for each station in the survey
+        survey_data[surveyName]['Facilities'] = merge_mpec_dicts(survey_data[surveyName]['Facilities'], stat[code]['FAC'])
 
-      #combine MPECs for each station in the survey (skip duplicates)
-      for MPEC in stat[code]['MPECs']:
-        survey_data[surveyName]['MPECs'].add(tuple(MPEC))
+        #combine MPECs for each station in the survey (skip duplicates)
+        for MPEC in stat[code]['MPECs']:
+            survey_data[surveyName]['MPECs'].add(tuple(MPEC))
 
-      # need to fix this part
-      for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
-          # Note that stat stores the year as a string while survey_data stores it as an int (json limitation)
-          survey_data[surveyName]['Discovery'][year]['total'] += stat[code]['Discovery'][str(year)]['total']
-          for obj in obj_types:
-              survey_data[surveyName]['Discovery'][year][obj] += stat[code]['Discovery'][str(year)][obj]
-          survey_data[surveyName]['Editorial'][year]['total'] += stat[code]['Editorial'][str(year)]['total']
-          survey_data[surveyName]['OrbitUpdate'][year]['total'] += stat[code]['OrbitUpdate'][str(year)]['total']
-          for obj in obj_types:
-              survey_data[surveyName]['OrbitUpdate'][year][obj] += stat[code]['OrbitUpdate'][str(year)][obj]
-          survey_data[surveyName]['DOU'][year]['total'] += stat[code]['DOU'][str(year)]['total']
-          survey_data[surveyName]['ListUpdate'][year]['total'] += stat[code]['ListUpdate'][str(year)]['total']
-          survey_data[surveyName]['Retraction'][year]['total'] += stat[code]['Retraction'][str(year)]['total']
-          survey_data[surveyName]['Other'][year]['total'] += stat[code]['Other'][str(year)]['total']
-          survey_data[surveyName]['Followup'][year]['total'] += stat[code]['Followup'][str(year)]['total']
-          survey_data[surveyName]['FirstFollowup'][year]['total'] += stat[code]['FirstFollowup'][str(year)]['total']
-          # Note that stat stores the month as a string while survey_data stores it as an int (json limitation)
-          for month in range(1, 13):
-              survey_data[surveyName]['Discovery'][year][month] += stat[code]['Discovery'][str(year)][getMonthName(month)]
-              survey_data[surveyName]['Editorial'][year][month] += stat[code]['Editorial'][str(year)][getMonthName(month)]
-              survey_data[surveyName]['OrbitUpdate'][year][month] += stat[code]['OrbitUpdate'][str(year)][getMonthName(month)]
-              survey_data[surveyName]['DOU'][year][month] += stat[code]['DOU'][str(year)][getMonthName(month)]
-              survey_data[surveyName]['ListUpdate'][year][month] += stat[code]['ListUpdate'][str(year)][getMonthName(month)]
-              survey_data[surveyName]['Retraction'][year][month] += stat[code]['Retraction'][str(year)][getMonthName(month)]
-              survey_data[surveyName]['Other'][year][month] += stat[code]['Other'][str(year)][getMonthName(month)]
-              survey_data[surveyName]['Followup'][year][month] += stat[code]['Followup'][str(year)][getMonthName(month)]
-              survey_data[surveyName]['FirstFollowup'][year][month] += stat[code]['FirstFollowup'][str(year)][getMonthName(month)]
+        # need to fix this part
+        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+            # Note that stat stores the year as a string while survey_data stores it as an int (json limitation)
+            survey_data[surveyName]['Discovery'][year]['total'] += stat[code]['Discovery'][str(year)]['total']
+            for obj in OBJ_TYPES:
+                survey_data[surveyName]['Discovery'][year][obj] += stat[code]['Discovery'][str(year)][obj]
+            survey_data[surveyName]['Editorial'][year]['total'] += stat[code]['Editorial'][str(year)]['total']
+            survey_data[surveyName]['OrbitUpdate'][year]['total'] += stat[code]['OrbitUpdate'][str(year)]['total']
+            for obj in OBJ_TYPES:
+                survey_data[surveyName]['OrbitUpdate'][year][obj] += stat[code]['OrbitUpdate'][str(year)][obj]
+            survey_data[surveyName]['DOU'][year]['total'] += stat[code]['DOU'][str(year)]['total']
+            survey_data[surveyName]['ListUpdate'][year]['total'] += stat[code]['ListUpdate'][str(year)]['total']
+            survey_data[surveyName]['Retraction'][year]['total'] += stat[code]['Retraction'][str(year)]['total']
+            survey_data[surveyName]['Other'][year]['total'] += stat[code]['Other'][str(year)]['total']
+            survey_data[surveyName]['Followup'][year]['total'] += stat[code]['Followup'][str(year)]['total']
+            survey_data[surveyName]['FirstFollowup'][year]['total'] += stat[code]['FirstFollowup'][str(year)]['total']
+            # Note that stat stores the month as a string while survey_data stores it as an int (json limitation)
+            for month in range(1, 13):
+                survey_data[surveyName]['Discovery'][year][month] += stat[code]['Discovery'][str(year)][getMonthName(month)]
+                survey_data[surveyName]['Editorial'][year][month] += stat[code]['Editorial'][str(year)][getMonthName(month)]
+                survey_data[surveyName]['OrbitUpdate'][year][month] += stat[code]['OrbitUpdate'][str(year)][getMonthName(month)]
+                survey_data[surveyName]['DOU'][year][month] += stat[code]['DOU'][str(year)][getMonthName(month)]
+                survey_data[surveyName]['ListUpdate'][year][month] += stat[code]['ListUpdate'][str(year)][getMonthName(month)]
+                survey_data[surveyName]['Retraction'][year][month] += stat[code]['Retraction'][str(year)][getMonthName(month)]
+                survey_data[surveyName]['Other'][year][month] += stat[code]['Other'][str(year)][getMonthName(month)]
+                survey_data[surveyName]['Followup'][year][month] += stat[code]['Followup'][str(year)][getMonthName(month)]
+                survey_data[surveyName]['FirstFollowup'][year][month] += stat[code]['FirstFollowup'][str(year)][getMonthName(month)]
       
 
-  # to convert the set back to a list
-  survey_data[surveyName]['MPECs'] = [list(mpec) for mpec in survey_data[surveyName]['MPECs']]
-  
-  # Potential improvement: make dictionary local to function and pass it to createGraph
-  createGraph(surveyName, surveyNameAbbv, codes)
+    # to convert the set back to a list
+    survey_data[surveyName]['MPECs'] = [list(mpec) for mpec in survey_data[surveyName]['MPECs']]
+    
+    # Potential improvement: make dictionary local to function and pass it to createGraph
+    createGraph(surveyName, surveyNameAbbv, codes)
 
 def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
@@ -320,7 +295,7 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         year = int(year)
         year_counts = []
-        for mpecType in obs_types:
+        for mpecType in MPEC_TYPES:
             if year in survey_data[surveyName][mpecType].keys():
                 total = survey_data[surveyName][mpecType][year]['total']
             else:
@@ -342,7 +317,7 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
         month_index = 1
         for month in months:
             month_counts = []
-            for mpecType in obs_types:
+            for mpecType in MPEC_TYPES:
                 month_counts.append(survey_data[surveyName][mpecType][year][month_index])
             df_monthly_graph = pd.concat([df_monthly_graph, pd.DataFrame({"Month": [month, month, month, month, month, month, month, month, month], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": month_counts})])
             month_index += 1
@@ -552,10 +527,10 @@ def monthly(surveyName, surveyNameAbbv, year, df_month_graph):
     month_index = 1
     for month in months:
         new_row = []
-        for mpecType in obs_types:
+        for mpecType in MPEC_TYPES:
             new_row.append(survey_data[surveyName][mpecType][year][month_index])
         month_index+=1
-        df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=obs_types)])
+        df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=MPEC_TYPES)])
     
     page = '../www/bySurvey/monthly/{}.html'.format(surveyNameAbbv+"_"+str(year))
     o = """
