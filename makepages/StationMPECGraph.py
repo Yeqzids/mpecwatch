@@ -507,6 +507,13 @@ def createGraph(station_code, includeFirstFU = True):
                 </thead>
                 <tbody>"""
     for observer, count in mpec_data[station[-3::]]['OBS'].items():
+        # Check if the observer string starts with a comma or comma followed by a space and remove it
+        if observer.startswith(", "):
+            observer = observer[2:]
+            print(station[-3::], observer)
+        elif observer.startswith(","):
+            observer = observer[1:]
+            print(station[-3::], observer)
         o += """
                     <tr>
                         <td>{}</td>
@@ -532,6 +539,12 @@ def createGraph(station_code, includeFirstFU = True):
                 <tbody>"""
     
     for measurer, count in mpec_data[station[-3::]]['MEA'].items():
+        if measurer.startswith(", "):
+            measurer = measurer[2:]
+            print(station[-3::], measurer)
+        elif measurer.startswith(","):
+            measurer = measurer[1:]
+            print(station[-3::], measurer)
         o += """
                     <tr>
                         <td>{}</td>
