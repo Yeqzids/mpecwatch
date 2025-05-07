@@ -34,7 +34,7 @@ TABLE XXX (observatory code):
 
 import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, re
 from datetime import date
-from collections import defaultdict
+from collections import defaultdict, Counter
 from rapidfuzz import fuzz, process
 
 mpec_data=dict()
@@ -70,28 +70,28 @@ def encode(num, alphabet=BASE62):
 # ——— Global container for fuzzy‑built name_map ———
 name_map = {}
 
-# ——— 1. Normalize single names ———
 def normalize_name(name: str) -> str:
     name = name.strip()
     name = re.sub(r'\s+', ' ', name)
     name = re.sub(r'\.\s', '.', name)
     return name
 
-# ——— 2. Build name_map from every station at startup ———
 def build_name_map(threshold: int = 90):
     global name_map
     all_names = set()
 
-    for station in mpccode.keys():
-        for obs_group in mpec_data[station]['OBS']:
-            print("Station: ", station, "Observer group: ", obs_group)
-            for nm in obs_group.lstrip(', ').split(','):
-                all_names.add(normalize_name(nm))
+    # Build set of individual names from the MPEC data
+    for station_data in mpec_data.values():
+        for role in ('OBS','MEA'):
+            for group in station_data[role].keys():       # each group is a comma-joined string
+                for name in group.split(','):             # split on the comma itself
+                    name = name.strip()                    # trim any stray spaces
+                    all_names.add(name)
 
     canonical = []
     local_map = {}
     for name in sorted(all_names):
-        print("Processing name: ", name)
+        #print("Processing name: ", name)
         if canonical:
             # find best match among canonicals
             match, score, _ = process.extractOne(
@@ -110,15 +110,29 @@ def build_name_map(threshold: int = 90):
     print("Name map created with {} names.".format(len(local_map)))
     name_map = local_map
 
-# ——— 3. Clean up one observer‑group string ———
+def process_role(raw_counts: dict):
+    counts = Counter()
+    for group, cnt in raw_counts.items():
+        key = standardize_group(group)
+        counts[key] += cnt
+    return counts
+
 def standardize_group(obs_str: str) -> str:
     parts = [ normalize_name(nm) for nm in obs_str.lstrip(', ').split(',') ]
     corrected = [ name_map.get(nm, nm) for nm in parts ]
     return ', '.join(sorted(corrected))
 
+def per_person_counts(counts: Counter) -> Counter:
+    per_person = Counter()
+    for group, cnt in counts.items():
+        for name in group.split(','):
+            name = name.strip()
+            per_person[name] += cnt
+    return per_person
+
 obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
 obj_types = ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "unk"]
-def calcObs():
+def load_raw_data():
     for station in mpccode.keys():
         #initialize dict
         mpec_data[station] = {}
@@ -149,17 +163,19 @@ def calcObs():
 
         #observers per station
         try:
-            for observer in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
-                if observer[0] != '':
-                    mpec_data[station]['OBS'][observer[0]] = mpec_data[station]['OBS'].get(observer[0],0)+1
+            for (observer,) in mpecconn.execute("SELECT Observer FROM station_{}".format(station)).fetchall():
+                if observer:
+                    m = normalize_name(observer)
+                    mpec_data[station]['OBS'][m] = mpec_data[station]['OBS'].get(m,0)+1
         except: 
             pass           
 
         #measurers per station
         try:
-            for measurer in mpecconn.execute("SELECT Measurer FROM station_{}".format(station)).fetchall():
-                if measurer[0] != '':
-                    mpec_data[station]['MEA'][measurer[0]] = mpec_data[station]['MEA'].get(measurer[0],0)+1
+            for (measurer,) in mpecconn.execute("SELECT Measurer FROM station_{}".format(station)).fetchall():
+                if measurer:
+                    m = normalize_name(measurer)
+                    mpec_data[station]['MEA'][m] = mpec_data[station]['MEA'].get(m,0)+1
         except:
             pass
 
@@ -552,32 +568,56 @@ def createGraph(station_code, includeFirstFU = True):
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="observer" data-sortable="true">Observers</th>
-                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
+                        <th class="th-sm" data-field="observer" data-sortable="true">Observer Group</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Total MPECs</th>
                     </tr>
                 </thead>
                 <tbody>"""
     
     
-    cleaned_counts = defaultdict(int)
-    for observer, count in mpec_data[station_code]['OBS'].items():
-        key = standardize_group(observer)
-        cleaned_counts[key] += count
+    obs_counts = process_role(mpec_data[station_code]['OBS'])
+    ind_obs_counts = per_person_counts(obs_counts)
+    mea_counts = process_role(mpec_data[station_code]['MEA'])
+    ind_mea_counts = per_person_counts(mea_counts)
 
-    print("Station code: ", station_code)
-    #print("Observer counts: ", mpec_data[station_code]['OBS'])
-    #print("Cleaned counts: ", cleaned_counts)
-    print("Length of cleaned counts: ", len(cleaned_counts))
-    print("Length of original observer counts: ", len(mpec_data[station_code]['OBS']))
+    # print("Station code: ", station_code)
+    # print("Length of cleaned measurer counts: ", len(mea_counts))
+    # print("Length of original measurer counts: ", len(mpec_data[station_code]['MEA']))
+    # print("Length of cleaned observer counts: ", len(obs_counts))
+    # print("Length of original observer counts: ", len(mpec_data[station_code]['OBS']))
 
-    for observer, count in sorted(cleaned_counts.items(), key=lambda x: -x[1]):
+    for observer, count in obs_counts.most_common():
         o += f"""
             <tr>
                 <td>{observer}</td>
                 <td>{count}</td>
             </tr>
         """
-        
+
+    o += """
+                </tbody>
+            </table>
+            <table id="IND_OBS_table"
+                class="table table-striped table-bordered table-sm"
+                data-toggle="table"
+                data-search="true"
+                data-pagination="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="individual" data-sortable="true">Individual Observer</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Total MPECs</th>
+                    </tr>
+                </thead>
+                <tbody>"""
+    
+    for ind_observer, count in ind_obs_counts.most_common():
+        o += f"""
+                    <tr>
+                        <td>{ind_observer}</td>
+                        <td>{count}</td>
+                    </tr>
+        """
+
     o += """
                 </tbody>
             </table>
@@ -589,26 +629,44 @@ def createGraph(station_code, includeFirstFU = True):
                 data-pagination="true">
                 <thead>
                     <tr>
-                        <th class="th-sm" data-field="measurer" data-sortable="true">Measurers</th>
-                        <th class="th-sm" data-field="count" data-sortable="true">Count</th>
+                        <th class="th-sm" data-field="measurer" data-sortable="true">Measurer Group</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Total MPECs</th>
                     </tr>
                 </thead>
                 <tbody>"""
     
-    for measurer, count in mpec_data[station[-3::]]['MEA'].items():
-        if measurer.startswith(", "):
-            measurer = measurer[2:]
-            print(station[-3::], measurer)
-        elif measurer.startswith(","):
-            measurer = measurer[1:]
-            print(station[-3::], measurer)
-        o += """
+    for measurer, count in mea_counts.most_common():
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
+                        <td>{measurer}</td>
+                        <td>{count}</td>
                     </tr>
-    """.format(measurer, count)
+    """
         
+    o += """
+                </tbody>
+            </table>
+            <table id="IND_MEA_table"
+                class="table table-striped table-bordered table-sm"
+                data-toggle="table"
+                data-search="true"
+                data-pagination="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="individual" data-sortable="true">Individual Measurer</th>
+                        <th class="th-sm" data-field="count" data-sortable="true">Total MPECs</th>
+                    </tr>
+                </thead>
+                <tbody>"""
+    
+    for ind_measurer, count in ind_mea_counts.most_common():
+        o += f"""
+                    <tr>
+                        <td>{ind_measurer}</td>
+                        <td>{count}</td>
+                    </tr>
+        """
+    
     o += """
                 </tbody>
             </table>
@@ -768,15 +826,16 @@ def monthly(station, year, df_month_graph):
 
 def main():
     print('start...')
-    calcObs()
+    load_raw_data()
+    build_name_map() # build name map for observers and measureres to standardize names (set threshold level between 0-100, defualt is 90)
     print('begin writing stations')
-    build_name_map() # build name map for observers
+    
 
-    # for station in mpccode.keys():
-    #     if station == 'XXX':
-    #         continue
-    #     createGraph(station)
-    createGraph('G96')
+    for station in mpccode.keys():
+        if station == 'XXX':
+            continue
+        createGraph(station)
+    #createGraph('G96')
 
     # Export mpec_data to json
     # with open('../mpec_data.json', 'w') as f:
