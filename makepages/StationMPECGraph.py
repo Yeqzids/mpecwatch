@@ -32,8 +32,10 @@ TABLE XXX (observatory code):
     Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
-import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, threading, concurrent.futures
+import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, re
 from datetime import date
+from collections import defaultdict
+from rapidfuzz import fuzz, process
 
 mpec_data=dict()
 mpecconn = sqlite3.connect("../mpecwatch_v3.db")
@@ -64,6 +66,55 @@ def encode(num, alphabet=BASE62):
         arr.append(alphabet[rem])
     arr.reverse()
     return ''.join(arr)
+
+# ——— Global container for fuzzy‑built name_map ———
+name_map = {}
+
+# ——— 1. Normalize single names ———
+def normalize_name(name: str) -> str:
+    name = name.strip()
+    name = re.sub(r'\s+', ' ', name)
+    name = re.sub(r'\.\s', '.', name)
+    return name
+
+# ——— 2. Build name_map from every station at startup ———
+def build_name_map(threshold: int = 90):
+    global name_map
+    all_names = set()
+
+    for station in mpccode.keys():
+        for obs_group in mpec_data[station]['OBS']:
+            print("Station: ", station, "Observer group: ", obs_group)
+            for nm in obs_group.lstrip(', ').split(','):
+                all_names.add(normalize_name(nm))
+
+    canonical = []
+    local_map = {}
+    for name in sorted(all_names):
+        print("Processing name: ", name)
+        if canonical:
+            # find best match among canonicals
+            match, score, _ = process.extractOne(
+                name,
+                canonical,
+                scorer=fuzz.token_sort_ratio
+            )
+            if score >= threshold:
+                local_map[name] = match
+                continue
+
+        # no good match → new canonical
+        canonical.append(name)
+        local_map[name] = name
+
+    print("Name map created with {} names.".format(len(local_map)))
+    name_map = local_map
+
+# ——— 3. Clean up one observer‑group string ———
+def standardize_group(obs_str: str) -> str:
+    parts = [ normalize_name(nm) for nm in obs_str.lstrip(', ').split(',') ]
+    corrected = [ name_map.get(nm, nm) for nm in parts ]
+    return ', '.join(sorted(corrected))
 
 obs_types = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
 obj_types = ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "unk"]
@@ -506,20 +557,26 @@ def createGraph(station_code, includeFirstFU = True):
                     </tr>
                 </thead>
                 <tbody>"""
-    for observer, count in mpec_data[station[-3::]]['OBS'].items():
-        # Check if the observer string starts with a comma or comma followed by a space and remove it
-        if observer.startswith(", "):
-            observer = observer[2:]
-            print(station[-3::], observer)
-        elif observer.startswith(","):
-            observer = observer[1:]
-            print(station[-3::], observer)
-        o += """
-                    <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                    </tr>
-    """.format(observer, count)
+    
+    
+    cleaned_counts = defaultdict(int)
+    for observer, count in mpec_data[station_code]['OBS'].items():
+        key = standardize_group(observer)
+        cleaned_counts[key] += count
+
+    print("Station code: ", station_code)
+    #print("Observer counts: ", mpec_data[station_code]['OBS'])
+    #print("Cleaned counts: ", cleaned_counts)
+    print("Length of cleaned counts: ", len(cleaned_counts))
+    print("Length of original observer counts: ", len(mpec_data[station_code]['OBS']))
+
+    for observer, count in sorted(cleaned_counts.items(), key=lambda x: -x[1]):
+        o += f"""
+            <tr>
+                <td>{observer}</td>
+                <td>{count}</td>
+            </tr>
+        """
         
     o += """
                 </tbody>
@@ -713,15 +770,17 @@ def main():
     print('start...')
     calcObs()
     print('begin writing stations')
-    for station in mpccode.keys():
-        if station == 'XXX':
-            continue
-        createGraph(station)
-    #createGraph('704')
+    build_name_map() # build name map for observers
+
+    # for station in mpccode.keys():
+    #     if station == 'XXX':
+    #         continue
+    #     createGraph(station)
+    createGraph('G96')
 
     # Export mpec_data to json
-    with open('../mpec_data.json', 'w') as f:
-        json.dump(mpec_data, f)
+    # with open('../mpec_data.json', 'w') as f:
+    #     json.dump(mpec_data, f)
 
 main()
 mpecconn.close()
