@@ -4,6 +4,7 @@
 
 ## Change log
 
+* 2025 May 12: tables of individual observers/measurers are now available; formatting errors in some observer/measurer names are fixed.
 * 2024 Oct 5: statistics of individual survey program is now available.
 * 2024 Jun 11: observatory table has expanded columns.
 * 2024 Jun 1: survey summary page now available; adding recovery stats; adding term definitions.
