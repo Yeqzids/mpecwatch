@@ -38,7 +38,7 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
 ym = sys.argv[1]
-dbFile = 'mpecwatch_v3_test.db'
+dbFile = 'mpecwatch_v3.db'
 
 def month_to_letter(month):		# turn month into letter following MPC scheme
 	if month == '01':
@@ -359,6 +359,10 @@ def find_issuer(mpec_text):
 		if '(C)' in s:
 			return(s[0:28].strip())
 
+class PageParseError(Exception):
+    """Raised when an MPEC page is missing an expected section."""
+    pass
+
 ########
 # main #
 ########
@@ -468,7 +472,20 @@ for halfmonth in month_to_letter(ym[4:6]):
 					obs_start = -1
 					obs_end = -1
 
-
+					## DOU Identifiers
+					if mpec_type == 'DOU':
+						if 'New identifications:' not in mpec_text or 'New old-numbered orbits:' not in mpec_text:
+							raise PageParseError(f"{mpec_id}: missing DOU markers")
+						start = mpec_text.index('New identifications:') + 1
+						end   = mpec_text.index('New old-numbered orbits:')
+						for line in mpec_text[start:end]:
+							parts = line.split()
+							if not parts: # skip empty lines
+								continue
+							dou = parts[-1]
+							# insert DOU into DOUIdentifier table if (MPECId, DOU) does not exist
+							cursor.execute("INSERT OR IGNORE INTO DOUIdentifier (MPECId, DOU) VALUES (?,?)",(mpec_id, dou))
+						db.commit()
 
 					## Observations
 					obs_headers = [
