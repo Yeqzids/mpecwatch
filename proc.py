@@ -38,7 +38,7 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
 ym = sys.argv[1]
-dbFile = 'mpecwatch_v3.db'
+dbFile = 'mpecwatch_v3_test.db'
 
 def month_to_letter(month):		# turn month into letter following MPC scheme
 	if month == '01':
@@ -376,7 +376,43 @@ if os.path.isfile(dbFile):
 else:
 	db = sqlite3.connect(dbFile)
 	cursor = db.cursor()
-	cursor.execute('''CREATE TABLE MPEC(MPECId TEXT, Title TEXT, Time INTEGER, Station TEXT, DiscStation TEXT, FirstConf TEXT, MPECType TEXT, ObjectType TEXT, OrbitComp TEXT, Issuer TEXT)''')
+	cursor.execute("""
+		CREATE TABLE IF NOT EXISTS MPEC (
+			MPECId TEXT PRIMARY KEY,
+			Title TEXT,
+			Time INTEGER,
+			Station TEXT,
+			DiscStation TEXT,
+			FirstConf TEXT,
+			MPECType TEXT,
+			ObjectType TEXT,
+			OrbitComp TEXT,
+			Issuer TEXT,
+			ObjectId TEXT,
+			FOREIGN KEY(ObjectId) REFERENCES Objects(ObjectId)
+		)
+	""")
+	# decoding note1: https://www.minorplanetcenter.net/iau/info/ObsNote.html
+	# decoding note2: https://www.minorplanetcenter.net/iau/info/OpticalObs.html
+	# decoding catalog code: https://minorplanetcenter.net/iau/info/CatalogueCodes.html
+	cursor.execute("""
+		CREATE TABLE IF NOT EXISTS Objects (
+			ObjectId TEXT PRIMARY KEY,
+			Discovery BOOLEAN DEFAULT 0,
+			Note1 TEXT,
+			Note2 TEXT,
+			Timestamp INTEGER,
+			Mag REAL,
+			Band TEXT,
+			Star_cat_code TEXT
+		)
+	""")
+	cursor.execute("""
+		CREATE TABLE IF NOT EXISTS DOUIdentifier (
+			MPECId TEXT,
+			DOU TEXT
+		)
+	""")
 	db.commit()
 
 for halfmonth in month_to_letter(ym[4:6]):
@@ -386,9 +422,8 @@ for halfmonth in month_to_letter(ym[4:6]):
 		
 		# check if this MPEC is in the database; if yes, pass this one
 		this_mpec = 'MPEC ' + ym[0:4] + '-' + halfmonth + '%02i' % i
-		cursor.execute("SELECT * FROM MPEC WHERE MPECId = '" + this_mpec + "'")
-		query_result_size = len(cursor.fetchall())
-		if query_result_size > 0:		# this MPEC exists in database
+		cursor.execute("SELECT 1 FROM MPEC WHERE MPECId = ?", (this_mpec,))
+		if cursor.fetchone(): # MPEC already exists in the database
 			continue
 				
 		try:
@@ -425,27 +460,31 @@ for halfmonth in month_to_letter(ym[4:6]):
 				
 				### test output (note: recommend not commenting this out to show progress)
 				print(mpec_id, mpec_title, mpec_time, mpec_type, mpec_obj_type)
+
+				## 
 				
-				## push observation into TABLE of individual observatory code if mpec_type is Discovery, OrbitUpdate or DOU
-				
-				if mpec_type == 'Discovery' or mpec_type == 'OrbitUpdate' or mpec_type == 'DOU':
+				## push observation into MPEC TABLE of individual observatory code if mpec_type is Discovery, OrbitUpdate or DOU
+				if mpec_type in ('Discovery', 'OrbitUpdate', 'DOU'):
 					obs_start = -1
 					obs_end = -1
-					if any(s.startswith('Observations:') for s in mpec_text):
-						obs_start = mpec_text.index('Observations:') + 1
-					elif any(s.startswith('Additional observations:') for s in mpec_text):
-						obs_start = mpec_text.index('Additional observations:') + 1
-					elif any(s.startswith('Additional Observations:') for s in mpec_text):
-						obs_start = mpec_text.index('Additional Observations:') + 1
-					elif any(s.startswith('Available observations:') for s in mpec_text):
-						obs_start = mpec_text.index('Available observations:') + 1
-					elif any(s.startswith('Corrected observations:') for s in mpec_text):
-						obs_start = mpec_text.index('Corrected observations:') + 1
-					elif any(s.startswith('New observations:') for s in mpec_text):
-						obs_start = mpec_text.index('New observations:') + 1
-					else:
-						pass
-						
+
+
+
+					## Observations
+					obs_headers = [
+						'Observations:',
+						'Additional observations:',
+						'Additional Observations:',
+						'Available observations:',
+						'Corrected observations:',
+						'New observations:',
+					]
+
+					for hdr in obs_headers:
+						if hdr in mpec_text:
+							obs_start = mpec_text.index(hdr) + 1
+							break
+					
 					if not obs_start == -1:		# only proceed if there are observations in the MPEC
 						if any(s == 'Observer details:' for s in mpec_text):
 							obs_end = mpec_text.index('Observer details:')
@@ -480,10 +519,15 @@ for halfmonth in month_to_letter(ym[4:6]):
 							obs_obj = line[0:12].strip()
 							date = line[15:25].replace(' ', '-')
 							hours = int(float(line[25:32])*24 % 24)
+							note1 = line[13].strip()
+							note2 = line[14].strip()
 							minutes = int(float(line[25:32])*1440 % 60)
 							seconds = int(float(line[25:32])*86400 % 60)
 							obs_date_time_string = date + ' ' + str('%02i' % hours) + ':' + str('%02i' % minutes) + ':' + str('%02i' % seconds)
 							obs_date_timestamp = dt.datetime(int(date[0:4]), int(date[5:7]), int(date[8:10]), int(hours), int(minutes), int(seconds)).timestamp()
+							mag = line[65:70].strip()
+							band = line[70]
+							code = line[71]
 							obs_code = line[77:80]
 							if obs_details == '':
 								observer = ''
@@ -501,9 +545,8 @@ for halfmonth in month_to_letter(ym[4:6]):
 								
 							### test output
 							#print('OBJECT: ', obs_obj, ' | DATETIME: ', obs_date_time_string, ' | OBSERVER:', observer, ' | MEASURER:', measurer, ' | FACILITY:', facility, ' | DISCOVERY:', discovery_asterisk)
-							
+
 							### write to the corresponding station TABLE (create if it does not exist)
-							
 							cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='station_" + obs_code + "'")
 
 							if cursor.fetchone()[0] == 0:
@@ -512,6 +555,22 @@ for halfmonth in month_to_letter(ym[4:6]):
 							
 							cursor.execute("INSERT INTO station_" + obs_code + "(Object, Time, Observer, Measurer, Facility, MPEC, MPECType, ObjectType, Discovery) VALUES(?,?,?,?,?,?,?,?,?)", \
 							(obs_obj, obs_date_timestamp, observer, measurer, facility, mpec_id, mpec_type, mpec_obj_type, int(discovery_asterisk)))
+							db.commit()
+
+							### write to TABLE Objects
+							cursor.execute("SELECT 1 FROM Objects WHERE ObjectId = ?", (obs_obj,))
+							existing = cursor.fetchone() # Object already exists in the database
+							if existing:
+								# Overwrite the existing information with the new data.
+								cursor.execute("""
+									UPDATE Objects SET Discovery = ?, Note1 = ?, Note2 = ?, Timestamp = ?, Mag = ?, Band = ?, Star_cat_code = ?
+									WHERE ObjectId = ?
+								""", (discovery_asterisk, note1, note2, obs_date_timestamp, mag, band, code, obs_obj))
+							else:
+								cursor.execute("""
+									INSERT INTO Objects (ObjectId, Discovery, Note1, Note2, Timestamp, Mag, Band, Star_cat_code)
+									VALUES (?,?,?,?,?,?,?,?)
+								""", (obs_obj, discovery_asterisk, note1, note2, obs_date_timestamp, mag, band, code))
 							db.commit()
 				
 				indexes = np.unique(obs_code_collection, return_index=True)[1]
@@ -535,8 +594,8 @@ for halfmonth in month_to_letter(ym[4:6]):
 				#print('=========================================')
 				
 				### write to TABLE MPEC
-				cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer) VALUES(?,?,?,?,?,?,?,?,?,?)''', \
-				(mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer))
+				cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, ObjectId) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', \
+				(mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer, obs_obj))
 				db.commit()
 		except Exception as e:
 			print('ERROR processing ' + this_mpec + ': ')
