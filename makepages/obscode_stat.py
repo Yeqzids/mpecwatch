@@ -34,7 +34,7 @@ TABLE XXX (observatory code):
 """
 
 # future improvements:
-# index db for faster queries
+# adjust queries to take full advantage of db indexes
 
 import sqlite3, datetime, re, json, numpy as np, calendar
 from datetime import date
@@ -100,7 +100,7 @@ for s in mpccode:
                 for obj_type in OBJ_TYPES:
                     d[s][obs_type][year][obj_type] = 0
     
-    # each station has its own OBS, MEA, FAC and will be initialized as empty dictionaries
+    # each station has its own OBS, MEA, FAC and are initialized as empty dictionaries
     d[s]['OBS'] = {}
     d[s]['MEA'] = {}
     d[s]['FAC'] = {}

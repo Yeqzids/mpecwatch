@@ -10,7 +10,6 @@
 
 import sqlite3, datetime, json, numpy as np, pandas as pd, plotly.express as px, calendar
 
-survey_data = {}
 stat = 'obscode_stat.json'
 with open(stat) as stat:
     stat = json.load(stat)
@@ -20,6 +19,8 @@ cursor = mpecconn.cursor()
 
 MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
 OBJ_TYPES = ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+YEARS = list(np.arange(1993, datetime.datetime.now().year + 1))
 
 def getMonthName(month):
     return calendar.month_name[month][0:3]
@@ -57,23 +58,26 @@ def merge_dictionaries(dict1, dict2):
             merged_dict[key] = dict2[key]
     return merged_dict
 
-# Creates a sruvey page by combining the stats of all stations in the survey
-def createSurveyPage(surveyName, surveyNameAbbv, codes):
+def generateSurveyData(surveyName, codes):
+    """
+    Creates data for a survey page by combining the stats of all stations in the survey
+    """
+    survey_data = {}
     survey_data[surveyName] = {}
     survey_data[surveyName]['MPECId'] = {} # single 'MPECId' key: {MPECId: Object designation in packed form}
     for mpecType in MPEC_TYPES:
         survey_data[surveyName][mpecType] = {} # single 'MPECType' key: {Year: {Month: count, total: count, objType: count}}
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             year = int(year)
-            survey_data[surveyName][mpecType][year] = {}
-            for month in range(1, 13):
-                survey_data[surveyName][mpecType][year][getMonthName(month)] = 0
+            survey_data[surveyName][mpecType][year] = {'total': 0}
+            for month in MONTHS:
+                survey_data[surveyName][mpecType][year][month] = 0
             for obj in OBJ_TYPES:
                 survey_data[surveyName][mpecType][year][obj] = 0
     survey_data[surveyName]['MPECs'] = set() #[[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH], ...]
     survey_data[surveyName]['OBS'] = {} #contains all observers for each surveyName
     survey_data[surveyName]['MEA'] = {} #contains all measurers for each station
-    survey_data[surveyName]['Facilities'] = {} #contains all facilities for each station
+    survey_data[surveyName]['FAC'] = {} #contains all facilities for each station
 
     for code in codes:
         #combine object and mpecid information for each station in the survey
@@ -86,14 +90,14 @@ def createSurveyPage(surveyName, surveyNameAbbv, codes):
         survey_data[surveyName]['MEA'] = merge_mpec_dicts(survey_data[surveyName]['MEA'], stat[code]['MEA'])
 
         #combine facilities for each station in the survey
-        survey_data[surveyName]['Facilities'] = merge_mpec_dicts(survey_data[surveyName]['Facilities'], stat[code]['FAC'])
+        survey_data[surveyName]['FAC'] = merge_mpec_dicts(survey_data[surveyName]['FAC'], stat[code]['FAC'])
 
         #combine MPECs for each station in the survey (skip duplicates)
         for MPEC in stat[code]['MPECs']:
             survey_data[surveyName]['MPECs'].add(tuple(MPEC))
 
         # need to fix this part
-        for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+        for year in YEARS[::-1]:
             # Note that stat stores the year as a string while survey_data stores it as an int (json limitation)
             survey_data[surveyName]['Discovery'][year]['total'] += stat[code]['Discovery'][str(year)]['total']
             for obj in OBJ_TYPES:
@@ -109,25 +113,27 @@ def createSurveyPage(surveyName, surveyNameAbbv, codes):
             survey_data[surveyName]['Followup'][year]['total'] += stat[code]['Followup'][str(year)]['total']
             survey_data[surveyName]['FirstFollowup'][year]['total'] += stat[code]['FirstFollowup'][str(year)]['total']
             # Note that stat stores the month as a string while survey_data stores it as an int (json limitation)
-            for month in range(1, 13):
-                survey_data[surveyName]['Discovery'][year][month] += stat[code]['Discovery'][str(year)][getMonthName(month)]
-                survey_data[surveyName]['Editorial'][year][month] += stat[code]['Editorial'][str(year)][getMonthName(month)]
-                survey_data[surveyName]['OrbitUpdate'][year][month] += stat[code]['OrbitUpdate'][str(year)][getMonthName(month)]
-                survey_data[surveyName]['DOU'][year][month] += stat[code]['DOU'][str(year)][getMonthName(month)]
-                survey_data[surveyName]['ListUpdate'][year][month] += stat[code]['ListUpdate'][str(year)][getMonthName(month)]
-                survey_data[surveyName]['Retraction'][year][month] += stat[code]['Retraction'][str(year)][getMonthName(month)]
-                survey_data[surveyName]['Other'][year][month] += stat[code]['Other'][str(year)][getMonthName(month)]
-                survey_data[surveyName]['Followup'][year][month] += stat[code]['Followup'][str(year)][getMonthName(month)]
-                survey_data[surveyName]['FirstFollowup'][year][month] += stat[code]['FirstFollowup'][str(year)][getMonthName(month)]
-      
+            for month in MONTHS:
+                survey_data[surveyName]['Discovery'][year][month] += stat[code]['Discovery'][str(year)][month]
+                survey_data[surveyName]['Editorial'][year][month] += stat[code]['Editorial'][str(year)][month]
+                survey_data[surveyName]['OrbitUpdate'][year][month] += stat[code]['OrbitUpdate'][str(year)][month]
+                survey_data[surveyName]['DOU'][year][month] += stat[code]['DOU'][str(year)][month]
+                survey_data[surveyName]['ListUpdate'][year][month] += stat[code]['ListUpdate'][str(year)][month]
+                survey_data[surveyName]['Retraction'][year][month] += stat[code]['Retraction'][str(year)][month]
+                survey_data[surveyName]['Other'][year][month] += stat[code]['Other'][str(year)][month]
+                survey_data[surveyName]['Followup'][year][month] += stat[code]['Followup'][str(year)][month]
+                survey_data[surveyName]['FirstFollowup'][year][month] += stat[code]['FirstFollowup'][str(year)][month]
 
     # to convert the set back to a list
     survey_data[surveyName]['MPECs'] = [list(mpec) for mpec in survey_data[surveyName]['MPECs']]
-    
-    # Potential improvement: make dictionary local to function and pass it to createGraph
-    createGraph(surveyName, surveyNameAbbv, codes)
+    return survey_data
 
-def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
+def createSurveyPage(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
+    """
+    Creates a survey page with the given survey name and abbreviation, and a list of codes.
+    Uses the survey_data dictionary (created with generateSurveyData) to populate the page with statistics and graphs.
+    """
+    survey_data = generateSurveyData(surveyName, codes)
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
     disc_obj = pd.DataFrame({"Year": [], "ObjType": [], "#MPECs": []})
     OU_obj = pd.DataFrame({"Year": [], "ObjType": [], "#MPECs": []})
@@ -135,7 +141,7 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
     page = "../www/bySurvey/" + surveyNameAbbv + ".html"
     #list of codes in the corresponding survey
 
-    o = """
+    o = f"""
 <!doctype html>
 <html lang="en">
   <head>
@@ -143,7 +149,7 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
           <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTXHKC28G9"></script>
           <script>
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+            function gtag(){{dataLayer.push(arguments);}}
             gtag('js', new Date());
             gtag('config', 'G-WTXHKC28G9');
           </script>
@@ -155,7 +161,7 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
     <meta name="author" content="">
     <link rel="icon" href="../favicon.ico">
 
-    <title>MPEC Watch | Survey Statistics %s</title>
+    <title>MPEC Watch | Survey Statistics {surveyName}</title>
 
     <!-- Bootstrap core CSS -->
     <link href="https://unpkg.com/bootstrap-table@1.22.5/dist/bootstrap-table.min.css" rel="stylesheet">
@@ -213,12 +219,12 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
 
     <div class="container theme-showcase" role="main">
 
-      <!-- Main jumbotron for a primary marketing message or call to action -->""" % str(surveyName)
-    o += """<div class="row">
-            <h2>{}</h2>""".format(surveyName)
+      <!-- Main jumbotron for a primary marketing message or call to action -->"""
+    o += f"""<div class="row">
+            <h2>{surveyName}</h2>"""
     for code in codes:
-        o += """<h3>{}</h3>""".format(code)
-              
+        o += f"""<h3>{code}</h3>"""
+
         if str(code) not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
             #print(code)
             #print(mpccode[code])
@@ -226,9 +232,9 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
                 lon = mpccode[code]['lon'] - 360
             else:
                 lon = mpccode[code]['lon']
-            o += """<p><a href="https://geohack.toolforge.org/geohack.php?params={};{}">Where is this observatory?</a></p>""".format(mpccode[code]['lat'], lon)
-              
-    o += """<p>
+            o += f"""<p><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[code]['lat']};{lon}">Where is this observatory?</a></p>"""
+
+    o += f"""<p>
              <h3>Graphs</h3>
               <h4>Yearly Breakdown of MPEC Types</h4>
               <p>
@@ -243,27 +249,27 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
               FirstFollowup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
               Other - MPECs that do not fit into categories listed above and involve observations made by this station.
               </p>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{}.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{surveyNameAbbv}.html" height="525" width="100%"></iframe>
               <h4>Yearly Breakdown of Discovery Object Types</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{}_disc_obj.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{surveyNameAbbv}_disc_obj.html" height="525" width="100%"></iframe>
               <h4>Yearly Breakdown of Orbit Update Object Types</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{}_OU_obj.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{surveyNameAbbv}_OU_obj.html" height="525" width="100%"></iframe>
               
               <!-- NOT IMPLEMENTED YET
               <h4>Breakdown by Observers</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Observers.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{surveyNameAbbv}_Top_10_Observers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Measurers</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Measurers.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{surveyNameAbbv}_Top_10_Measurers.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Facilities</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{surveyNameAbbv}_Top_10_Facilities.html" height="525" width="100%"></iframe>
               <h4>Breakdown by Objects</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_Top_10_Objects.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{surveyNameAbbv}_Top_10_Objects.html" height="525" width="100%"></iframe>
               <h4>Annual Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_yearly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{surveyNameAbbv}_yearly.html" height="525" width="100%"></iframe>
               <h4>Weekly Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_weekly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{surveyNameAbbv}_weekly.html" height="525" width="100%"></iframe>
               <h4>Hourly Breakdown</h4>
-              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{}_hourly.html" height="525" width="100%"></iframe>
+              <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{surveyNameAbbv}_hourly.html" height="525" width="100%"></iframe>
               -->
 
             </p>
@@ -290,7 +296,7 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
                         <th>First Follow-Up</th>
                     </tr>
                 </thead>
-        """.format(surveyName, surveyName, surveyName, surveyName, surveyName, surveyName, surveyName, surveyName, surveyName, surveyName) 
+        """ 
         
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         year = int(year)
@@ -313,31 +319,28 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
         OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year, year, year, year, year, year, year], "ObjType": ["NEA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"], "#MPECs": [survey_data[surveyName]['OrbitUpdate'][year]['NEA'], survey_data[surveyName]['OrbitUpdate'][year]['Comet'], survey_data[surveyName]['OrbitUpdate'][year]['Satellite'], survey_data[surveyName]['OrbitUpdate'][year]['TNO'], survey_data[surveyName]['OrbitUpdate'][year]['Unusual'], survey_data[surveyName]['OrbitUpdate'][year]['Interstellar'], survey_data[surveyName]['OrbitUpdate'][year]['Unknown']]})])
         
         df_monthly_graph = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
-        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        month_index = 1
-        for month in months:
+        for month in MONTHS:
             month_counts = []
             for mpecType in MPEC_TYPES:
-                month_counts.append(survey_data[surveyName][mpecType][year][month_index])
+                month_counts.append(survey_data[surveyName][mpecType][year][month])
             df_monthly_graph = pd.concat([df_monthly_graph, pd.DataFrame({"Month": [month, month, month, month, month, month, month, month, month], "MPECType": ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"], "#MPECs": month_counts})])
-            month_index += 1
-        monthly(surveyName, surveyNameAbbv, year, df_monthly_graph)
+        monthly(surveyName, surveyNameAbbv, year, df_monthly_graph, survey_data)
 
-        o += """
+        o += f"""
                 <tr>
-                    <td><a href="monthly/%s_%i.html">%i</a></td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
-                    <td>%i</td>
+                    <td><a href="monthly/{surveyNameAbbv}_{year}.html">{year}</a></td>
+                    <td>{sum(year_counts)}</td>
+                    <td>{year_counts[0]}</td>
+                    <td>{year_counts[1]}</td>
+                    <td>{year_counts[2]}</td>
+                    <td>{year_counts[3]}</td>
+                    <td>{year_counts[4]}</td>
+                    <td>{year_counts[5]}</td>
+                    <td>{year_counts[6]}</td>
+                    <td>{year_counts[7]}</td>
+                    <td>{year_counts[8]}</td>
                 </tr>
-        """ % (survey, year, year, sum(year_counts), year_counts[0], year_counts[1], year_counts[2], year_counts[3], year_counts[4], year_counts[5], year_counts[6], year_counts[7], year_counts[8])
+        """
     try:
         fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= surveyName+" | Number and type of MPECs by year")
         fig.write_html("../www/bySurvey/graphs/"+surveyNameAbbv+".html")
@@ -381,21 +384,21 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
                     </tr>
                 </thead>
                 <tbody>
-    """.format(str(survey), str(survey))
+    """
     
     index = 1
     for i in reversed(survey_data[surveyName]['MPECs']):
-        o += """
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
+                        <td>{index}</td>
+                        <td>{i[0]}</td>
+                        <td>{datetime.datetime.fromtimestamp(i[1])}</td>
+                        <td>{i[2]}</td>
+                        <td>{i[3]}</td>
+                        <td>{i[4]}</td>
+                        <td>{i[5]}</td>
                     </tr>
-        """.format(index,i[0],datetime.datetime.fromtimestamp(i[1]),i[2],i[3],i[4],i[5])
+        """
         index += 1
 
     o += """
@@ -415,12 +418,12 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
                 </thead>
                 <tbody>"""
     for observer, count in survey_data[surveyName]['OBS'].items():
-        o += """
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
+                        <td>{observer}</td>
+                        <td>{count}</td>
                     </tr>
-    """.format(observer, count)
+    """
         
     o += """
                 </tbody>
@@ -440,13 +443,13 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
                 <tbody>"""
     
     for measurer, count in survey_data[surveyName]['MEA'].items():
-        o += """
+        o += f"""
                     <tr>
-                        <td>{}</td>
-                        <td>{}</td>
+                        <td>{measurer}</td>
+                        <td>{count}</td>
                     </tr>
-    """.format(measurer, count)
-        
+    """
+
     o += """
                 </tbody>
             </table>
@@ -464,13 +467,13 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
                 </thead>
                 <tbody>"""
     
-    for facility, count in survey_data[surveyName]['Facilities'].items():
-        o += """
+    for facility, count in survey_data[surveyName]['FAC'].items():
+        o += f"""
                 <tr>
-                    <td>{}</td>
-                    <td>{}</td>
+                    <td>{facility}</td>
+                    <td>{count}</td>
                 </tr>
-    """.format(facility, count)
+    """
 
     o += """
                 </tbody>
@@ -518,29 +521,26 @@ def createGraph(surveyName, surveyNameAbbv, codes, includeFirstFU = True):
     with open(page, 'w', encoding='utf-8') as f:
         f.write(o)      
 
-def monthly(surveyName, surveyNameAbbv, year, df_month_graph):
+def monthly(surveyName, surveyNameAbbv, year, df_month_graph, survey_data):
     fig = px.bar(df_month_graph, x="Month", y="#MPECs", color="MPECType")
     fig.write_html("../www/bySurvey/monthly/graphs/"+surveyNameAbbv+"_"+str(year)+".html")
 
     df_monthly = pd.DataFrame({"Editorial": [], "Discovery": [], "OrbitUpdate": [], "DOU": [], "ListUpdate": [], "Retraction": [], "Other": [], "Followup": [], "FirstFollowup": []})
-    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    month_index = 1
-    for month in months:
+    for month in MONTHS:
         new_row = []
         for mpecType in MPEC_TYPES:
-            new_row.append(survey_data[surveyName][mpecType][year][month_index])
-        month_index+=1
+            new_row.append(survey_data[surveyName][mpecType][year][month])
         df_monthly = pd.concat([df_monthly, pd.DataFrame([new_row], index=[month], columns=MPEC_TYPES)])
-    
+
     page = '../www/bySurvey/monthly/{}.html'.format(surveyNameAbbv+"_"+str(year))
-    o = """
+    o = f"""
 <!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>MPECWatch: Monthly Summary | {}</title>
+        <title>MPECWatch: {year} Monthly Summary | {surveyName}</title>
 
         <!-- Bootstrap core CSS -->
         <link href="../../dist/css/bootstrap.min.css" rel="stylesheet">
@@ -551,8 +551,8 @@ def monthly(surveyName, surveyNameAbbv, year, df_month_graph):
     </head>
     <body>
         <div class="container" theme-showcase" role="main">
-            <h2>{} {}</h2>
-            <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{}.html" height="525" width="100%"></iframe>
+            <h2>{surveyName} {year}</h2>
+            <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="graphs/{surveyNameAbbv}_{year}.html" height="525" width="100%"></iframe>
             <table class="table table-striped table-hover table-condensed table-responsive">
                 <thead>
                     <tr>
@@ -567,34 +567,34 @@ def monthly(surveyName, surveyNameAbbv, year, df_month_graph):
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
                     </tr>
-            </thead>""".format(year, surveyName, year, surveyName+"_"+str(year))
-    
-    for month in ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
-        o += """
+            </thead>"""
+
+    for month in MONTHS:
+        o += f"""
                 <tbody>
                     <tr>
-                        <td>%s</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                        <td>%i</td>
-                    </tr>""" % (month, df_monthly.loc[month, 'Editorial'], df_monthly.loc[month, 'Discovery'], df_monthly.loc[month, 'OrbitUpdate'], df_monthly.loc[month, 'DOU'], df_monthly.loc[month, 'ListUpdate'], df_monthly.loc[month, 'Retraction'], df_monthly.loc[month, 'Other'], df_monthly.loc[month, 'Followup'], df_monthly.loc[month, 'FirstFollowup'])
-        
-    df_monthly.to_csv("../www/bySurvey/monthly/csv/{}.csv".format(surveyNameAbbv+"_"+str(year)))
-    o += """      
+                        <td>{month}</td>
+                        <td>{int(df_monthly.loc[month, 'Editorial'])}</td>
+                        <td>{int(df_monthly.loc[month, 'Discovery'])}</td>
+                        <td>{int(df_monthly.loc[month, 'OrbitUpdate'])}</td>
+                        <td>{int(df_monthly.loc[month, 'DOU'])}</td>
+                        <td>{int(df_monthly.loc[month, 'ListUpdate'])}</td>
+                        <td>{int(df_monthly.loc[month, 'Retraction'])}</td>
+                        <td>{int(df_monthly.loc[month, 'Other'])}</td>
+                        <td>{int(df_monthly.loc[month, 'Followup'])}</td>
+                        <td>{int(df_monthly.loc[month, 'FirstFollowup'])}</td>
+                    </tr>"""
+
+    df_monthly.to_csv(f"../www/bySurvey/monthly/csv/{surveyNameAbbv}_{year}.csv")
+    o += f"""      
                 </tbody>
             </table>
-            <a href="csv/{}.csv" download="{}">
+            <a href="csv/{surveyNameAbbv}_{year}.csv" download="{surveyNameAbbv}_{year}.csv">
                 <p style="padding-bottom: 30px;">Download as csv</p>
             </a>
         </div>
     </body>
-</html>""".format(surveyNameAbbv+"_"+str(year), surveyNameAbbv+"_"+str(year))
+</html>"""
     
     with open(page, 'w', encoding='utf-8') as f:
             f.write(o)
@@ -622,15 +622,13 @@ with open(mpccode) as mpccode:
 # with open(survey_data) as survey_data:
 #     survey_data = json.load(survey_data)
     
-years = list(np.arange(1993, datetime.datetime.now().year+1, 1))
-years = [str(year) for year in years]
-pages = years.copy()
-pages.append('All time')
+YEARS_STR = [str(year) for year in YEARS]
+pages = YEARS_STR + ['All time']
 
 for p in pages:
     # testing only all time
-    if p != 'All time':
-        continue
+    # if p != 'All time':
+    #     continue
 
     o = f"""
     <!doctype html>
@@ -789,124 +787,79 @@ for p in pages:
         print(survey)
         createSurveyPage(survey, survey_abbv, s[1])
         if p == 'All time':
-            o += """
+            o += f"""
             <tr>
                 <td>
-                    <a href="../www/bySurvey/%s.html">%s</a>
+                    <a href="../www/bySurvey/{survey_abbv}.html">{survey}</a>
                 </td> 
-                <td> """ % (survey_abbv, survey)
+                <td> """
         else:
-            o += """
+            o += f"""
                 <tr>
                     <td>
-                        <a href="../www/bySurvey/monthly/%s.html">%s</a>
+                        <a href="../www/bySurvey/monthly/{survey_abbv}.html">{survey}</a>
                     </td> 
-                    <td> """ % (survey_abbv, survey)
-        
+                    <td> """
+
         for codi in s[1]:
-            o += """<a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_%s.html">%s %s</a><br>""" % (codi, codi, mpccode[codi]['name'])
+            o += f"""<a href="https://sbnmpc.astro.umd.edu/mpecwatch/byStation/station_{codi}.html">{codi} {mpccode[codi]['name']}</a><br>"""
 
         o += """</td>"""
 
         if p == 'All time':
-            o += """
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
+            o += f"""
+                    <td>{sum([stat[i]['total'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery']['total'] for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Discovery'][year]['NEA'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Discovery'][year]['PHA'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Discovery'][year]['Comet'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Discovery'][year]['Satellite'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Discovery'][year]['TNO'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Discovery'][year]['Unusual'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Discovery'][year]['Interstellar'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Discovery'][year]['Unknown'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Followup']['total'] for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Followup'][year]['NEA'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Followup'][year]['PHA'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Followup'][year]['Comet'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Followup'][year]['Satellite'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Followup'][year]['TNO'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Followup'][year]['Unusual'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Followup'][year]['Interstellar'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([sum(stat[i]['Followup'][year]['Unknown'] for year in YEARS_STR) for i in s[1]])}</td>
+                    <td>{sum([stat[i]['FirstFollowup']['total'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Precovery']['total'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['OrbitUpdate']['total'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['1stRecovery']['total'] for i in s[1]])}</td>
                 </tr>
-            """ % (str(sum([stat[i]['total'] for i in s[1]])), 
-                   str(sum([stat[i]['Discovery']['total'] for i in s[1]])), 
-                   str(sum([sum(stat[i]['Discovery'][year]['NEA'] for year in years) for i in s[1]])), 
-                   str(sum([sum(stat[i]['Discovery'][year]['PHA'] for year in years) for i in s[1]])), 
-                   str(sum([sum(stat[i]['Discovery'][year]['Comet'] for year in years) for i in s[1]])), 
-                   str(sum([sum(stat[i]['Discovery'][year]['Satellite'] for year in years) for i in s[1]])), 
-                   str(sum([sum(stat[i]['Discovery'][year]['TNO'] for year in years) for i in s[1]])), 
-                   str(sum([sum(stat[i]['Discovery'][year]['Unusual'] for year in years) for i in s[1]])),
-                   str(sum([sum(stat[i]['Discovery'][year]['Interstellar'] for year in years) for i in s[1]])), 
-                   str(sum([sum(stat[i]['Discovery'][year]['Unknown'] for year in years) for i in s[1]])), 
-                   str(sum([stat[i]['Followup']['total'] for i in s[1]])),
-                   str(sum([sum(stat[i]['Followup'][year]['NEA'] for year in years) for i in s[1]])), 
-                   str(sum([sum(stat[i]['Followup'][year]['PHA'] for year in years) for i in s[1]])),
-                   str(sum([sum(stat[i]['Followup'][year]['Comet'] for year in years) for i in s[1]])),
-                   str(sum([sum(stat[i]['Followup'][year]['Satellite'] for year in years) for i in s[1]])),
-                   str(sum([sum(stat[i]['Followup'][year]['TNO'] for year in years) for i in s[1]])),
-                   str(sum([sum(stat[i]['Followup'][year]['Unusual'] for year in years) for i in s[1]])),
-                   str(sum([sum(stat[i]['Followup'][year]['Interstellar'] for year in years) for i in s[1]])),
-                   str(sum([sum(stat[i]['Followup'][year]['Unknown'] for year in years) for i in s[1]])),
-                   str(sum([stat[i]['FirstFollowup']['total'] for i in s[1]])), 
-                   str(sum([stat[i]['Precovery']['total'] for i in s[1]])), 
-                   str(sum([stat[i]['OrbitUpdate']['total'] for i in s[1]])),  #recovery = orbit update
-                   str(sum([stat[i]['1stRecovery']['total'] for i in s[1]]))
-                   )
+            """
         else:
-            o += """
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
-                    <td>%s</td>
+            o += f"""
+                    <td>{sum(stat[i][str(p)] for i in s[1])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['total'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['NEA'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['PHA'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['Comet'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['Satellite'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['TNO'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['Unusual'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['Interstellar'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Discovery'][str(p)]['Unknown'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Followup'][str(p)]['total'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Followup'][str(p)]['NEA'] for i in s[1]])}</td>
+                    <td>{sum([stat[i]['Followup'][str(p)]['PHA'] for i in s[1]])}</td>
+                    <td>{str(sum(stat[i]['Followup'][str(p)]['Comet'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['Followup'][str(p)]['Satellite'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['Followup'][str(p)]['TNO'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['Followup'][str(p)]['Unusual'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['Followup'][str(p)]['Interstellar'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['Followup'][str(p)]['Unknown'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['FirstFollowup'][str(p)]['total'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['Precovery'][str(p)]['total'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['OrbitUpdate'][str(p)]['total'] for i in s[1]))}</td>
+                    <td>{str(sum(stat[i]['1stRecovery'][str(p)]['total'] for i in s[1]))}</td>
                 </tr>
-            """ % (str(sum(stat[i][str(p)] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['total'] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['NEA'] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['PHA'] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['Comet'] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['Satellite'] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['TNO'] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['Unusual'] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['Interstellar'] for i in s[1])), 
-                   str(sum(stat[i]['Discovery'][str(p)]['Unknown'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['total'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['NEA'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['PHA'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['Comet'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['Satellite'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['TNO'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['Unusual'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['Interstellar'] for i in s[1])), 
-                   str(sum(stat[i]['Followup'][str(p)]['Unknown'] for i in s[1])), 
-                   str(sum(stat[i]['FirstFollowup'][str(p)]['total'] for i in s[1])),
-                   str(sum(stat[i]['Precovery'][str(p)]['total'] for i in s[1])), 
-                   str(sum(stat[i]['OrbitUpdate'][str(p)]['total'] for i in s[1])), 
-                   str(sum(stat[i]['1stRecovery'][str(p)]['total'] for i in s[1])))
+            """
         
     o += """
         </tbody>

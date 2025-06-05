@@ -13,3 +13,4 @@ proc_loop.*
 .settings
 *.json
 test/
+venv/
