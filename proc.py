@@ -619,4 +619,11 @@ for halfmonth in month_to_letter(ym[4:6]):
 			print(e)
 			pass
 
+# create indexes for TABLE MPEC to speed up queries
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_mpec_time ON MPEC(Time);")
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_discstation_type_time ON MPEC(DiscStation, MPECType, Time);")
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_station_type_time ON MPEC(Station, MPECType, Time);")
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_discstation_object_time ON MPEC(DiscStation, ObjectType, Time);")
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_station_object_time ON MPEC(Station, ObjectType, Time);")
+db.commit()
 db.close()
