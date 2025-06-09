@@ -1,15 +1,28 @@
 """
 Created on Wed Jul  6 14:49:19 2022
 
-Generates individual station webpages including tables and statistics. Graphs are generated in IndividualOMF.py
-Run this script AFTER IndividualOMF.py
+Data is grabbed from obscode_stat.py
+Make sure to run obscode_stat.py first!
+
+Generates individual station webpages including tables and statistics. 
+Graphs are generated in IndividualOMF.py - make sure to run IndividualOMF.py as well!
 """
 
-import sqlite3, plotly.express as px, pandas as pd, datetime, numpy as np, json, signal, concurrent.futures, multiprocessing, traceback, os, re
-from datetime import date
+import concurrent.futures
+import ctypes
+import datetime
+import json
 import logging
-import ctypes, time
-from collections import defaultdict, Counter
+import multiprocessing
+import os
+import re
+import signal
+import sys
+from collections import Counter
+
+import numpy as np
+import pandas as pd
+import plotly.express as px
 from rapidfuzz import fuzz, process
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -106,14 +119,15 @@ MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Ret
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-stop_event = multiprocessing.Event()
+stop_event = None
 
 def signal_handler(sig, frame):
     logging.info('Exit signal received, shutting down...')
-    stop_event.set()
+    if stop_event:
+        stop_event.set()
 
 def make_monthly_page(df_monthly, station, year):
-    if stop_event.is_set():
+    if stop_event and stop_event.is_set():
         return
 
     station_code = station[-3:]
@@ -125,7 +139,8 @@ def make_monthly_page(df_monthly, station, year):
     # Log DataFrame contents if it does not contain the expected columns
     if not all(col in df_monthly.columns for col in ["Month", "#MPECs", "MPECType"]):
         logging.info(f"DataFrame contents for station {station_code}, year {year}:\n{df_monthly}")
-        stop_event.set()
+        if stop_event:
+            stop_event.set()
         return
 
     df_monthly.set_index(['Month', 'MPECType'], inplace=True) # set index after making the graph to avoid error
@@ -188,7 +203,7 @@ def make_monthly_page(df_monthly, station, year):
             o += f"""
                     <td>{int(df_monthly.loc[(month, mpecType)]['#MPECs'])}</td>"""
         o+= """</tr>"""
-    o += """
+    o += r"""
             </table>            
         </div>
         <!-- jQuery -->
@@ -206,7 +221,7 @@ def make_monthly_page(df_monthly, station, year):
     </body>
 </html>"""
 
-    if stop_event.is_set():
+    if stop_event and stop_event.is_set():
         return
 
     with open(page_monthly, 'w') as f:
@@ -214,7 +229,7 @@ def make_monthly_page(df_monthly, station, year):
 
 # main loop that traversed through all stations in obscodestat.py
 def make_station_page(station_code):
-    if stop_event.is_set():
+    if stop_event and stop_event.is_set():
         return
     
     logging.info(f"Starting processing for station: {station_code}")
@@ -548,7 +563,9 @@ def make_station_page(station_code):
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
                 data-search="true"
-                data-pagination="true">
+                data-pagination="true"
+                data-sort-name="count"
+                data-sort-order="desc">
                 <thead>
                     <tr>
                         <th class="th-sm" data-field="facility" data-sortable="true">Facilities</th>
@@ -563,7 +580,7 @@ def make_station_page(station_code):
                         <td>{count}</td>
                     </tr>"""
         
-    o += """
+    o += r"""
                 </tbody>
             </table>
         </div>
@@ -609,7 +626,7 @@ def make_station_page(station_code):
     fig.update_layout(barmode='stack')
     fig.write_html(f"../www/byStation/Graphs/{station}_OU_obj.html")
 
-    if stop_event.is_set():
+    if stop_event and stop_event.is_set():
         return
 
     #print(station)
@@ -621,34 +638,60 @@ def make_station_page(station_code):
 # for testing a single station page
 #make_station_page('G96')
 
-ES_CONTINUOUS = 0x80000000
-ES_SYSTEM_REQUIRED = 0x00000001
-
-def prevent_sleep():
-    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
-
-def allow_sleep():
-    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+# only on Windows
+if sys.platform == "win32":
+    ES_CONTINUOUS       = 0x80000000
+    ES_SYSTEM_REQUIRED  = 0x00000001
+    def prevent_sleep():
+        ctypes.windll.kernel32.SetThreadExecutionState(
+            ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+        )
+    def allow_sleep():
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+else:
+    def prevent_sleep(): pass
+    def allow_sleep():  pass
 
 if __name__ == "__main__":
+    build_name_map()
+
+    mgr = multiprocessing.Manager()
+    stop_event = mgr.Event()
+    
+    signal.signal(signal.SIGINT, signal_handler)
+
     prevent_sleep()
-    try:
-        time_start = datetime.datetime.now()
-        signal.signal(signal.SIGINT, signal_handler)
-        max_workers = os.cpu_count()
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(make_station_page, station_code): station_code for station_code in obscode}
+    max_workers = max(1, os.cpu_count()//2)
+    time_start = datetime.datetime.now()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # submit all tasks
+        futures = {
+            executor.submit(make_station_page, station_code): station_code
+            for station_code in obscode
+        }
+
+        try:
             for future in concurrent.futures.as_completed(futures):
-                station_code = futures[future]
+                station = futures[future]
+                # if someone has hit Ctrl+C, break out
+                if stop_event and stop_event.is_set():
+                    break
+
                 try:
                     future.result()
                 except Exception as exc:
-                    print(f'Generated an exception: {exc}')
-                    traceback.print_exc()
+                    logging.error(f"Station {station} failed: {exc}", exc_info=True)
                     stop_event.set()
-                    print(f'Error processing station: {station_code}')
-        time_end = datetime.datetime.now()
-        logging.info(f"Total time taken: {time_end - time_start}")
-    finally:
-        allow_sleep()
-        logging.shutdown()
+        except KeyboardInterrupt:
+            logging.info("KeyboardInterrupt caught — cancelling running tasks…")
+            stop_event.set()
+            # cancel all pending futures
+            for f in futures:
+                f.cancel()
+        finally:
+            # make sure we tear down quickly
+            executor.shutdown(wait=False, cancel_futures=True)
+    
+    allow_sleep()
+    time_end = datetime.datetime.now()
+    logging.info(f"Total time taken: {time_end - time_start}")

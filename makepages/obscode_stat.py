@@ -77,6 +77,7 @@ def getMonthName(month):
 # "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery" are not in database (calulated from other fields)
 MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "1stRecovery"]
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"] #Only used when MPECType is Discovery or OrbitUpdate
+# potential improvement: use default dict to avoid checking if key exists
 d = dict()
 for s in mpccode:
 #for i in range(1):
