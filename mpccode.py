@@ -71,7 +71,8 @@ def parse_table_entry(entry):
         latitude = calculate_latitude(sin_val, cos_val)  
         if longitude == 0 and latitude == 0:
             return {
-                'name': name,
+                #'name': name,
+                'name': entry[30:].strip()
             }
         
         location = geolocator.reverse(str(latitude)+","+str(longitude), language='en')
@@ -95,7 +96,8 @@ def parse_table_entry(entry):
     
     elif match1:
         return {
-            'name': match1.group(2)
+            #'name': match1.group(2)
+            'name': entry[30:].strip()
         }
     else:
         print(entry)
