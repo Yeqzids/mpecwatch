@@ -340,19 +340,19 @@ def make_station_page(station_code):
                 <h4>Yearly Breakdown of Orbit Update Object Types</h4>
                 <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_OU_obj.html" height="525" width="100%"></iframe>
                 <h4>Breakdown by Observers</h4>
-                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Observers.html" height="525" width="100%"></iframe>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_Top_Observers.html" height="525" width="100%"></iframe>
                 <h4>Breakdown by Measurers</h4>
-                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Measurers.html" height="525" width="100%"></iframe>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_Top_Measurers.html" height="525" width="100%"></iframe>
                 <h4>Breakdown by Facilities</h4>
-                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Facilities.html" height="525" width="100%"></iframe>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_Top_Facilities.html" height="525" width="100%"></iframe>
                 <h4>Breakdown by Objects</h4>
-                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_Top_10_Objects.html" height="525" width="100%"></iframe>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_Top_Objects.html" height="525" width="100%"></iframe>
                 <h4>Annual Breakdown</h4>
-                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_yearly.html" height="525" width="100%"></iframe>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_yearly.html" height="525" width="100%"></iframe>
                 <h4>Weekly Breakdown</h4>
-                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_weekly.html" height="525" width="100%"></iframe>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_weekly.html" height="525" width="100%"></iframe>
                 <h4>Hourly Breakdown</h4>
-                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station}_hourly.html" height="525" width="100%"></iframe>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_hourly.html" height="525" width="100%"></iframe>
             </p>
         </div>
         <div class="row">
@@ -636,7 +636,7 @@ def make_station_page(station_code):
     logging.info(f"Finished processing for station: {station_code}")
 
 # for testing a single station page
-#make_station_page('G96')
+make_station_page('G96')
 
 # only on Windows
 if sys.platform == "win32":
@@ -652,46 +652,46 @@ else:
     def prevent_sleep(): pass
     def allow_sleep():  pass
 
-if __name__ == "__main__":
-    build_name_map()
+# if __name__ == "__main__":
+#     build_name_map()
 
-    mgr = multiprocessing.Manager()
-    stop_event = mgr.Event()
+#     mgr = multiprocessing.Manager()
+#     stop_event = mgr.Event()
     
-    signal.signal(signal.SIGINT, signal_handler)
+#     signal.signal(signal.SIGINT, signal_handler)
 
-    prevent_sleep()
-    max_workers = max(1, os.cpu_count()//2)
-    time_start = datetime.datetime.now()
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # submit all tasks
-        futures = {
-            executor.submit(make_station_page, station_code): station_code
-            for station_code in obscode
-        }
+#     prevent_sleep()
+#     max_workers = max(1, os.cpu_count()//2)
+#     time_start = datetime.datetime.now()
+#     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+#         # submit all tasks
+#         futures = {
+#             executor.submit(make_station_page, station_code): station_code
+#             for station_code in obscode
+#         }
 
-        try:
-            for future in concurrent.futures.as_completed(futures):
-                station = futures[future]
-                # if someone has hit Ctrl+C, break out
-                if stop_event and stop_event.is_set():
-                    break
+#         try:
+#             for future in concurrent.futures.as_completed(futures):
+#                 station = futures[future]
+#                 # if someone has hit Ctrl+C, break out
+#                 if stop_event and stop_event.is_set():
+#                     break
 
-                try:
-                    future.result()
-                except Exception as exc:
-                    logging.error(f"Station {station} failed: {exc}", exc_info=True)
-                    stop_event.set()
-        except KeyboardInterrupt:
-            logging.info("KeyboardInterrupt caught — cancelling running tasks…")
-            stop_event.set()
-            # cancel all pending futures
-            for f in futures:
-                f.cancel()
-        finally:
-            # make sure we tear down quickly
-            executor.shutdown(wait=False, cancel_futures=True)
+#                 try:
+#                     future.result()
+#                 except Exception as exc:
+#                     logging.error(f"Station {station} failed: {exc}", exc_info=True)
+#                     stop_event.set()
+#         except KeyboardInterrupt:
+#             logging.info("KeyboardInterrupt caught — cancelling running tasks…")
+#             stop_event.set()
+#             # cancel all pending futures
+#             for f in futures:
+#                 f.cancel()
+#         finally:
+#             # make sure we tear down quickly
+#             executor.shutdown(wait=False, cancel_futures=True)
     
-    allow_sleep()
-    time_end = datetime.datetime.now()
-    logging.info(f"Total time taken: {time_end - time_start}")
+#     allow_sleep()
+#     time_end = datetime.datetime.now()
+#     logging.info(f"Total time taken: {time_end - time_start}")
