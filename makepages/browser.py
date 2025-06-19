@@ -8,15 +8,11 @@
  
 """
 
-import sqlite3, json, numpy as np
+import json, numpy as np
 from datetime import datetime
 
-dbFile = '../mpecwatch_v3.db'
 stat = 'obscode_stat.json'
 mpccode = '../mpccode.json'
-
-db = sqlite3.connect(dbFile)
-cursor = db.cursor()
 
 with open(mpccode) as mpccode:
     mpccode = json.load(mpccode)

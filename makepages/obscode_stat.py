@@ -35,20 +35,23 @@ TABLE XXX (observatory code):
 
 # future improvements:
 # adjust queries to take full advantage of db indexes
+# --> tokenize station codes to avoid using LIKE
+# --> junction table for MPECs and stations (foreign keys) --> enables use of JOINs
+
 
 import sqlite3, datetime, re, json, numpy as np, calendar
 from datetime import date
 import time
+import hashlib
 
 start_time = time.time()
 
-dbFile = '../mpecwatch_v3.db'
+dbFile = '../mpecwatch_v4.db'
 mpccode = '../mpccode.json'
 
+# Get current station hashes from LastRun table
 db = sqlite3.connect(dbFile)
 cursor = db.cursor()
-
-currentYear = datetime.datetime.now().year
 
 with open(mpccode) as mpccode:
     mpccode = json.load(mpccode)
@@ -85,14 +88,14 @@ for s in mpccode:
     d[s] = {}
     d[s]['total'] = 0
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1)):
-        year = int(year)
+        year = str(year)
         d[s][year] = 0
     d[s]['MPECId'] = {}
     
     for obs_type in MPEC_TYPES: 
         d[s][obs_type] = {'total': 0}
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1)):
-            year = int(year)
+            year = str(year)
             d[s][obs_type][year] = {'total': 0}
             for month in np.arange(1, 13, 1):
                 d[s][obs_type][year][getMonthName(month)] = 0
@@ -140,9 +143,10 @@ for s in mpccode:
     except:
         pass
 
+missed_stations = set()
 for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 #for mpec in cursor.execute("SELECT * FROM MPEC WHERE Station = 'G96'").fetchall():
-    year = int(date.fromtimestamp(mpec[2]).year)
+    year = str(date.fromtimestamp(mpec[2]).year)
     month = getMonthName(int(date.fromtimestamp(mpec[2]).month))
 
     # cast to list to avoid tuple
@@ -150,7 +154,13 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 
     for station in mpec[3].split(', '):
         if station == '' or station == 'XXX':
-            continue    
+            continue
+
+        try:
+            d[station]
+        except KeyError:
+            missed_stations.add(station)
+            continue
 
         # numbers of MPECs
         d[station]['total'] += 1
@@ -290,9 +300,40 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
                 d[station]['1stRecovery'][year]["PHA"] += 1
             else:
                 d[station]['1stRecovery'][year][mpec[7]] += 1
-    
+
+# Print out missed stations
+if missed_stations:
+    print("The following stations were not found in mpccode.json. Try rerunning mpccode.py:")
+    for station in missed_stations:
+        print(f"  {station}")
+
+# After all data is collected, save it to file
 with open('obscode_stat.json', 'w') as o:
-    json.dump(d, o)  
+    json.dump(d, o)
+
+# Update the LastRun table with current timestamps and hashes
+for station_code in d:
+    station_id = f'station_{station_code}'
+    # Create a hash of the station data to detect changes
+    station_data_str = json.dumps(d[station_code], sort_keys=True)
+    station_hash = hashlib.md5(station_data_str.encode()).hexdigest()
+    
+    # Get current hash from database (if exists)
+    cursor.execute("SELECT StationHash FROM LastRun WHERE MPECId = ?", (station_id,))
+    result = cursor.fetchone()
+    old_hash = result[0] if result else None
+
+    # Determine if data changed
+    changed = 1 if old_hash != station_hash else 0
+
+    # Update or insert the LastRun record
+    cursor.execute("""
+        INSERT OR REPLACE INTO LastRun (MPECId, LastRunTime, StationHash, Changed) 
+        VALUES (?, ?, ?, ?)
+    """, (station_id, int(time.time()), station_hash, changed))
+
+db.commit()
+db.close()
 
 end_time = time.time()
 print("Time elapsed: ", end_time - start_time)
