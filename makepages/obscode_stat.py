@@ -1,36 +1,73 @@
 #!/usr/bin/env python3
 
 """
- PROJECT:		MPEC Watch
- PURPOSE:		Generate statistics for every observatory by year
+Observatory Code Statistics Generator
+
+This script generates comprehensive statistical metrics for each observatory based on data
+in the MPEC database. It processes all MPEC entries and collects observations, discoveries,
+and follow-up activities organized by observatory code.
+
+Purpose:
+    - Generate statistics on MPEC involvement for each observatory station
+    - Track discoveries, follow-ups, and orbit updates by time period and object type
+    - Create aggregated JSON data for web visualization
+    - Identify which station pages need regeneration through changed data detection
+
+Outputs:
+    - obscode_stat.json: Main observatory statistics file for data visualization
+    - Updates to LastRun table for efficient page regeneration
+
+Integration Points:
+    - StationMPECGraph.py: Uses this data to create individual observatory pages
+    - browser.py: Creates summary tables of stats across all observatories
+    - survey.py: Generates statistics for survey programs (combining multiple observatories)
+
+Database Tables Used:
+    - MPEC: Source of circular data and observatory participation
+    - LastRun: Tracks processing state for optimized page generation
+
+Schema:
+    The generated JSON structure includes for each station:
+    {
+        "station_code": {
+            "total": int,                   # Total MPECs for this station
+            "MPECs": [[name, time, ...]],   # List of individual MPECs
+            "MPECId": {id: packed_desig},   # Object designations
+            "Discovery": {                  # Discovery statistics
+                "total": int,
+                "YYYY": {                   # Per year statistics
+                    "total": int,
+                    "NEA": int,             # Object type counts
+                    "PHA": int,
+                    ...
+                    "Jan": int,             # Monthly breakdown
+                    "Feb": int,
+                    ...
+                }
+            },
+            "Followup": {...},              # Similar structure for follow-ups
+            "FirstFollowup": {...},         # First follow-ups (subset of Followup)
+            "OrbitUpdate": {...},           # Orbit updates
+            "OBS": {name: count},           # Observer statistics
+            "MEA": {name: count},           # Measurer statistics
+            "FAC": {name: count}            # Facility statistics
+        }
+    }
+
+Key Features:
+    - Handles First Follow-Up as a subset of Follow-Up observations
+    - Maintains efficient change detection using MD5 hashing
+    - Processes observers, measurers, and facilities for each station
+    - Generates comprehensive time series data for all statistics
+
+Change Detection:
+    For efficient web page generation, the script tracks changes in station data:
+    1. Computes MD5 hash of each station's JSON data
+    2. Compares with previous hash stored in LastRun table
+    3. Sets 'Changed' flag when data differs
+    4. StationMPECGraph.py only regenerates pages for stations with Changed=1
 
  (C) Quanzhi Ye
-
-Database structure
----
-    Key            Type        Description
-TABLE MPEC: (summary of each MPEC)
-    MPECId        TEXT        MPEC Number
-    Title        TEXT        MPEC Title
-    Time        INTEGER      Publication Unix timestamp
-    Station        TEXT        List of observatory stations involved in the observation. Only used when MPECType is Discovery, OrbitUpdate, or DOU        
-    DiscStation    TEXT        Observatory station marked by the discovery asterisk. Only used when MPECType is Discovery.
-    FirstConf    TEXT        First observatory station to confirm. Only used when MPECType is Discovery.
-    MPECType    TEXT        Type of the MPEC: Editorial, Discovery, OrbitUpdate, DOU, ListUpdate, Retraction, Other
-    ObjectType    TEXT        Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk. Only used when MPECType is Discovery or OrbitUpdate
-    OrbitComp    TEXT        Orbit computer. Only used when MPECType is Discovery or OrbitUpdate
-    Issuer        TEXT        Issuer of the MPEC
-    
-TABLE XXX (observatory code):
-    Object        TEXT        Object designation in packed form
-    Time        INTEGER        Time of the observation (Unix timestamp)
-    Observer    TEXT        List of observers as published in MPEC
-    Measurer    TEXT        List of measurers as published in MPEC
-    Facility    TEXT        List of telescope/instrument as published in MPEC
-    MPEC        TEXT        MPECId
-    MPECType    TEXT        Type of the MPEC: Discovery, OrbitUpdate, DOU
-    ObjectType    TEXT        Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk
-    Discovery    INTEGER        Corresponding to discovery asterisk
 """
 
 # future improvements:

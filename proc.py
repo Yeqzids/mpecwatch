@@ -20,6 +20,8 @@ TABLE MPEC: (summary of each MPEC)
 	ObjectType	TEXT		Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk. Only used when MPECType is Discovery or OrbitUpdate
 	OrbitComp	TEXT		Orbit computer. Only used when MPECType is Discovery or OrbitUpdate
 	Issuer		TEXT		Issuer of the MPEC
+	ObjectId 	TEXT		Object designation in packed form. This is the same as ObjectId in TABLE Objects
+	PageHash	TEXT		Hash of the MPEC page to check if it has changed since last run (proc.py will skip unchanged MPEC pages)
 	
 TABLE XXX (observatory code):
 	Object		TEXT		Object designation in packed form
@@ -31,6 +33,27 @@ TABLE XXX (observatory code):
 	MPECType	TEXT		Type of the MPEC: Discovery, OrbitUpdate, DOU
 	ObjectType	TEXT		Type of the object: NEA, Comet, Satellite, TNO, Unusual, Interstellar, unk
 	Discovery	INTEGER		Corresponding to discovery asterisk
+
+TABLE Objects: Stores information about objects
+	ObjectId		TEXT PRIMARY KEY		Object designation in packed form
+	Discovery		BOOLEAN				Flag indicating if the object was discovered by the station (1=discovery, 0=not discovery)
+	Note1			TEXT				First note from the MPEC (https://www.minorplanetcenter.net/iau/info/ObsNote.html)
+	Note2			TEXT				Second note from the MPEC (https://www.minorplanetcenter.net/iau/info/OpticalObs.html)
+	Timestamp		INTEGER				Last timestamp of the observation
+	Mag				REAL				Magnitude of the object
+	Band			TEXT				Band of the observation (e.g., 'R', 'V', 'I')
+	Star_cat_code	TEXT				Catalog code of the star (https://minorplanetcenter.net/iau/info/CatalogueCodes.html)
+
+TABLE LastRun: Tracks processing status of stations and other entities
+    MPECId        TEXT PRIMARY KEY   Identifier (e.g., 'station_G96' for observatory code G96)
+    LastRunTime   INTEGER            Unix timestamp of when the data was last processed (currently not used)
+    StationHash   TEXT               MD5 hash of the station's JSON data structure
+    Changed       BOOLEAN            Flag indicating if data changed since last processing (1=changed, 0=unchanged)
+
+LastRun Workflow:
+    1. obscode_stat.py updates LastRunTime, StationHash, and Changed when processing station statistics
+    2. StationMPECGraph.py queries for stations with Changed=1 to determine which pages need regeneration
+    3. After successful page generation, StationMPECGraph.py sets Changed=0
 """
 
 import sqlite3, os, datetime as dt, numpy as np, sys, re, hashlib
@@ -397,9 +420,6 @@ else:
 			FOREIGN KEY(ObjectId) REFERENCES Objects(ObjectId)
 		)
 	""")
-	# decoding note1: https://www.minorplanetcenter.net/iau/info/ObsNote.html
-	# decoding note2: https://www.minorplanetcenter.net/iau/info/OpticalObs.html
-	# decoding catalog code: https://minorplanetcenter.net/iau/info/CatalogueCodes.html
 	cursor.execute("""
 		CREATE TABLE IF NOT EXISTS Objects (
 			ObjectId TEXT PRIMARY KEY,
@@ -419,10 +439,6 @@ else:
 		)
 	""")
 	db.commit()
-	# store json hash of each station's last run
-	# obscode_stat.py updates LastRunTime, StationHash, and Changed
-	# StationMPECGraph.py uses Changed to determine if the station page needs to be updated
-	# note that LastRunTime is not used, but it is useful for debugging purposes
 	cursor.execute("""
 		CREATE TABLE IF NOT EXISTS LastRun (
 			MPECId TEXT PRIMARY KEY,

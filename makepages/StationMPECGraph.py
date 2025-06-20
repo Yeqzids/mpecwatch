@@ -406,6 +406,8 @@ def make_station_page(station_code):
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         # yearly breakdown of MPEC types
         df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
+        # edit the FU count just for the graph since First FU is a subset of FU
+        df_yearly.loc[df_yearly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_yearly.loc[df_yearly['MPECType'] == 'First Follow-Up', '#MPECs']
         disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['Discovery'][str(year)][obj] for obj in OBJ_TYPES]})])
         OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['OrbitUpdate'][str(year)][obj] for obj in OBJ_TYPES]})])
 
@@ -413,6 +415,8 @@ def make_station_page(station_code):
         # monthly breakdown of MPEC types
         for month in MONTHS:
             df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
+            # edit the FU count just for the graph since First FU is a subset of FU
+            df_monthly.loc[df_monthly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_monthly.loc[df_monthly['MPECType'] == 'First Follow-Up', '#MPECs']
         make_monthly_page(df_monthly, station, year)
 
         o += f"""
