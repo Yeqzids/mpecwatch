@@ -1,160 +1,131 @@
-import sqlite3, plotly.express as px, pandas as pd, json, numpy as np, datetime
+import sqlite3
+import plotly.express as px
+import pandas as pd
+import json
+import numpy as np
+import datetime
+import os # Import os for path manipulation
 
-mpecconn = sqlite3.connect("../mpecwatch_v3.db")
-cursor = mpecconn.cursor()
+# --- Configuration/Constants ---
+DB_PATH = "../mpecwatch_v3.db"
+MPC_CODE_PATH = '../mpccode.json'
+OUTPUT_BASE_DIR = "../www/byStation/OMF/"
+TOP_N_LIMIT = 10 # N = 10
 
-mpccode = '../mpccode.json'
-with open(mpccode) as mpccode:
-    mpccode = json.load(mpccode)
-    
-def printDict(someDictionary):
-    for key,value in someDictionary.items():
-        print("{}: {}".format(key,value))
+# --- Helper Functions ---
+def sanitize_name(name, max_len=30):
+    """Truncates long names and appends '...'"""
+    return name[:max_len] + "..." if len(name) > max_len else name
 
-def tableNames():
-    sql = '''SELECT name FROM sqlite_master WHERE type='table';'''
-    cursor = mpecconn.execute(sql)
-    results = cursor.fetchall()
-    return(results[1::])
-
-#creating and writing Pie chart to html
-def topN(someDictionary, graphTitle, station, includeNA = False):    
-    if includeNA:
-        titleNA = "+NA"
-        if '' in someDictionary:     #check observation type
-            someDictionary['N/A'] = someDictionary['']
-            del someDictionary['']
+def generate_pie_chart(data_dict, title, station_code, filename_suffix, include_na=False):
+    """Generates and saves a pie chart."""
+    if include_na:
+        if '' in data_dict:
+            data_dict['N/A'] = data_dict.pop('')
     else:
-        titleNA=""
-        if '' in someDictionary:
-            del someDictionary['']
+        if '' in data_dict:
+            del data_dict['']
 
-    if 0 in someDictionary:
-        del someDictionary[0]
-    
-    if len(someDictionary) > N: #if more than N data points DO top 10 + other
-        topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[:N])
-        topObjects.update({"Others":sum(someDictionary.values())-sum(topObjects.values())})
-    else: #otherwise show all data points
-        topObjects = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True))
-    
-    #printDict(topObjects)
-    df = pd.DataFrame(list(topObjects.items()), columns=['Objects', 'Count'])
-    fig1 = px.pie(df, values='Count', names='Objects', title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + graphTitle)
-    
-    #if there are no data points, add annotation
-    if len(topObjects) == 0:
-       fig1.add_annotation(text="No Data Available",
-                  xref="paper", yref="paper",
-                  x=0.3, y=0.3, showarrow=False)
-    
+    if 0 in data_dict: # Assuming 0 is a special key to be excluded
+        del data_dict[0]
 
-    fig1.write_html("../www/byStation/OMF/"+station+"_"+graphTitle.replace(' ', '_')+"{}.html".format(titleNA))
+    processed_data = {}
+    if len(data_dict) > TOP_N_LIMIT:
+        sorted_items = sorted(data_dict.items(), key=lambda x: x[1], reverse=True)
+        top_objects = dict(sorted_items[:TOP_N_LIMIT])
+        others_sum = sum(data_dict.values()) - sum(top_objects.values())
+        processed_data = top_objects
+        if others_sum > 0: # Only add "Others" if there's something to sum
+            processed_data["Others"] = others_sum
+    else:
+        processed_data = dict(sorted(data_dict.items(), key=lambda x: x[1], reverse=True))
 
-def time_frequency_figure(station):
-    yearly = np.zeros(366)
-    hourly = np.zeros(24)
-    weekly = np.zeros(7)
+    df = pd.DataFrame(list(processed_data.items()), columns=['Objects', 'Count'])
+    chart_title = f"{station_code} {mpccode[station_code]['name']} | {title}"
+    fig = px.pie(df, values='Count', names='Objects', title=chart_title)
 
-    cursor.execute("select Time from {}".format(station))
-    for time in cursor.fetchall():
-        time = int(time[0])
+    if not processed_data: # Check if dictionary is empty after processing
+        fig.add_annotation(text="No Data Available",
+                           xref="paper", yref="paper",
+                           x=0.3, y=0.3, showarrow=False)
 
-        day = datetime.date.fromtimestamp(time).timetuple().tm_yday
-        hour = datetime.datetime.fromtimestamp(time).hour
-        weekday = datetime.date.fromtimestamp(time).weekday()
-        
-        yearly[day-1] += 1 #treat the index of the array as the day of the year
-        hourly[hour] += 1 #treat the index of the array as the hour of the day
-        weekly[weekday] += 1 #treat the index of the array as the day of the week
+    na_suffix = "+NA" if include_na else ""
+    output_path = os.path.join(OUTPUT_BASE_DIR,
+                               f"{station_code}_{filename_suffix.replace(' ', '_')}{na_suffix}.html")
+    fig.write_html(output_path)
 
-    #yearly graph
-    fig1 = px.bar(x=np.arange(1,367), y=yearly, title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + "Yearly Frequency")
-    fig1.update_layout(
-        xaxis_title="Day of the Year",
-        yaxis_title="Number of Observations",
-    )
-    fig1.write_html("../www/byStation/OMF/"+station+"_yearly.html".replace(' ', '_'))
+def generate_bar_chart(x_data, y_data, title, x_axis_title, y_axis_title, station_code, filename_suffix):
+    """Generates and saves a bar chart."""
+    chart_title = f"{station_code} {mpccode[station_code]['name']} | {title}"
+    fig = px.bar(x=x_data, y=y_data, title=chart_title)
+    fig.update_layout(xaxis_title=x_axis_title, yaxis_title=y_axis_title)
+    output_path = os.path.join(OUTPUT_BASE_DIR,
+                               f"{station_code}_{filename_suffix.replace(' ', '_')}.html")
+    fig.write_html(output_path)
 
-    #hourly graph
-    fig2 = px.bar(x=np.arange(0,24), y=hourly, title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + "Hourly Frequency")
-    fig2.update_layout(
-        xaxis_title="Hour of the Day",
-        yaxis_title="Number of Observations",
-    )
-    fig2.write_html("../www/byStation/OMF/"+station+"_hourly.html".replace(' ', '_'))
+# --- Main Execution ---
+if __name__ == "__main__":
+    with open(MPC_CODE_PATH) as f:
+        mpccode = json.load(f)
 
-    #weekly graph
-    fig3 = px.bar(x=np.arange(0,7), y=weekly, title=station[-3:] + " " + mpccode[station[-3:]]['name'] + " | " + "Weekly Frequency")
-    fig3.update_layout(
-        xaxis_title="Day of the Week",
-        yaxis_title="Number of Observations",
-    )
-    fig3.write_html("../www/byStation/OMF/"+station+"_weekly.html".replace(' ', '_'))
+    with sqlite3.connect(DB_PATH) as mpecconn:
+        cursor = mpecconn.cursor()
 
+        #for station_code in mpccode.keys():
+        for i in range(1):
+            station_code = 'G96' # Example station code for testing
+            station_table_name = f"station_{station_code}"
+            
+            print(f"Processing {station_table_name}...")
 
-N = 10 #Top limit of objects to show individually
-for station in mpccode.keys():
-#for i in range(1):
-    #station = "station_J95"
-    station = "station_" + station
-    observers = {}
-    measurers = {}
-    facilities = {}
-    objects = {}
-    try:
-        cursor.execute("select Observer, Measurer, Facility, Object from {}".format(station))
-        message = "{} done".format(station)
-    except:
-        message = "Table {} does not exist".format(station)
-        
-        
-    for mpec in cursor.fetchall():
-        # observers
-        if (len(mpec[0]) > 30):
-            observer = mpec[0][:30] + "..."
-            observers[observer] = observers.get(observer,0)+1
-        else:
-            observers[mpec[0]] = observers.get(mpec[0],0)+1
+            observers = {}
+            measurers = {}
+            facilities = {}
+            objects = {}
+            
+            try:
+                # Using f-string for table name, but be cautious with untrusted input
+                cursor.execute(f"SELECT Observer, Measurer, Facility, Object, Time FROM {station_table_name}")
+                
+                yearly = np.zeros(366)
+                hourly = np.zeros(24)
+                weekly = np.zeros(7)
 
-        # measurers
-        if (len(mpec[1]) > 30):
-            measurer = mpec[1][:30] + "..."
-            measurers[measurer] = measurers.get(measurer,0)+1
-        else:
-            measurers[mpec[1]] = measurers.get(mpec[1],0)+1
+                for mpec_data in cursor.fetchall():
+                    observer_name = sanitize_name(mpec_data[0])
+                    measurer_name = sanitize_name(mpec_data[1])
+                    facility_name = sanitize_name(mpec_data[2])
+                    object_name = sanitize_name(mpec_data[3])
+                    timestamp = int(mpec_data[4])
 
-        # facilities
-        if (len(mpec[2]) > 30):
-            facility = mpec[2][:30] + "..."
-            facilities[facility] = facilities.get(facility,0)+1
-        else:
-            facilities[mpec[2]] = facilities.get(mpec[2],0)+1
+                    observers[observer_name] = observers.get(observer_name, 0) + 1
+                    measurers[measurer_name] = measurers.get(measurer_name, 0) + 1
+                    facilities[facility_name] = facilities.get(facility_name, 0) + 1
+                    objects[object_name] = objects.get(object_name, 0) + 1
+                    
+                    # Time frequency data
+                    day = datetime.date.fromtimestamp(timestamp).timetuple().tm_yday
+                    hour = datetime.datetime.fromtimestamp(timestamp).hour
+                    weekday = datetime.date.fromtimestamp(timestamp).weekday()
+                    
+                    yearly[day-1] += 1
+                    hourly[hour] += 1
+                    weekly[weekday] += 1
 
-        # objects
-        if (len(mpec[3]) > 30):
-            object = mpec[3][:30] + "..."
-            objects[object] = objects.get(object,0)+1
-        else:
-            objects[mpec[3]] = objects.get(mpec[3],0)+1
-    
+                # Generate Pie Charts
+                generate_pie_chart(observers, f"Top {TOP_N_LIMIT} Observers", station_code, "Top_Observers")
+                generate_pie_chart(measurers, f"Top {TOP_N_LIMIT} Measurers", station_code, "Top_Measurers")
+                generate_pie_chart(facilities, f"Top {TOP_N_LIMIT} Facilities", station_code, "Top_Facilities")
+                generate_pie_chart(objects, f"Top {TOP_N_LIMIT} Objects", station_code, "Top_Objects")
 
-    #doesnt include NA:
-    try:
-        topN(observers, "Top {} Observers".format(N), station)
-        topN(measurers, "Top {} Measurers".format(N), station)
-        topN(facilities, "Top {} Facilities".format(N), station)
-        topN(objects, "Top {} Objects".format(N), station)
-        time_frequency_figure(station)
+                # Generate Time Frequency Charts
+                generate_bar_chart(np.arange(1, 367), yearly, "Yearly Frequency", "Day of the Year", "Number of Observations", station_code, "yearly")
+                generate_bar_chart(np.arange(0, 24), hourly, "Hourly Frequency", "Hour of the Day", "Number of Observations", station_code, "hourly")
+                generate_bar_chart(np.arange(0, 7), weekly, "Weekly Frequency", "Day of the Week", "Number of Observations", station_code, "weekly")
 
-    except Exception as e:
-        message = e
-    
-    #includes NA:
-    #topN(observers, "Top {} Observers".format(N), station[0], True)
-    
-    print(message)
-    
-mpecconn.close()
-print('finished')
-    
+            except sqlite3.OperationalError as e:
+                print(f"Error for {station_table_name}: Table does not exist. {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred for {station_table_name}: {e}")
+
+    print('Finished processing all stations.')
