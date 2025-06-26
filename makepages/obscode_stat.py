@@ -83,7 +83,7 @@ import hashlib
 
 start_time = time.time()
 
-dbFile = '../mpecwatch_v4.db'
+dbFile = '../mpecwatch_v3.db'
 mpccode = '../mpccode.json'
 
 # Get current station hashes from LastRun table
@@ -139,25 +139,26 @@ for s in mpccode:
             if obs_type in ["Discovery", "OrbitUpdate", "1stRecovery", "Followup", "FirstFollowup"]:
                 for obj_type in OBJ_TYPES:
                     d[s][obs_type][year][obj_type] = 0
-    
-    # each station has its own OBS, MEA, FAC and are initialized as empty dictionaries
+
+    # each station has its own OBS, MEA, FAC and OBJ and are initialized as empty dictionaries
     d[s]['OBS'] = {}
     d[s]['MEA'] = {}
     d[s]['FAC'] = {}
+    d[s]['OBJ'] = {}
 
     # For individual MPECs table 
     # nested array of the following (for each MPEC): [Name, timestamp, Discovery?, First Conf?, Object Type, CATCH]
     d[s]['MPECs'] = []
 
-    #Grab MPECId
+    # Grab MPECId
     try:
         for mpc_obj in cursor.execute("SELECT MPEC, Object FROM station_{}".format(s)).fetchall():
             d[s]['MPECId'][mpc_obj[0]] = mpc_obj[1]
     except:
         pass
 
-    #Grab OBS, MEA, FAC (respectiveley)
-    # why are these in try/except blocks?
+    # Grab OBS, MEA, FAC, OBJ (respectiveley)
+    # try/except blocks used in case of missing table or column
     try:
         for obs in cursor.execute("SELECT Observer FROM station_{}".format(s)).fetchall():
             if obs[0] != '':
@@ -177,6 +178,13 @@ for s in mpccode:
         for fac in cursor.execute("SELECT Facility FROM station_{}".format(s)).fetchall():
             if fac[0] != '':
                 d[s]['FAC'][fac[0]] = d[s]['FAC'].get(fac[0], 0) + 1
+    except:
+        pass
+
+    try:
+        for obj in cursor.execute("SELECT Object FROM station_{}".format(s)).fetchall():
+            if obj[0] != '':
+                d[s]['OBJ'][obj[0]] = d[s]['OBJ'].get(obj[0], 0) + 1
     except:
         pass
 
