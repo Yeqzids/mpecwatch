@@ -664,6 +664,7 @@ def make_station_page(station_code):
     db.commit()
 
 # for testing a single station page
+# REMEMBER TO COMMENT OUT FLAG IN make_station_page() to prevent it from updating the database
 #make_station_page('G96')
 
 # only on Windows

@@ -1,75 +1,154 @@
+#!/usr/bin/env python3
 '''
-Created on Jul 27, 2022
+MPEC Watch - Overall Observer, Measurer, Facility Statistics
 
-Pie/bar chart + break down table of the occurrence of each "observer", "measurer" and "facility"
+Creates pie/bar charts and breakdown tables showing the overall occurrence of each 
+"observer", "measurer" and "facility" across all observatory stations.
+
+(C) Quanzhi Ye
 '''
 
-import sqlite3, plotly.express as px, pandas as pd, json, copy
+import plotly.express as px
+import pandas as pd
+import json
+import os
+from collections import Counter
 
-mpecconn = sqlite3.connect("../mpecwatch_v3.db")
-cursor = mpecconn.cursor()
+# Configuration constants
+MAX_CHAR_LEN = 30  # Maximum length for display names
+TOP_N = 10         # Number of top items to display in charts
+OUTPUT_DIR = '../www/stats/'
 
-mpccode = '../mpccode.json'
-with open(mpccode) as mpccode:
-    mpccode = json.load(mpccode)
+def sanitize_name(name, max_len=MAX_CHAR_LEN):
+    if not name or len(name) <= max_len:
+        return name
+    return name[:max_len] + "..."
 
-MAX_CHAR_LEN = 30 
-
-def tableNames():
-    sql = '''SELECT name FROM sqlite_master WHERE type='table';'''
-    cursor = mpecconn.execute(sql)
-    results = cursor.fetchall()
-    return(results[1::])
-
-def printDict(someDictionary):
-    for key,value in someDictionary.items():
-        print("{}: {}".format(key,value))
-
-# MPECID : observation count
-observers = {}
-measurers = {}
-stations = {}
-
-
-for station in tableNames():
-    cursor.execute("select * from {}".format(station[0]))
-    observations = cursor.fetchall()
-    stations.update({station[0][8::]: len(observations)})
-    for observation in observations:
-        observers[observation[2]] = observers.get(observation[2],0)+1
-        measurers[observation[3]] = measurers.get(observation[3],0)+1
-
-def topN(someDictionary, graphTitle, N=10, includeNA = False, includeOther = True):
-    NA=""
-    if includeNA:
-        NA = "+NA"
-        if '' in someDictionary:     #check observation type
-            someDictionary['N/A'] = someDictionary['']
-            del someDictionary['']
-    else:
-        if '' in someDictionary:
-            del someDictionary['']
+def aggregate_omf_data(observatory_data):
+    """
+    Aggregates Observer, Measurer, Facility, and Object data from obscode_stat.json.
+    """
+    observers = Counter()
+    measurers = Counter()
+    facilities = Counter()
+    objects = Counter()
+    stations = {}
     
-    objects11 = dict(sorted(someDictionary.items(), key=lambda x:x[1], reverse = True)[:N])
-    for key in copy.copy(list(objects11.keys())):
-        if len(key) > MAX_CHAR_LEN:
-            new_key = key[:MAX_CHAR_LEN]
-            objects11[new_key] = objects11.pop(key)
-    objects11 = dict(sorted(objects11.items(), key=lambda x:x[1], reverse = True))
-
-    Other=""
-    if includeOther:
-        Other = "+O"
-        objects11.update({"Others":sum(someDictionary.values())-sum(objects11.values())})
+    for station_code, station_data in observatory_data.items():
+        # Count station observations (total MPECs)
+        stations[station_code] = station_data.get('total', 0)
         
-    df = pd.DataFrame(list(objects11.items()), columns=['Objects', 'Count'])
-    fig1 = px.pie(df, values='Count', names='Objects', title=graphTitle)
-    fig1.write_html('../www/stats/' + graphTitle.replace(' ', '_')+"{}{}.html".format(NA, Other))
+        # Aggregate observer counts
+        for observer, count in station_data.get('OBS', {}).items():
+            observers[observer] += count
+            
+        # Aggregate measurer counts
+        for measurer, count in station_data.get('MEA', {}).items():
+            measurers[measurer] += count
+            
+        # Aggregate facility counts
+        for facility, count in station_data.get('FAC', {}).items():
+            facilities[facility] += count
 
+        # Aggregate object counts
+        for obj, count in station_data.get('OBJ', {}).items():
+            objects[obj] += count
 
-topN(observers, "Fraction of each observer groups among all MPECs")
-topN(measurers, "Fraction of each measurer groups among all MPECs")
-topN(stations, "Fraction of each observatory code among all MPECs")
+    return dict(observers), dict(measurers), dict(facilities), dict(objects), stations
 
-print('finished')
-mpecconn.close()
+def generate_top_n_chart(data_dict, title, n=TOP_N, include_other=True):
+    """
+    Generates a pie chart of the top N items from the provided dictionary.
+    
+    Args:
+        data_dict: Dictionary of items and their counts
+        title: Title for the chart
+        n: Number of top items to include
+        include_other: Whether to include an "Others" category for items beyond the top N
+    """
+    suffix = ''
+    
+    # Get the top N items
+    sorted_items = sorted(data_dict.items(), key=lambda x: x[1], reverse=True)
+    top_items = dict(sorted_items[:n])
+    
+    # Sanitize long names
+    sanitized_items = {}
+    for key, value in top_items.items():
+        sanitized_key = sanitize_name(key)
+        sanitized_items[sanitized_key] = value
+    
+    # Add "Others" category if requested
+    if include_other:
+        suffix += "+O"
+        others_count = sum(data_dict.values()) - sum(sanitized_items.values())
+        if others_count > 0:
+            sanitized_items["Others"] = others_count
+    
+    # Create DataFrame for Plotly
+    df = pd.DataFrame(list(sanitized_items.items()), columns=['Item', 'Count'])
+    
+    # Generate pie chart
+    fig = px.pie(
+        df, 
+        values='Count', 
+        names='Item', 
+        title=f"{title} (Top {n})",
+        hover_data=['Count']
+    )
+    
+    # Improve layout
+    fig.update_layout(
+        legend=dict(orientation="h", yanchor="bottom", y=0, xanchor="center", x=0.5),
+        margin=dict(t=50, b=50, l=10, r=10)
+    )
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    # Save the chart
+    safe_title = title.replace(' ', '_').replace('/', '_')
+    output_path = os.path.join(OUTPUT_DIR, f"{safe_title}{suffix}.html")
+    fig.write_html(output_path)
+    
+    print(f"Generated chart: {os.path.basename(output_path)}")
+    
+    return fig
+
+def main():
+    """Main function to generate overall OMF statistics"""
+    print("MPEC Watch - Generating Overall OMF Statistics...")
+    
+    # Load MPC observatory codes
+    with open('../mpccode.json') as f:
+        mpccode = json.load(f)
+    
+    # Load observatory statistics
+    try:
+        with open('obscode_stat.json') as f:
+            observatory_data = json.load(f)
+    except FileNotFoundError:
+        print("Error: obscode_stat.json not found. Run obscode_stat.py first.")
+        return
+    
+    # Aggregate data across all observatories
+    observers, measurers, facilities, objects, stations = aggregate_omf_data(observatory_data)
+    
+    print(f"Found {len(observers)} unique observers")
+    print(f"Found {len(measurers)} unique measurers")
+    print(f"Found {len(facilities)} unique facilities")
+    print(f"Found {len(objects)} unique objects")
+
+    print(f"Found {len(stations)} observatory stations with data")
+    
+    # Generate visualization charts
+    generate_top_n_chart(observers, "Fraction of each observer group among all MPECs")
+    generate_top_n_chart(measurers, "Fraction of each measurer group among all MPECs")
+    generate_top_n_chart(facilities, "Fraction of each facility among all MPECs")
+    generate_top_n_chart(objects, "Fraction of each object among all MPECs")
+    generate_top_n_chart(stations, "Fraction of each observatory code among all MPECs")
+
+    print("Overall OMF statistics generation complete.")
+
+if __name__ == "__main__":
+    main()
