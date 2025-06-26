@@ -138,7 +138,6 @@ def main():
     print(f"Found {len(measurers)} unique measurers")
     print(f"Found {len(facilities)} unique facilities")
     print(f"Found {len(objects)} unique objects")
-
     print(f"Found {len(stations)} observatory stations with data")
     
     # Generate visualization charts

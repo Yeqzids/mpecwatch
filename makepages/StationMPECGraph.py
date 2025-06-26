@@ -638,17 +638,17 @@ def make_station_page(station_code):
      
     ## figures ##
      # figure: yearly breakdown of MPEC types   
-    fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number and type of MPECs by year")
+    fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType")
     fig.update_layout(barmode='stack')
     fig.write_html(f"../www/byStation/Graphs/{station}.html")
 
     # figure: yearly breakdown of Discovery object types
-    fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjectType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number of Discovery MPECs by object type")
+    fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjectType")
     fig.update_layout(barmode='stack')
     fig.write_html(f"../www/byStation/Graphs/{station}_disc_obj.html")
 
     # figure: yearly breakdown of Orbit Update object types
-    fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjectType", title= station[-3:] + " " + mpccode[station[-3:]]['name']+" | Number of Orbit Update MPECs by object type")
+    fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjectType")
     fig.update_layout(barmode='stack')
     fig.write_html(f"../www/byStation/Graphs/{station}_OU_obj.html")
 
@@ -662,83 +662,84 @@ def make_station_page(station_code):
     logging.info(f"Finished processing for station: {station_code}")
 
     # Mark the station as processed in the database
-    cursor.execute("""
-    UPDATE LastRun SET Changed = 0 WHERE MPECId = ?
-    """, (station,))
-    db.commit()
+    # COMMENT OUT THIS FLAG IF TESTING SINGLE STATION PAGE
+    # cursor.execute("""
+    # UPDATE LastRun SET Changed = 0 WHERE MPECId = ?
+    # """, (station,))
+    # db.commit()
 
 # for testing a single station page
 # REMEMBER TO COMMENT OUT FLAG IN make_station_page() to prevent it from updating the database
-#make_station_page('G96')
+make_station_page('G96')
 
 # only on Windows
-if sys.platform == "win32":
-    ES_CONTINUOUS       = 0x80000000
-    ES_SYSTEM_REQUIRED  = 0x00000001
-    def prevent_sleep():
-        ctypes.windll.kernel32.SetThreadExecutionState(
-            ES_CONTINUOUS | ES_SYSTEM_REQUIRED
-        )
-    def allow_sleep():
-        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
-else:
-    def prevent_sleep(): pass
-    def allow_sleep():  pass
+# if sys.platform == "win32":
+#     ES_CONTINUOUS       = 0x80000000
+#     ES_SYSTEM_REQUIRED  = 0x00000001
+#     def prevent_sleep():
+#         ctypes.windll.kernel32.SetThreadExecutionState(
+#             ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+#         )
+#     def allow_sleep():
+#         ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+# else:
+#     def prevent_sleep(): pass
+#     def allow_sleep():  pass
 
-if __name__ == "__main__":
-    build_name_map()
+# if __name__ == "__main__":
+#     build_name_map()
 
-    # Get list of stations that need updating
-    stations_to_process = get_stations_needing_update()
+#     # Get list of stations that need updating
+#     stations_to_process = get_stations_needing_update()
 
-    if stations_to_process is None:
-        # If we couldn't determine which stations need updates, process all
-        stations_to_process = list(obscode.keys())
-        logging.info(f"Processing all {len(stations_to_process)} stations due to error checking update status")
-    else:
-        logging.info(f"Processing {len(stations_to_process)} stations that need updates")
+#     if stations_to_process is None:
+#         # If we couldn't determine which stations need updates, process all
+#         stations_to_process = list(obscode.keys())
+#         logging.info(f"Processing all {len(stations_to_process)} stations due to error checking update status")
+#     else:
+#         logging.info(f"Processing {len(stations_to_process)} stations that need updates")
     
-    if len(stations_to_process) == 0:
-        logging.info("No stations need updating. Exiting.")
-        sys.exit(0)
+#     if len(stations_to_process) == 0:
+#         logging.info("No stations need updating. Exiting.")
+#         sys.exit(0)
 
-    mgr = multiprocessing.Manager()
-    stop_event = mgr.Event()
+#     mgr = multiprocessing.Manager()
+#     stop_event = mgr.Event()
     
-    signal.signal(signal.SIGINT, signal_handler)
+#     signal.signal(signal.SIGINT, signal_handler)
 
-    prevent_sleep()
-    max_workers = max(1, os.cpu_count()//2)
-    time_start = datetime.datetime.now()
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # submit only tasks for stations that need updating
-        futures = {
-            executor.submit(make_station_page, station_code): station_code
-            for station_code in stations_to_process
-        }
+#     prevent_sleep()
+#     max_workers = max(1, os.cpu_count()//2)
+#     time_start = datetime.datetime.now()
+#     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+#         # submit only tasks for stations that need updating
+#         futures = {
+#             executor.submit(make_station_page, station_code): station_code
+#             for station_code in stations_to_process
+#         }
 
-        try:
-            for future in concurrent.futures.as_completed(futures):
-                station = futures[future]
-                # if someone has hit Ctrl+C, break out
-                if stop_event and stop_event.is_set():
-                    break
+#         try:
+#             for future in concurrent.futures.as_completed(futures):
+#                 station = futures[future]
+#                 # if someone has hit Ctrl+C, break out
+#                 if stop_event and stop_event.is_set():
+#                     break
 
-                try:
-                    future.result()
-                except Exception as exc:
-                    logging.error(f"Station {station} failed: {exc}", exc_info=True)
-                    stop_event.set()
-        except KeyboardInterrupt:
-            logging.info("KeyboardInterrupt caught — cancelling running tasks…")
-            stop_event.set()
-            # cancel all pending futures
-            for f in futures:
-                f.cancel()
-        finally:
-            # make sure we tear down quickly
-            executor.shutdown(wait=False, cancel_futures=True)
+#                 try:
+#                     future.result()
+#                 except Exception as exc:
+#                     logging.error(f"Station {station} failed: {exc}", exc_info=True)
+#                     stop_event.set()
+#         except KeyboardInterrupt:
+#             logging.info("KeyboardInterrupt caught — cancelling running tasks…")
+#             stop_event.set()
+#             # cancel all pending futures
+#             for f in futures:
+#                 f.cancel()
+#         finally:
+#             # make sure we tear down quickly
+#             executor.shutdown(wait=False, cancel_futures=True)
     
-    allow_sleep()
-    time_end = datetime.datetime.now()
-    logging.info(f"Total time taken: {time_end - time_start}")
+#     allow_sleep()
+#     time_end = datetime.datetime.now()
+#     logging.info(f"Total time taken: {time_end - time_start}")

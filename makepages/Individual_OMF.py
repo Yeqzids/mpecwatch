@@ -16,48 +16,37 @@ def sanitize_name(name, max_len=30):
     """Truncates long names and appends '...'"""
     return name[:max_len] + "..." if len(name) > max_len else name
 
-def generate_pie_chart(data_dict, title, station_code, filename_suffix, include_na=False):
+def generate_pie_chart(data_dict, station_code, filename_suffix, include_other=True):
     """Generates and saves a pie chart."""
-    if include_na:
-        if '' in data_dict:
-            data_dict['N/A'] = data_dict.pop('')
-    else:
-        if '' in data_dict:
-            del data_dict['']
-
     if 0 in data_dict:
+        print(f"Warning: Key '0' found in data_dict for {station_code}. Removing it.")
         del data_dict[0]
 
-    processed_data = {}
-    if len(data_dict) > TOP_N_LIMIT:
-        sorted_items = sorted(data_dict.items(), key=lambda x: x[1], reverse=True)
-        top_objects = dict(sorted_items[:TOP_N_LIMIT])
-        others_sum = sum(data_dict.values()) - sum(top_objects.values())
-        processed_data = top_objects
+    # Get the top N items
+    sorted_items = sorted(data_dict.items(), key=lambda x: x[1], reverse=True)
+    top_items = dict(sorted_items[:TOP_N_LIMIT])
+
+    if include_other and len(data_dict) > TOP_N_LIMIT:
+        others_sum = sum(data_dict.values()) - sum(top_items.values())
         if others_sum > 0:
-            processed_data["Others"] = others_sum
-    else:
-        processed_data = dict(sorted(data_dict.items(), key=lambda x: x[1], reverse=True))
+            top_items["Others"] = others_sum
 
-    df = pd.DataFrame(list(processed_data.items()), columns=['Objects', 'Count'])
-    chart_title = f"{station_code} {mpccode[station_code]['name']} | {title}"
-    fig = px.pie(df, values='Count', names='Objects', title=chart_title)
+    df = pd.DataFrame(list(top_items.items()), columns=['Objects', 'Count'])
+    fig = px.pie(df, values='Count', names='Objects')
 
-    if not processed_data:
+    if not top_items:
         fig.add_annotation(text="No Data Available",
                            xref="paper", yref="paper",
                            x=0.3, y=0.3, showarrow=False)
 
-    na_suffix = "+NA" if include_na else ""
     output_path = os.path.join(OUTPUT_BASE_DIR,
-                               f"{station_code}_{filename_suffix.replace(' ', '_')}{na_suffix}.html")
+                               f"{station_code}_{filename_suffix.replace(' ', '_')}.html")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     fig.write_html(output_path)
 
-def generate_bar_chart(x_data, y_data, title, x_axis_title, y_axis_title, station_code, filename_suffix):
+def generate_bar_chart(x_data, y_data, x_axis_title, y_axis_title, station_code, filename_suffix):
     """Generates and saves a bar chart."""
-    chart_title = f"{station_code} {mpccode[station_code]['name']} | {title}"
-    fig = px.bar(x=x_data, y=y_data, title=chart_title)
+    fig = px.bar(x=x_data, y=y_data)
     fig.update_layout(xaxis_title=x_axis_title, yaxis_title=y_axis_title)
     output_path = os.path.join(OUTPUT_BASE_DIR,
                                f"{station_code}_{filename_suffix.replace(' ', '_')}.html")
@@ -107,15 +96,15 @@ def process_station(station_code, station_data):
     yearly, hourly, weekly = process_time_frequencies(mpecs_data)
     
     # Generate Pie Charts
-    generate_pie_chart(sanitized_observers, f"Top {TOP_N_LIMIT} Observers", station_code, "Top_Observers")
-    generate_pie_chart(sanitized_measurers, f"Top {TOP_N_LIMIT} Measurers", station_code, "Top_Measurers")
-    generate_pie_chart(sanitized_facilities, f"Top {TOP_N_LIMIT} Facilities", station_code, "Top_Facilities")
-    generate_pie_chart(sanitized_objects, f"Top {TOP_N_LIMIT} Objects", station_code, "Top_Objects")
+    generate_pie_chart(sanitized_observers, station_code, "Top_Observers")
+    generate_pie_chart(sanitized_measurers, station_code, "Top_Measurers")
+    generate_pie_chart(sanitized_facilities, station_code, "Top_Facilities")
+    generate_pie_chart(sanitized_objects, station_code, "Top_Objects")
 
     # Generate Time Frequency Charts
-    generate_bar_chart(np.arange(1, 367), yearly, "Yearly Frequency", "Day of the Year", "Number of Observations", station_code, "yearly")
-    generate_bar_chart(np.arange(0, 24), hourly, "Hourly Frequency", "Hour of the Day", "Number of Observations", station_code, "hourly")
-    generate_bar_chart(np.arange(0, 7), weekly, "Weekly Frequency", "Day of the Week", "Number of Observations", station_code, "weekly")
+    generate_bar_chart(np.arange(1, 367), yearly, "Day of the Year", "Number of Observations", station_code, "yearly")
+    generate_bar_chart(np.arange(0, 24), hourly, "Hour of the Day", "Number of Observations", station_code, "hourly")
+    generate_bar_chart(np.arange(0, 7), weekly, "Day of the Week", "Number of Observations", station_code, "weekly")
 
 # --- Main Execution ---
 if __name__ == "__main__":
