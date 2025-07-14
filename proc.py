@@ -648,8 +648,14 @@ for halfmonth in month_to_letter(ym[4:6]):
 			#print('=========================================')
 			
 			### write to TABLE MPEC
-			cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, ObjectId, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''', \
-			(mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer, obs_obj, h))
+			if mpec_type in ('Discovery', 'OrbitUpdate', 'DOU'):
+				# Observational MPECs
+				cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, ObjectId, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''', \
+				(mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer, obs_obj, h))
+			else:
+				# Non-observational MPECs
+				cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, ObjectId, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''', \
+				(mpec_id, mpec_title, mpec_timestamp, '', '', '', mpec_type, '', '', issuer, '', h))
 			db.commit()
 		except Exception as e:
 			print('ERROR processing ' + this_mpec + ': ')
