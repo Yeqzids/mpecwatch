@@ -50,6 +50,7 @@ MPEC Watch is a Python project that processes, analyzes, and visualizes statisti
 
 ## Important Notes
 - When modifying database code, maintain compatibility with the existing schema
+- Simplify logic whenever possible to improve maintainability
 - HTML templates follow Bootstrap conventions and should maintain consistent styling
 - MPEC parsing logic may need to handle edge cases in MPEC formatting
 - New visualizations should match the style of existing charts

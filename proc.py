@@ -57,7 +57,7 @@ LastRun Workflow:
 """
 
 import sqlite3, os, datetime as dt, numpy as np, sys, re, hashlib
-import time
+import time, csv
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
@@ -795,10 +795,20 @@ for halfmonth in month_to_letter(ym[4:6]):
 				cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, ObjectId, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''', \
 				(mpec_id, mpec_title, mpec_timestamp, '', '', '', mpec_type, '', '', issuer, '', h))
 			db.commit()
+		except PageParseError as e:
+			error_message = f"Error parsing MPEC {this_mpec}: {str(e)}"
+			print(error_message)
+			with open('logs/mpec_errors.csv', 'a', newline='') as f:
+				writer = csv.writer(f)
+				writer.writerow([mpec_id, error_message])
+			continue
 		except Exception as e:
-			print('ERROR processing ' + this_mpec + ': ')
-			print(e)
-			pass
+			error_message = f"Unexpected error processing MPEC {this_mpec}: {str(e)}"
+			print(error_message)
+			with open('logs/mpec_errors.csv', 'a', newline='') as f:
+				writer = csv.writer(f)
+				writer.writerow([mpec_id, error_message])
+			continue
 
 # create indexes for TABLE MPEC to speed up queries
 cursor.execute("CREATE INDEX IF NOT EXISTS idx_mpec_time ON MPEC(Time);") # Found in home_stat.py, mpc_stat.py, MPECTally.py
