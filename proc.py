@@ -57,11 +57,12 @@ LastRun Workflow:
 """
 
 import sqlite3, os, datetime as dt, numpy as np, sys, re, hashlib
+import time
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
 ym = sys.argv[1]
-dbFile = 'mpecwatch_v4.db'
+dbFile = 'test/mpecwatch_v4.db'
 
 def month_to_letter(month):		# turn month into letter following MPC scheme
 	if month == '01':
@@ -382,6 +383,30 @@ def find_issuer(mpec_text):
 		if '(C)' in s:
 			return(s[0:28].strip())
 
+def extract_designations_from_dou_line(line_parts):
+    designations = []
+    author = None
+    reference = None
+    
+    remaining_parts = line_parts.copy()
+    
+    # Check for MPC reference pattern at the end
+    if len(remaining_parts) >= 2 and remaining_parts[-2] == "MPC" and remaining_parts[-1].isdigit():
+        reference = f"MPC {remaining_parts[-1]}"
+        remaining_parts = remaining_parts[:-2]
+    
+    # The last remaining part is likely the author (if not a designation)
+    if remaining_parts and (len(remaining_parts[-1]) != 7 or remaining_parts[-1][0] not in ['J', 'K', 'T']):
+        author = remaining_parts[-1]
+        remaining_parts = remaining_parts[:-1]
+    
+    # All other parts that match designation pattern are designations
+    for part in remaining_parts:
+        if len(part) == 7 and part[0] in ['J', 'K', 'T']:
+            designations.append(part)
+    
+    return designations, author, reference
+
 class PageParseError(Exception):
     """Raised when an MPEC page is missing an expected section."""
     pass
@@ -389,6 +414,8 @@ class PageParseError(Exception):
 ########
 # main #
 ########
+
+time_start = time.time()
 
 if ym[0:2] == '19':
 	century = 'J'
@@ -435,7 +462,12 @@ else:
 	cursor.execute("""
 		CREATE TABLE IF NOT EXISTS DOUIdentifier (
 			MPECId TEXT,
-			DOU TEXT
+			DOU TEXT,
+			RelatedDOU TEXT,
+			RelationType TEXT,
+			Author TEXT,
+			IsRetracted BOOLEAN DEFAULT 0,
+			PRIMARY KEY (MPECId, DOU, RelatedDOU)
 		)
 	""")
 	db.commit()
@@ -511,17 +543,122 @@ for halfmonth in month_to_letter(ym[4:6]):
 
 				## DOU Identifiers
 				if mpec_type == 'DOU':
-					if 'New identifications:' not in mpec_text or 'New old-numbered orbits:' not in mpec_text:
-						raise PageParseError(f"{mpec_id}: missing DOU markers")
-					start = mpec_text.index('New identifications:') + 1
-					end   = mpec_text.index('New old-numbered orbits:')
-					for line in mpec_text[start:end]:
-						parts = line.split()
-						if not parts: # skip empty lines
-							continue
-						dou = parts[-1]
-						# insert DOU into DOUIdentifier table if (MPECId, DOU) does not exist
-						cursor.execute("INSERT OR IGNORE INTO DOUIdentifier (MPECId, DOU) VALUES (?,?)",(mpec_id, dou))
+					# Look for the standard DOU sections
+					dou_sections = []
+					relationship_mapping = {
+						'New identifications:': 'identification',
+						'New identification:': 'identification',
+						'New double designations:': 'double',
+						'New double designation:': 'double',
+						'Erroneous double designations:': 'erroneous',
+						'Erroneous double designation:': 'erroneous'
+					}
+					
+					# Find all sections that exist in this MPEC
+					for section in relationship_mapping:
+						if section in mpec_text:
+							dou_sections.append(section)
+					
+					# Process each section
+					for section_idx, section_header in enumerate(dou_sections):
+						relation_type = relationship_mapping.get(section_header)
+						section_start_idx = mpec_text.index(section_header)
+						section_start = section_start_idx + 1  # Skip the header line
+						
+						# Find the end of this section (next empty line)
+						section_end = section_start
+						while section_end < len(mpec_text):
+							current_line = mpec_text[section_end]
+							current_line_s = current_line.strip()
+							# Stop at empty line or a line that starts with a non-space character
+							# (which indicates the start of a new section)
+							if not current_line_s or (current_line_s and not current_line.startswith(' ')):
+								break
+							section_end += 1
+
+						# print(f"Processing {section_header} from line {section_start} to {section_end}")
+
+						# Process the lines in this section
+						for line_idx in range(section_start, section_end):
+							line = mpec_text[line_idx]
+							stripped_line = line.strip()
+							if not stripped_line:  # Skip empty lines
+								continue
+
+							# check for commented/retracted entries (eg. 1998-A03)
+							is_retracted = stripped_line.startswith('#')
+							if is_retracted:
+								stripped_line = stripped_line[1:].strip()
+
+							parts = stripped_line.split()
+							if not parts:  # Skip if no parts after splitting
+								continue
+							
+							designations, author, reference = extract_designations_from_dou_line(parts)
+
+							# Skip lines with fewer than 2 designations
+							if len(designations) < 2:
+								continue
+
+							# If author is not provided, use 'Unknown'
+							if not author:
+								author = 'Unknown'
+								
+							# Insert relationships based on section type
+							if relation_type == 'identification' or relation_type == 'double':
+								# For these types, establish relationships between all designations
+								for i in range(len(designations) - 1):
+									for j in range(i + 1, len(designations)):
+										# Forward relationship
+										cursor.execute(
+											"""INSERT OR IGNORE INTO DOUIdentifier 
+											(MPECId, DOU, RelatedDOU, RelationType, Author, IsRetracted) 
+											VALUES (?,?,?,?,?,?)""",
+											(mpec_id, designations[i], designations[j], relation_type, author, 1 if is_retracted else 0)
+										)
+										
+										# Reverse relationship
+										cursor.execute(
+											"""INSERT OR IGNORE INTO DOUIdentifier 
+											(MPECId, DOU, RelatedDOU, RelationType, Author, IsRetracted) 
+											VALUES (?,?,?,?,?,?)""",
+											(mpec_id, designations[j], designations[i], relation_type, author, 1 if is_retracted else 0)
+										)
+
+							elif relation_type == 'erroneous':
+								# For erroneous designations, mark the relationship (both ways) but set IsRetracted to true
+								for i in range(len(designations) - 1):
+									for j in range(i + 1, len(designations)):
+										# Forward relationship
+										cursor.execute(
+											"""INSERT OR IGNORE INTO DOUIdentifier 
+											(MPECId, DOU, RelatedDOU, RelationType, Author, IsRetracted) 
+											VALUES (?,?,?,?,?,?)""",
+											(mpec_id, designations[i], designations[j], 'double', author, 1)
+										)
+
+										# Reverse relationship
+										cursor.execute(
+											"""INSERT OR IGNORE INTO DOUIdentifier 
+											(MPECId, DOU, RelatedDOU, RelationType, Author, IsRetracted) 
+											VALUES (?,?,?,?,?,?)""",
+											(mpec_id, designations[j], designations[i], 'double', author, 1)
+										)
+
+							else:
+								# For the rare case with more than 2 designations, log a warning
+								# but still process them as pairs (this handles unusual formatting)
+								print(f"Warning: {len(designations)} designations in double section: {line.strip()}")
+								for i in range(len(designations) - 1):
+									cursor.execute(
+										"INSERT OR IGNORE INTO DOUIdentifier (MPECId, DOU, RelatedDOU, RelationType, Author) VALUES (?,?,?,?,?)",
+										(mpec_id, designations[i], designations[i+1], relation_type, author)
+									)
+									cursor.execute(
+										"INSERT OR IGNORE INTO DOUIdentifier (MPECId, DOU, RelatedDOU, RelationType, Author) VALUES (?,?,?,?,?)",
+										(mpec_id, designations[i+1], designations[i], relation_type, author)
+									)
+					
 					db.commit()
 
 				## Observations
@@ -539,6 +676,7 @@ for halfmonth in month_to_letter(ym[4:6]):
 						obs_start = mpec_text.index(hdr) + 1
 						break
 				
+				obs_obj = ''
 				if not obs_start == -1:		# only proceed if there are observations in the MPEC
 					if any(s == 'Observer details:' for s in mpec_text):
 						obs_end = mpec_text.index('Observer details:')
@@ -674,4 +812,7 @@ cursor.execute("CREATE INDEX IF NOT EXISTS idx_mpec_object_id ON MPEC(ObjectId);
 cursor.execute("CREATE INDEX IF NOT EXISTS idx_object_id ON Objects(ObjectId);") # Found in TopObjectsObs_PieChart.py
 cursor.execute("CREATE INDEX IF NOT EXISTS idx_objecttype_time ON MPEC(ObjectType, Time);") # Found in MPECTally.py, survey.py
 db.commit()
+
+time_end = time.time()
+print(f'Processing time for {ym}: {str(time_end - time_start)} seconds')
 db.close()
