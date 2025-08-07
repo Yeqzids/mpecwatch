@@ -790,14 +790,14 @@ for p in pages:
             o += f"""
             <tr>
                 <td>
-                    <a href="../www/bySurvey/{survey_abbv}.html">{survey}</a>
+                    <a href="https://sbnmpc.astro.umd.edu/mpecwatch/bySurvey/{survey_abbv}.html">{survey}</a>
                 </td> 
                 <td> """
         else:
             o += f"""
                 <tr>
                     <td>
-                        <a href="../www/bySurvey/monthly/{survey_abbv}.html">{survey}</a>
+                        <a href="https://sbnmpc.astro.umd.edu/mpecwatch/bySurvey/monthly/{survey_abbv}.html">{survey}</a>
                     </td> 
                     <td> """
 
