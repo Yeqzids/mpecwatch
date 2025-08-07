@@ -13,5 +13,6 @@ proc_loop.*
 .pydevproject
 .settings
 *.json
+logs/
 test
 venv
