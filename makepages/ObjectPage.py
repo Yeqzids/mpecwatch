@@ -7,7 +7,7 @@ import plotly.express as px
 import pandas as pd
 
 # Configuration
-DB_PATH = 'test/mpecwatch_v4.db'
+DB_PATH = '../mpecwatch_v4.db'
 MPCCODE_PATH = '../mpccode.json'
 OUTPUT_BASE_DIR = '../www/byObject/'
 OBSCODE_STAT_PATH = 'obscode_stat.json'
