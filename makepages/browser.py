@@ -11,7 +11,7 @@
 import json, numpy as np
 from datetime import datetime
 
-stat = 'obscode_stat.json'
+stat = '../obscode_stat.json'
 mpccode = '../mpccode.json'
 
 with open(mpccode) as mpccode:
@@ -134,6 +134,102 @@ for p in pages:
           <p>
             Last update: UTC %s
           </p>""" % (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+    
+    # Year range filter card
+    o += """
+          <div class="card mb-4">
+              <div class="card-header">
+                  <h5><i class="fas fa-calendar-alt"></i> Filter by Year Range</h5>
+              </div>
+              <div class="card-body">
+                  <div class="row align-items-end">
+                      <div class="col-md-3">
+                          <label for="startYear">Start Year:</label>
+                          <select id="startYear" class="form-control">
+                              <!-- Populated by JavaScript -->
+                          </select>
+                      </div>
+                      <div class="col-md-3">
+                          <label for="endYear">End Year:</label>
+                          <select id="endYear" class="form-control">
+                              <!-- Populated by JavaScript -->
+                          </select>
+                      </div>
+                      <div class="col-md-3">
+                          <button onclick="applyYearFilter()" class="btn btn-primary">Apply Filter</button>
+                          <button onclick="clearYearFilter()" class="btn btn-secondary">Show All</button>
+                      </div>
+                      <div class="col-md-3">
+                          <div id="filterStatus" class="text-muted small"></div>
+                      </div>
+                  </div>
+                  <div class="row mt-2">
+                      <div class="col-12">
+                          <small class="text-muted">Quick filters:</small>
+                          <div class="btn-group btn-group-sm" role="group">
+                              <button type="button" class="btn btn-outline-secondary" onclick="applyPresetFilter('recent5')">Last 5 Years</button>
+                              <button type="button" class="btn btn-outline-secondary" onclick="applyPresetFilter('recent10')">Last 10 Years</button>
+                              <button type="button" class="btn btn-outline-secondary" onclick="applyPresetFilter('2020s')">2020s</button>
+                              <button type="button" class="btn btn-outline-secondary" onclick="applyPresetFilter('2010s')">2010s</button>
+                              <button type="button" class="btn btn-outline-secondary" onclick="applyPresetFilter('2000s')">2000s</button>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Summary Statistics Cards -->
+          <div class="row mb-3" id="summaryStats" style="display: none;">
+              <div class="col-md-2">
+                  <div class="card text-center">
+                      <div class="card-body p-2">
+                          <h6 class="card-title mb-1" id="total-observatories">-</h6>
+                          <small class="text-muted">Observatories</small>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-md-2">
+                  <div class="card text-center">
+                      <div class="card-body p-2">
+                          <h6 class="card-title mb-1" id="total-mpecs">-</h6>
+                          <small class="text-muted">Total MPECs</small>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-md-2">
+                  <div class="card text-center">
+                      <div class="card-body p-2">
+                          <h6 class="card-title mb-1" id="total-discoveries">-</h6>
+                          <small class="text-muted">Discoveries</small>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-md-2">
+                  <div class="card text-center">
+                      <div class="card-body p-2">
+                          <h6 class="card-title mb-1" id="total-followups">-</h6>
+                          <small class="text-muted">Follow-ups</small>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-md-2">
+                  <div class="card text-center">
+                      <div class="card-body p-2">
+                          <h6 class="card-title mb-1" id="total-firstfollowups">-</h6>
+                          <small class="text-muted">1st Follow-ups</small>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-md-2">
+                  <div class="card text-center">
+                      <div class="card-body p-2">
+                          <h6 class="card-title mb-1" id="total-precoveries">-</h6>
+                          <small class="text-muted">Precoveries</small>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          """
           
     o += """
           <div class="page-header">
@@ -199,9 +295,20 @@ for p in pages:
         except:
             country = ''
             
+        # Create data attributes for JavaScript filtering
+        data_attrs = 'data-observatory="%s" class="observatory-row"' % s
+        if p == 'All time':
+            data_attrs += ' data-mpecs="%s" data-discoveries="%s" data-followups="%s" data-firstfollowups="%s" data-precoveries="%s"' % (
+                str(stat[s]['total']), 
+                str(stat[s]['Discovery']['total']), 
+                str(stat[s]['Followup']['total']),
+                str(stat[s]['FirstFollowup']['total']),
+                str(stat[s]['Precovery']['total'])
+            )
+        
         o += """
-            <tr>
-                <td>%s</td>""" % s
+            <tr %s>
+                <td>%s</td>""" % (data_attrs, s)
                 
         #if s in ['244', '245', '247', '248', '249', '250', '258', '270', '274', '275', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C59']:
         o += """
@@ -358,8 +465,427 @@ for p in pages:
         <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/bootstrap-table.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.5/dist/extensions/export/bootstrap-table-export.min.js"></script>
 
+        <script>
+// MPEC Watch Observatory Browser Year Range Filtering
+let observatoryData = {};
+let currentlyFilteredYears = null;
+let statDataUrl = 'obscode_stat.json'; // Load data from separate file
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeObservatoryBrowser();
+});
+
+function initializeObservatoryBrowser() {
+    /**
+     * Initialize observatory browser with year range controls
+     */
+    populateYearDropdowns();
+    loadObservatoryData();
+    setupBootstrapTableFiltering();
+}
+
+function populateYearDropdowns() {
+    /**
+     * Populate year dropdown controls with available years
+     */
+    const years = Array.from({length: %d - 1993 + 1}, (_, i) => 1993 + i);
+    const startYearSelect = document.getElementById('startYear');
+    const endYearSelect = document.getElementById('endYear');
+    
+    years.forEach(year => {
+        startYearSelect.innerHTML += `<option value="${year}">${year}</option>`;
+        endYearSelect.innerHTML += `<option value="${year}">${year}</option>`;
+    });
+    
+    // Set default values
+    startYearSelect.value = years[0];
+    endYearSelect.value = years[years.length - 1];
+}
+
+function loadObservatoryData() {
+    /**
+     * Load observatory data from JSON file
+     */
+    fetch(statDataUrl)
+        .then(response => response.json())
+        .then(data => {
+            storeObservatoryData(data);
+        })
+        .catch(error => {
+            console.error('Error loading observatory data:', error);
+            // Fallback: Extract data from existing table
+            storeObservatoryDataFromTable();
+        });
+}
+
+function storeObservatoryData(statData) {
+    /**
+     * Store observatory data for filtering calculations
+     */
+    const observatoryRows = document.querySelectorAll('tr.observatory-row');
+    
+    observatoryRows.forEach(row => {
+        const code = row.dataset.observatory;
+        observatoryData[code] = {
+            element: row,
+            allTime: {
+                mpecs: parseInt(row.dataset.mpecs || 0),
+                discoveries: parseInt(row.dataset.discoveries || 0),
+                followups: parseInt(row.dataset.followups || 0),
+                firstFollowups: parseInt(row.dataset.firstfollowups || 0),
+                precoveries: parseInt(row.dataset.precoveries || 0)
+            },
+            byYear: statData[code] || {}
+        };
+    });
+}
+
+function storeObservatoryDataFromTable() {
+    /**
+     * Fallback: Extract data from existing table when JSON loading fails
+     */
+    const observatoryRows = document.querySelectorAll('tr.observatory-row');
+    
+    observatoryRows.forEach(row => {
+        const code = row.dataset.observatory;
+        observatoryData[code] = {
+            element: row,
+            allTime: {
+                mpecs: parseInt(row.dataset.mpecs || 0),
+                discoveries: parseInt(row.dataset.discoveries || 0),
+                followups: parseInt(row.dataset.followups || 0),
+                firstFollowups: parseInt(row.dataset.firstfollowups || 0),
+                precoveries: parseInt(row.dataset.precoveries || 0)
+            },
+            byYear: {} // Limited functionality without full data
+        };
+    });
+}
+
+function applyYearFilter() {
+    /**
+     * Apply year range filter to observatory browser
+     */
+    const startYear = parseInt(document.getElementById('startYear').value);
+    const endYear = parseInt(document.getElementById('endYear').value);
+    
+    if (startYear > endYear) {
+        alert('Start year must be less than or equal to end year');
+        return;
+    }
+    
+    currentlyFilteredYears = {start: startYear, end: endYear};
+    
+    // Update table data
+    updateObservatoryTable(startYear, endYear);
+    
+    // Update summary statistics
+    updateSummaryStatistics(startYear, endYear);
+    
+    // Update filter status
+    updateFilterStatus(startYear, endYear);
+    
+    // Refresh Bootstrap Table
+    $('#obs_table').bootstrapTable('refresh');
+}
+
+function updateObservatoryTable(startYear, endYear) {
+    /**
+     * Update observatory table with year range data
+     */
+    Object.keys(observatoryData).forEach(code => {
+        const obsData = observatoryData[code];
+        const row = obsData.element;
+        
+        // Calculate totals for year range
+        let mpecs = 0, discoveries = 0, followups = 0, firstFollowups = 0, precoveries = 0;
+        let neaDisc = 0, phaDisc = 0, cometDisc = 0, satDisc = 0, tnoDisc = 0;
+        let unusualDisc = 0, interDisc = 0, unkDisc = 0;
+        let neaFu = 0, phaFu = 0, cometFu = 0, satFu = 0, tnoFu = 0;
+        let unusualFu = 0, interFu = 0, unkFu = 0;
+        
+        for (let year = startYear; year <= endYear; year++) {
+            const yearStr = year.toString();
+            if (obsData.byYear[yearStr]) {
+                mpecs += obsData.byYear[yearStr] || 0;
+            }
+            
+            // Aggregate discovery types
+            if (obsData.byYear.Discovery && obsData.byYear.Discovery[yearStr]) {
+                const discYear = obsData.byYear.Discovery[yearStr];
+                discoveries += discYear.total || 0;
+                neaDisc += discYear.NEA || 0;
+                phaDisc += discYear.PHA || 0;
+                cometDisc += discYear.Comet || 0;
+                satDisc += discYear.Satellite || 0;
+                tnoDisc += discYear.TNO || 0;
+                unusualDisc += discYear.Unusual || 0;
+                interDisc += discYear.Interstellar || 0;
+                unkDisc += discYear.Unknown || 0;
+            }
+            
+            // Aggregate followup types
+            if (obsData.byYear.Followup && obsData.byYear.Followup[yearStr]) {
+                const fuYear = obsData.byYear.Followup[yearStr];
+                followups += fuYear.total || 0;
+                neaFu += fuYear.NEA || 0;
+                phaFu += fuYear.PHA || 0;
+                cometFu += fuYear.Comet || 0;
+                satFu += fuYear.Satellite || 0;
+                tnoFu += fuYear.TNO || 0;
+                unusualFu += fuYear.Unusual || 0;
+                interFu += fuYear.Interstellar || 0;
+                unkFu += fuYear.Unknown || 0;
+            }
+            
+            // Aggregate first followups and precoveries
+            if (obsData.byYear.FirstFollowup && obsData.byYear.FirstFollowup[yearStr]) {
+                firstFollowups += obsData.byYear.FirstFollowup[yearStr].total || 0;
+            }
+            
+            if (obsData.byYear.Precovery && obsData.byYear.Precovery[yearStr]) {
+                precoveries += obsData.byYear.Precovery[yearStr].total || 0;
+            }
+        }
+        
+        // Update table cells
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 27) {
+            cells[6].textContent = mpecs;
+            cells[7].textContent = discoveries;
+            cells[8].textContent = neaDisc;
+            cells[9].textContent = phaDisc;
+            cells[10].textContent = cometDisc;
+            cells[11].textContent = satDisc;
+            cells[12].textContent = tnoDisc;
+            cells[13].textContent = unusualDisc;
+            cells[14].textContent = interDisc;
+            cells[15].textContent = unkDisc;
+            cells[16].textContent = followups;
+            cells[17].textContent = neaFu;
+            cells[18].textContent = phaFu;
+            cells[19].textContent = cometFu;
+            cells[20].textContent = satFu;
+            cells[21].textContent = tnoFu;
+            cells[22].textContent = unusualFu;
+            cells[23].textContent = interFu;
+            cells[24].textContent = unkFu;
+            cells[25].textContent = firstFollowups;
+            cells[26].textContent = precoveries;
+        }
+    });
+}
+
+function updateSummaryStatistics(startYear, endYear) {
+    /**
+     * Update summary statistics for filtered year range
+     */
+    let totalObs = 0, totalMpecs = 0, totalDisc = 0, totalFu = 0, totalFirstFu = 0, totalPrec = 0;
+    
+    Object.keys(observatoryData).forEach(code => {
+        const obsData = observatoryData[code];
+        
+        // Count active observatories in this range
+        let hasActivity = false;
+        for (let year = startYear; year <= endYear; year++) {
+            if (obsData.byYear[year.toString()] && obsData.byYear[year.toString()] > 0) {
+                hasActivity = true;
+                break;
+            }
+        }
+        if (hasActivity) totalObs++;
+        
+        // Sum up statistics from current table values
+        const row = obsData.element;
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 27) {
+            totalMpecs += parseInt(cells[6].textContent || 0);
+            totalDisc += parseInt(cells[7].textContent || 0);
+            totalFu += parseInt(cells[16].textContent || 0);
+            totalFirstFu += parseInt(cells[25].textContent || 0);
+            totalPrec += parseInt(cells[26].textContent || 0);
+        }
+    });
+    
+    // Update summary cards
+    document.getElementById('total-observatories').textContent = totalObs.toLocaleString();
+    document.getElementById('total-mpecs').textContent = totalMpecs.toLocaleString();
+    document.getElementById('total-discoveries').textContent = totalDisc.toLocaleString();
+    document.getElementById('total-followups').textContent = totalFu.toLocaleString();
+    document.getElementById('total-firstfollowups').textContent = totalFirstFu.toLocaleString();
+    document.getElementById('total-precoveries').textContent = totalPrec.toLocaleString();
+    
+    // Show summary stats
+    document.getElementById('summaryStats').style.display = 'flex';
+}
+
+function updateFilterStatus(startYear, endYear) {
+    /**
+     * Update filter status message
+     */
+    const statusElement = document.getElementById('filterStatus');
+    const yearCount = endYear - startYear + 1;
+    statusElement.innerHTML = `<i class="fas fa-filter"></i> Showing ${yearCount} years (${startYear}-${endYear})`;
+}
+
+function clearYearFilter() {
+    /**
+     * Clear year filter and restore all-time data
+     */
+    currentlyFilteredYears = null;
+    
+    // Restore original all-time data
+    Object.keys(observatoryData).forEach(code => {
+        const obsData = observatoryData[code];
+        const row = obsData.element;
+        const cells = row.querySelectorAll('td');
+        
+        // Get all-time values by summing across all years
+        let mpecs = 0, discoveries = 0, followups = 0, firstFollowups = 0, precoveries = 0;
+        let neaDisc = 0, phaDisc = 0, cometDisc = 0, satDisc = 0, tnoDisc = 0;
+        let unusualDisc = 0, interDisc = 0, unkDisc = 0;
+        let neaFu = 0, phaFu = 0, cometFu = 0, satFu = 0, tnoFu = 0;
+        let unusualFu = 0, interFu = 0, unkFu = 0;
+        
+        // Use totals from the data structure
+        if (obsData.byYear.total !== undefined) mpecs = obsData.byYear.total;
+        if (obsData.byYear.Discovery && obsData.byYear.Discovery.total !== undefined) {
+            discoveries = obsData.byYear.Discovery.total;
+        }
+        if (obsData.byYear.Followup && obsData.byYear.Followup.total !== undefined) {
+            followups = obsData.byYear.Followup.total;
+        }
+        if (obsData.byYear.FirstFollowup && obsData.byYear.FirstFollowup.total !== undefined) {
+            firstFollowups = obsData.byYear.FirstFollowup.total;
+        }
+        if (obsData.byYear.Precovery && obsData.byYear.Precovery.total !== undefined) {
+            precoveries = obsData.byYear.Precovery.total;
+        }
+        
+        // Calculate aggregated discovery and followup types across all years
+        const years = %s;
+        for (const year of years) {
+            if (obsData.byYear.Discovery && obsData.byYear.Discovery[year]) {
+                const discYear = obsData.byYear.Discovery[year];
+                neaDisc += discYear.NEA || 0;
+                phaDisc += discYear.PHA || 0;
+                cometDisc += discYear.Comet || 0;
+                satDisc += discYear.Satellite || 0;
+                tnoDisc += discYear.TNO || 0;
+                unusualDisc += discYear.Unusual || 0;
+                interDisc += discYear.Interstellar || 0;
+                unkDisc += discYear.Unknown || 0;
+            }
+            
+            if (obsData.byYear.Followup && obsData.byYear.Followup[year]) {
+                const fuYear = obsData.byYear.Followup[year];
+                neaFu += fuYear.NEA || 0;
+                phaFu += fuYear.PHA || 0;
+                cometFu += fuYear.Comet || 0;
+                satFu += fuYear.Satellite || 0;
+                tnoFu += fuYear.TNO || 0;
+                unusualFu += fuYear.Unusual || 0;
+                interFu += fuYear.Interstellar || 0;
+                unkFu += fuYear.Unknown || 0;
+            }
+        }
+        
+        // Restore values
+        if (cells.length >= 27) {
+            cells[6].textContent = mpecs;
+            cells[7].textContent = discoveries;
+            cells[8].textContent = neaDisc;
+            cells[9].textContent = phaDisc;
+            cells[10].textContent = cometDisc;
+            cells[11].textContent = satDisc;
+            cells[12].textContent = tnoDisc;
+            cells[13].textContent = unusualDisc;
+            cells[14].textContent = interDisc;
+            cells[15].textContent = unkDisc;
+            cells[16].textContent = followups;
+            cells[17].textContent = neaFu;
+            cells[18].textContent = phaFu;
+            cells[19].textContent = cometFu;
+            cells[20].textContent = satFu;
+            cells[21].textContent = tnoFu;
+            cells[22].textContent = unusualFu;
+            cells[23].textContent = interFu;
+            cells[24].textContent = unkFu;
+            cells[25].textContent = firstFollowups;
+            cells[26].textContent = precoveries;
+        }
+    });
+    
+    // Reset dropdowns
+    const years = Array.from({length: %d - 1993 + 1}, (_, i) => 1993 + i);
+    document.getElementById('startYear').value = years[0];
+    document.getElementById('endYear').value = years[years.length - 1];
+    
+    // Hide summary stats
+    document.getElementById('summaryStats').style.display = 'none';
+    
+    // Clear status
+    document.getElementById('filterStatus').innerHTML = '<i class="fas fa-list"></i> Showing all years';
+    
+    // Refresh Bootstrap Table
+    $('#obs_table').bootstrapTable('refresh');
+}
+
+function applyPresetFilter(preset) {
+    /**
+     * Apply preset year range filters
+     */
+    const currentYear = new Date().getFullYear();
+    let startYear, endYear;
+    
+    switch(preset) {
+        case 'recent5':
+            startYear = currentYear - 4;
+            endYear = currentYear;
+            break;
+        case 'recent10':
+            startYear = currentYear - 9;
+            endYear = currentYear;
+            break;
+        case '2020s':
+            startYear = 2020;
+            endYear = currentYear;
+            break;
+        case '2010s':
+            startYear = 2010;
+            endYear = 2019;
+            break;
+        case '2000s':
+            startYear = 2000;
+            endYear = 2009;
+            break;
+        default:
+            return;
+    }
+    
+    document.getElementById('startYear').value = startYear;
+    document.getElementById('endYear').value = endYear;
+    applyYearFilter();
+}
+
+function setupBootstrapTableFiltering() {
+    /**
+     * Integrate with Bootstrap Table's existing functionality
+     */
+    $('#obs_table').on('refresh.bs.table', function() {
+        // Reapply year filter after table refresh if one is active
+        if (currentlyFilteredYears) {
+            setTimeout(() => {
+                updateObservatoryTable(currentlyFilteredYears.start, currentlyFilteredYears.end);
+            }, 100);
+        }
+    });
+}
+</script>
+
       </body>
-    </html>"""
+    </html>""" % (datetime.now().year, years, datetime.now().year)
     
     if p == 'All time':
         with open('../www/obs.html', 'w', encoding='utf-8') as f:
