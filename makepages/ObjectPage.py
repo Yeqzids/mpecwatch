@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import csv
 import sqlite3
+import sys
 import datetime
 import os
 import json
@@ -316,9 +318,11 @@ def generate_object_page(object_designation, mpccode_data, cursor):
     
     for mpec in mpecs:
         mpec_date = datetime.datetime.fromtimestamp(mpec[2]).strftime('%Y-%m-%d')
+        # mpec url structure: 'https://www.minorplanetcenter.net/mpec/' + century + ym[2:4] + '/' + century + ym[2:4] + halfmonth + str(tens_digit) + str(int(ones_digit)) + '.html'
+        url = get_mpec_url(mpec[0])
         html_content += f"""
                     <tr>
-                        <td>{mpec[0]}</td>
+                        <td><a href="{url}">{mpec[0]}</a></td>
                         <td>{mpec_date}</td>
                         <td>{mpec[5]}</td>
                         <td>{mpec[1][:80]}{'...' if len(mpec[1]) > 80 else ''}</td>
@@ -348,14 +352,117 @@ def generate_object_page(object_designation, mpccode_data, cursor):
     
     print(f"Generated object page: {output_path}")
 
+def get_mpec_url(mpec_id):
+    """
+    Generate the proper URL for an MPEC based on its ID.
+    
+    Args:
+        mpec_id: The MPEC identifier (e.g., "MPEC 2023-A01", "MPEC 2024-B123")
+        
+    Returns:
+        str: Full URL to the MPEC on the Minor Planet Center website
+    """
+    if not mpec_id or len(mpec_id) < 10:
+        return "#"  # Return placeholder if invalid ID
+    
+    try:
+        # Remove "MPEC " prefix if present
+        if mpec_id.startswith("MPEC "):
+            mpec_id = mpec_id[5:]
+        
+        # Parse MPEC ID format: YYYY-XNN where X is letter, NN is number
+        parts = mpec_id.split('-')
+        year = parts[0]
+        letter_number = parts[1]
+        letter = letter_number[0]
+        number = int(letter_number[1:])
+        
+        # Convert year to century prefix
+        if year.startswith('19'):
+            century = 'J'
+        elif year.startswith('20'):
+            century = 'K'
+        else:
+            return "#"  # Unsupported year range
+        
+        # Use the same base-62 encoding as in proc.py
+        BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        
+        def encode(num, alphabet=BASE62):
+            if num == 0:
+                return alphabet[0]
+            arr = []
+            base = len(alphabet)
+            while num:
+                num, rem = divmod(num, base)
+                arr.append(alphabet[rem])
+            arr.reverse()
+            return ''.join(arr)
+        
+        # Calculate tens and ones digits using the same logic as proc.py
+        tens_digit = encode(int(number // 10))
+        ones_digit = number - (number // 10) * 10
+        
+        # Format: https://www.minorplanetcenter.net/mpec/K24/K24A01.html
+        # Pattern: /mpec/{century}{yy}/{century}{yy}{letter}{tens_digit}{ones_digit}.html
+        year_suffix = year[2:4]
+        filename = f"{century}{year_suffix}{letter}{tens_digit}{int(ones_digit)}"
+        url = f"https://www.minorplanetcenter.net/mpec/{century}{year_suffix}/{filename}.html"
+        
+        return url
+        
+    except (IndexError, ValueError, TypeError):
+        # If parsing fails, return a search URL
+        return f"https://www.minorplanetcenter.net/mpec/"
+
+def log_error_to_csv(object_designation, error_message, context=""):
+    """Log errors to CSV file with timestamp."""
+    log_dir = "../logs"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Create filename with current date
+    log_file = os.path.join(log_dir, f"object_page_errors_{datetime.now().strftime('%Y%m%d')}.csv")
+    
+    # Check if file exists to write header
+    file_exists = os.path.exists(log_file)
+    
+    with open(log_file, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        
+        # Write header if new file
+        if not file_exists:
+            writer.writerow(['Timestamp', 'Object', 'Error', 'Context'])
+        
+        # Write error row
+        writer.writerow([
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            object_designation,
+            str(error_message),
+            context
+        ])
+
+def get_all_objects(cursor):
+    """Get all unique object designations from the database."""
+    cursor.execute("""
+        SELECT DISTINCT ObjectId 
+        FROM Objects 
+        WHERE ObjectId IS NOT NULL AND ObjectId != ''
+        ORDER BY ObjectId
+    """)
+    return [row[0] for row in cursor.fetchall()]
+
+
 def main():
-    """Main function - for testing, generates a page for a single object."""
-    
-    # Test with a specific object designation
-    TEST_OBJECT = "CK02Y010"  # Change this to test different objects
-    
-    print(f"MPEC Watch - Object Page Generator")
-    print(f"Generating page for object: {TEST_OBJECT}")
+    # Check for command line argument
+    if len(sys.argv) > 1:
+        test_object = sys.argv[1]
+        print(f"MPEC Watch - Object Page Generator")
+        print(f"Testing mode: Generating page for object: {test_object}")
+        objects_to_process = [test_object]
+    else:
+        print(f"MPEC Watch - Object Page Generator")
+        print(f"Production mode: Generating pages for all objects")
+        objects_to_process = None  # Will be set after DB connection
     
     # Connect to database
     if not os.path.exists(DB_PATH):
@@ -373,17 +480,35 @@ def main():
         print(f"Warning: MPC code file {MPCCODE_PATH} not found. Using empty data.")
         mpccode_data = {}
     
-    # Generate the object page
-    try:
-        generate_object_page(TEST_OBJECT, mpccode_data, cursor)
-    except Exception as e:
-        print(f"Error generating object page: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        conn.close()
+    # Get all objects if not in test mode
+    if objects_to_process is None:
+        objects_to_process = get_all_objects(cursor)
+        print(f"Found {len(objects_to_process)} objects to process")
     
-    print("Object page generation complete!")
+    # Process objects
+    successful = 0
+    failed = 0
+    
+    for i, object_designation in enumerate(objects_to_process, 1):
+        try:
+            if len(objects_to_process) > 1:
+                print(f"Processing {i}/{len(objects_to_process)}: {object_designation}")
+            
+            generate_object_page(object_designation, mpccode_data, cursor)
+            successful += 1
+            
+        except Exception as e:
+            print(f"Error generating page for {object_designation}: {e}")
+            failed += 1
+            # Log error but continue with next object
+            log_error_to_csv(object_designation, e, context=f"Page generation failed at step {i}")
+    
+    conn.close()
+    
+    print(f"\nObject page generation complete!")
+    print(f"Successfully generated: {successful} pages")
+    if failed > 0:
+        print(f"Failed: {failed} pages")
 
 if __name__ == "__main__":
     main()
