@@ -473,8 +473,7 @@ else:
             OrbitComp TEXT,
             Issuer TEXT,
             ObjectId TEXT,
-            PageHash TEXT,
-            FOREIGN KEY(ObjectId) REFERENCES Objects(ObjectId)
+            PageHash TEXT
         )
     """)
     cursor.execute("""
@@ -487,6 +486,16 @@ else:
             Mag REAL,
             Band TEXT,
             Star_cat_code TEXT
+        )
+    """)
+    # Junction table with the foreign keys
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS MPECObjects (
+            MPECId TEXT,
+            ObjectId TEXT,
+            PRIMARY KEY (MPECId, ObjectId),
+            FOREIGN KEY (MPECId) REFERENCES MPEC(MPECId),
+            FOREIGN KEY (ObjectId) REFERENCES Objects(ObjectId)
         )
     """)
     cursor.execute("""
@@ -567,6 +576,9 @@ for halfmonth in month_to_letter(ym[4:6]):
             
             ### test output (note: recommend not commenting this out to show progress)
             print(mpec_id, mpec_title, mpec_time, mpec_type, mpec_obj_type)
+
+            # set of unique objects in this MPEC
+            mpec_objects = set()
 
             ## push observation into MPEC TABLE of individual observatory code if mpec_type is Discovery, OrbitUpdate or DOU
             if mpec_type in ('Discovery', 'OrbitUpdate', 'DOU'):
@@ -788,6 +800,8 @@ for halfmonth in month_to_letter(ym[4:6]):
                             ### test output
                             #print('OBJECT: ', obs_obj, ' | DATETIME: ', obs_date_time_string, ' | OBSERVER:', observer, ' | MEASURER:', measurer, ' | FACILITY:', facility, ' | DISCOVERY:', discovery_asterisk)
 
+                            mpec_objects.add(obs_obj)
+
                             ### write to the corresponding station TABLE (create if it does not exist)
                             cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='station_" + obs_code + "'")
 
@@ -803,7 +817,7 @@ for halfmonth in month_to_letter(ym[4:6]):
                             cursor.execute("SELECT 1 FROM Objects WHERE ObjectId = ?", (obs_obj,))
                             existing = cursor.fetchone() # Object already exists in the database
                             if existing:
-                                # Overwrite the existing information with the new data.
+                                # Keeps most recent observation (overwrite older observation)
                                 cursor.execute("""
                                     UPDATE Objects SET Discovery = ?, Note1 = ?, Note2 = ?, Timestamp = ?, Mag = ?, Band = ?, Star_cat_code = ?
                                     WHERE ObjectId = ?
@@ -847,17 +861,28 @@ for halfmonth in month_to_letter(ym[4:6]):
             try:
                 if mpec_type in ('Discovery', 'OrbitUpdate', 'DOU'):
                     # Observational MPECs
-                    cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, ObjectId, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''', \
-                    (mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer, obs_obj, h))
+                    cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', \
+                    (mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer, h))
                 else:
                     # Non-observational MPECs
-                    cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, ObjectId, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''', \
-                    (mpec_id, mpec_title, mpec_timestamp, '', '', '', mpec_type, '', '', issuer, '', h))
+                    cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', \
+                    (mpec_id, mpec_title, mpec_timestamp, '', '', '', mpec_type, '', '', issuer, h))
                 db.commit()
             except sqlite3.IntegrityError as e:
                 error_message = f"Integrity error inserting MPEC {this_mpec}: {str(e)}"
                 log_error(mpec_id, e, error_message)
                 continue
+
+            ### write to TABLE MPECObjects
+            for obj in mpec_objects:
+                try:
+                    cursor.execute("INSERT OR IGNORE INTO MPECObjects (MPECId, ObjectId) VALUES(?,?)", (mpec_id, obj))
+                    db.commit()
+                except sqlite3.IntegrityError as e:
+                    error_message = f"Integrity error inserting into MPECObjects for MPEC {this_mpec} and Object {obj}: {str(e)}"
+                    log_error(mpec_id, e, error_message)
+                    continue
+
         except PageParseError as e:
             error_message = f"General parsing error. {this_mpec}: {str(e)}"
             log_error(mpec_id, e, error_message)

@@ -63,14 +63,13 @@ def unpack_designation(packed):
     return f"{year} {month_period[0:2]}{letter}{number} ({month_period[2]} half)"
 
 def get_object_mpecs(cursor, object_designation):
-    """Get all MPECs related to this object."""
     cursor.execute("""
-        SELECT MPECId, Title, Time, Station, DiscStation, MPECType, ObjectType
-        FROM MPEC
-        WHERE ObjectId = ? OR Station LIKE ?
-        ORDER BY Time
-    """, (object_designation, f'%{object_designation}%'))
-    
+        SELECT m.MPECId, m.Title, m.Time, m.Station, m.DiscStation, m.MPECType, m.ObjectType
+        FROM MPEC m
+        JOIN MPECObjects mo ON m.MPECId = mo.MPECId
+        WHERE mo.ObjectId = ?
+        ORDER BY m.Time DESC
+    """, (object_designation,))
     return cursor.fetchall()
 
 def get_object_observations(cursor, object_designation):
@@ -156,17 +155,13 @@ def generate_object_page(object_designation, mpccode_data, cursor):
     """Generate an HTML page for the specified object."""
     
     # Get basic object information
-    cursor.execute("""
-        SELECT COUNT(*) FROM MPEC WHERE ObjectId = ?
-    """, (object_designation,))
-    
-    mpec_count = cursor.fetchone()[0]
-    if mpec_count == 0:
+    mpecs = get_object_mpecs(cursor, object_designation)
+
+    if not mpecs:
         print(f"No MPECs found for object {object_designation}")
         return
     
     # Get object MPECs and observations
-    mpecs = get_object_mpecs(cursor, object_designation)
     observations = get_object_observations(cursor, object_designation)
     related_designations = get_related_designations(cursor, object_designation)
     
@@ -488,6 +483,7 @@ def main():
     # Process objects
     successful = 0
     failed = 0
+    failed_pages = []
     
     for i, object_designation in enumerate(objects_to_process, 1):
         try:
@@ -500,6 +496,7 @@ def main():
         except Exception as e:
             print(f"Error generating page for {object_designation}: {e}")
             failed += 1
+            failed_pages.append(object_designation)
             # Log error but continue with next object
             log_error_to_csv(object_designation, e, context=f"Page generation failed at step {i}")
     
@@ -509,6 +506,7 @@ def main():
     print(f"Successfully generated: {successful} pages")
     if failed > 0:
         print(f"Failed: {failed} pages")
+        print(f"Failed objects: {', '.join(failed_pages)}")
 
 if __name__ == "__main__":
     main()
