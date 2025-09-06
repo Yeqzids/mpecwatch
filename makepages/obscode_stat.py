@@ -83,7 +83,7 @@ import hashlib
 
 start_time = time.time()
 
-dbFile = '../mpecwatch_v3.db'
+dbFile = '../mpecwatch_v4.db'
 mpccode = '../mpccode.json'
 
 # Get current station hashes from LastRun table
