@@ -7,11 +7,26 @@ import os
 import json
 import plotly.express as px
 import pandas as pd
+import logging
 
 # Configuration
 DB_PATH = '../mpecwatch_v4.db'
 MPCCODE_PATH = '../mpccode.json'
 OUTPUT_BASE_DIR = '../www/byObject/'
+LOG_DIR = '../logs/objectpage/'
+
+# Logging configuration
+os.makedirs(LOG_DIR, exist_ok=True)
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, f"object_page_{timestamp}.log"), encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 OBSCODE_STAT_PATH = 'obscode_stat.json'
 
 def get_related_designations(cursor, object_designation):
@@ -158,7 +173,7 @@ def generate_object_page(object_designation, mpccode_data, cursor):
     mpecs = get_object_mpecs(cursor, object_designation)
 
     if not mpecs:
-        print(f"No MPECs found for object {object_designation}")
+        logger.warning(f"No MPECs found for object {object_designation}")
         return
     
     # Get object MPECs and observations
@@ -344,8 +359,8 @@ def generate_object_page(object_designation, mpccode_data, cursor):
     output_path = os.path.join(OUTPUT_BASE_DIR, f"object_{object_designation}.html")
     with open(output_path, "w", encoding='utf-8') as f:
         f.write(html_content)
-    
-    print(f"Generated object page: {output_path}")
+
+    logger.info(f"Generated object page for {object_designation}")
 
 def get_mpec_url(mpec_id):
     """
@@ -410,32 +425,6 @@ def get_mpec_url(mpec_id):
         # If parsing fails, return a search URL
         return f"https://www.minorplanetcenter.net/mpec/"
 
-def log_error_to_csv(object_designation, error_message, context=""):
-    """Log errors to CSV file with timestamp."""
-    log_dir = "../logs"
-    os.makedirs(log_dir, exist_ok=True)
-    
-    # Create filename with current date
-    log_file = os.path.join(log_dir, f"object_page_errors_{datetime.now().strftime('%Y%m%d')}.csv")
-    
-    # Check if file exists to write header
-    file_exists = os.path.exists(log_file)
-    
-    with open(log_file, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        
-        # Write header if new file
-        if not file_exists:
-            writer.writerow(['Timestamp', 'Object', 'Error', 'Context'])
-        
-        # Write error row
-        writer.writerow([
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            object_designation,
-            str(error_message),
-            context
-        ])
-
 def get_all_objects(cursor):
     """Get all unique object designations from the database."""
     cursor.execute("""
@@ -451,17 +440,15 @@ def main():
     # Check for command line argument
     if len(sys.argv) > 1:
         test_object = sys.argv[1]
-        print(f"MPEC Watch - Object Page Generator")
-        print(f"Testing mode: Generating page for object: {test_object}")
+        logger.info(f"Testing mode: Generating page for object: {test_object}")
         objects_to_process = [test_object]
     else:
-        print(f"MPEC Watch - Object Page Generator")
-        print(f"Production mode: Generating pages for all objects")
+        logger.info("Starting production mode for all objects")
         objects_to_process = None  # Will be set after DB connection
     
     # Connect to database
     if not os.path.exists(DB_PATH):
-        print(f"Error: Database file {DB_PATH} not found.")
+        logger.error(f"Database file {DB_PATH} not found.")
         return
     
     conn = sqlite3.connect(DB_PATH)
@@ -472,14 +459,14 @@ def main():
         with open(MPCCODE_PATH) as f:
             mpccode_data = json.load(f)
     except FileNotFoundError:
-        print(f"Warning: MPC code file {MPCCODE_PATH} not found. Using empty data.")
+        logger.warning(f"MPC code file {MPCCODE_PATH} not found. Using empty data.")
         mpccode_data = {}
     
     # Get all objects if not in test mode
     if objects_to_process is None:
         objects_to_process = get_all_objects(cursor)
-        print(f"Found {len(objects_to_process)} objects to process")
-    
+        logger.info(f"Found {len(objects_to_process)} objects to process")
+
     # Process objects
     successful = 0
     failed = 0
@@ -488,25 +475,23 @@ def main():
     for i, object_designation in enumerate(objects_to_process, 1):
         try:
             if len(objects_to_process) > 1:
-                print(f"Processing {i}/{len(objects_to_process)}: {object_designation}")
-            
+                logger.info(f"Processing {i}/{len(objects_to_process)}: {object_designation}")
+
             generate_object_page(object_designation, mpccode_data, cursor)
             successful += 1
             
         except Exception as e:
-            print(f"Error generating page for {object_designation}: {e}")
+            # Log error but continue with next object
+            logger.error(f"Error generating page for {object_designation}: {e}")
             failed += 1
             failed_pages.append(object_designation)
-            # Log error but continue with next object
-            log_error_to_csv(object_designation, e, context=f"Page generation failed at step {i}")
     
     conn.close()
-    
-    print(f"\nObject page generation complete!")
-    print(f"Successfully generated: {successful} pages")
+
+    logger.info(f"Successfully generated: {successful} pages")
     if failed > 0:
-        print(f"Failed: {failed} pages")
-        print(f"Failed objects: {', '.join(failed_pages)}")
+        logger.warning(f"Failed: {failed} pages")
+        logger.warning(f"Failed objects: {', '.join(failed_pages)}")
 
 if __name__ == "__main__":
     main()
