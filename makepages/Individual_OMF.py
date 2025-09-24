@@ -47,6 +47,10 @@ def generate_pie_chart(data_dict, station_code, filename_suffix, include_other=T
 def generate_bar_chart(x_data, y_data, x_axis_title, y_axis_title, station_code, filename_suffix):
     """Generates and saves a bar chart."""
     fig = px.bar(x=x_data, y=y_data)
+    if x_axis_title == "Day of the Week":
+        fig.update_xaxes(tickmode='array',
+                         tickvals=[0, 1, 2, 3, 4, 5, 6],
+                         ticktext=['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
     fig.update_layout(xaxis_title=x_axis_title, yaxis_title=y_axis_title)
     output_path = os.path.join(OUTPUT_BASE_DIR,
                                f"{station_code}_{filename_suffix.replace(' ', '_')}.html")
