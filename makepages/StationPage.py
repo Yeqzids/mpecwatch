@@ -31,7 +31,7 @@ from rapidfuzz import fuzz, process
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Path to the database
-dbFile = '../mpecwatch_v4.db'
+dbFile = 'mpecwatch_v4_201206.db'
 db = sqlite3.connect(dbFile)
 cursor = db.cursor()
 
@@ -136,6 +136,75 @@ def per_person_counts(counts: Counter) -> Counter:
             name = name.strip()
             per_person[name] += cnt
     return per_person
+
+def generate_station_objects_table(station_code):
+    cursor.execute(f"""
+        SELECT s.Object, 
+                COUNT(*) as ObsCount,
+                SUM(s.Discovery) as Discoveries,
+                MIN(s.Time) as FirstObs,
+                MAX(s.Time) as LastObs,
+                o.Mag,
+                COUNT(DISTINCT mo.MPECId) as MPECCount
+        FROM station_{station_code} s
+        LEFT JOIN Objects o ON s.Object = o.ObjectId
+        LEFT JOIN MPECObjects mo ON s.Object = mo.ObjectId
+        GROUP BY s.Object
+        ORDER BY Discoveries DESC, ObsCount DESC
+    """)
+    objects = cursor.fetchall()
+    
+    if not objects:
+        # Display "no objects found"
+        return "<div class='row'><h4 style='padding-top: 20px;'>No Objects Found</h4></div>"
+
+    html = f"""
+        <div class="row">
+            <h4 style="padding-top: 20px;">Objects Observed by This Station ({len(objects)} total)</h4>
+            <table class="table table-striped table-bordered table-sm"
+                   data-toggle="table"
+                   data-search="true"
+                   data-pagination="true"
+                   data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th data-field="object" data-sortable="true">Object</th>
+                        <th data-field="observations" data-sortable="true">Observations</th>
+                        <th data-field="discoveries" data-sortable="true">Discoveries</th>
+                        <th data-field="first-obs" data-sortable="true">First Obs</th>
+                        <th data-field="last-obs" data-sortable="true">Last Obs</th>
+                        <th data-field="magnitude" data-sortable="true">Magnitude</th>
+                        <th data-field="mpecs" data-sortable="true">MPECs</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """
+    
+    for obj_id, obs_count, discoveries_count, first_obs, last_obs, mag, mpec_count in objects:
+        first_date = datetime.datetime.fromtimestamp(first_obs).strftime('%Y-%m-%d') if first_obs else 'N/A'
+        last_date = datetime.datetime.fromtimestamp(last_obs).strftime('%Y-%m-%d') if last_obs else 'N/A'
+        magnitude = f"{mag:.1f}" if mag else 'N/A'
+        discovery_badge = f'<span class="badge bg-success">{discoveries_count}</span>' if discoveries_count > 0 else '0'
+        
+        html += f"""
+                    <tr>
+                        <td><a href="../byObject/object_{obj_id}.html" class="text-decoration-none">{obj_id}</a></td>
+                        <td>{obs_count}</td>
+                        <td>{discovery_badge}</td>
+                        <td>{first_date}</td>
+                        <td>{last_date}</td>
+                        <td>{magnitude}</td>
+                        <td>{mpec_count}</td>
+                    </tr>
+        """
+    
+    html += """
+                </tbody>
+            </table>
+        </div>
+    """
+    
+    return html
 
 MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
@@ -471,9 +540,15 @@ def make_station_page(station_code):
         """
         index += 1
         
-    o += """
-                </tbody>
+    o += """    </tbody>
             </table>
+        </div>"""
+    
+    objects_table_html = generate_station_objects_table(station_code)
+    o += objects_table_html
+    
+    o += """
+        <div class="row">
             <h4>List of Observers</h4>
             <table id="OBS_table" 
                 class="table table-striped table-bordered table-sm"
@@ -511,6 +586,8 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
+        </div>
+        <div class="row">
             <table id="IND_OBS_table"
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
@@ -535,6 +612,8 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
+        </div>
+        <div class="row">
             <h4>List of Measurers</h4>
             <table id="MEA_table" 
                 class="table table-striped table-bordered table-sm"
@@ -560,6 +639,8 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
+        </div>
+        <div class="row">
             <table id="IND_MEA_table"
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
@@ -584,6 +665,8 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
+        </div>
+        <div class="row">
             <h4>List of Facilities</h4>
             <table id="FAC_table" 
                 class="table table-striped table-bordered table-sm"
