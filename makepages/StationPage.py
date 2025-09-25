@@ -137,7 +137,7 @@ def per_person_counts(counts: Counter) -> Counter:
             per_person[name] += cnt
     return per_person
 
-MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery"]
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -215,6 +215,7 @@ def make_monthly_page(df_monthly, station, year):
                         <th>Other</th>
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
+                        <th>Precovery</th>
                     </tr>
                 </thead>"""
     for month in MONTHS:
@@ -397,6 +398,7 @@ def make_station_page(station_code):
                         <th>Other</th>
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
+                        <th>Precovery</th>
                     </tr>
                 </thead>"""
     
