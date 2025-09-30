@@ -291,12 +291,12 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
                 temp.append(mpec_url) #name w/ url embedded
                 temp.append(int(mpec[2])) #time: date and time
                 #Discovery?
-                if station == mpec[4]:
+                if station == mpec[4] and mpec[6] == 'Discovery':
                     temp.append("&#x2713") #check mark
                 else:
                     temp.append("")
                 #First Conf?
-                if station == mpec[5]:
+                if station == mpec[5] and mpec[6] == 'Discovery':
                     temp.append("&#x2713") #check mark
                 else:
                     temp.append("")
