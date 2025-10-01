@@ -14,7 +14,7 @@ stat = 'obscode_stat.json'
 with open(stat) as stat:
     stat = json.load(stat)
 
-mpecconn = sqlite3.connect("../mpecwatch_v3.db")
+mpecconn = sqlite3.connect("../mpecwatch_v4.db")
 cursor = mpecconn.cursor()
 
 MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
@@ -604,12 +604,22 @@ survey_def_table = [['Lincoln Near Earth Asteroid Research (LINEAR)', ['704'], '
                     ['Near-Earth Asteroid Tracking (NEAT)', ['566', '608', '644'], 'neat'], \
                     ['Spacewatch', ['291', '691'], 'spacewatch'], \
                     ['Lowell Observatory Near-Earth-Object Search (LONEOS)', ['699'], 'loneos'], \
-                    ['Catalina Sky Survey (CSS)', ['703', 'E12', 'G96', 'I52', 'V06'], 'css'], \
+                    ['Catalina Sky Survey (CSS)', ['703', 'E12', 'G96', 'I52', 'V00', 'V06'], 'css'], \
                     ['Panoramic Survey Telescope and Rapid Response System (Pan-STARRS)', ['F51', 'F52'], 'panstarrs'], \
                     ['Wide-field Infrared Survey Explorer (WISE_NEOWISE)', ['C51'], 'wise'], \
-                    ['Asteroid Terrestrial-impact Last Alert System (ATLAS)', ['T05', 'T08', 'M22', 'W68'], 'atlas']]
+                    ['Asteroid Terrestrial-impact Last Alert System (ATLAS)', ['T05', 'T08', 'M22', 'W68'], 'atlas'], \
+                    ['Palomar Transient Factory (PTF) / Zwicky Transient Facility (ZTF)', ['I41'], 'ztf'], \
+                    ['La Sagra Sky Survey (LSSS)', ['J75'], 'lsss'], \
+                    ['Campo Imperatore Near Earth Object Survey (CINEOS)', ['599'], 'cineos'], \
+                    ['Sloan Digital Sky Survey (SDSS)', ['645'], 'sdss'], \
+                    ['Beijing Schmidt CCD Asteroid Program (SCAP)', ['327'], 'scap'], \
+                    ['OCA-DLR Asteroid Survey (ODAS)', ['910'], 'odas'], \
+                    ['Chinese Near-Earth Object Survey (CNEOS)', ['D29', 'N54', 'O17', 'O38', 'O48', 'O49'], 'cneos'], \
+                    ['Bisei Asteroid Tracking Telescope for Rapid Survey (BATTeRS)', ['300'], 'batters'], \
+                    ['Astronomical Research Observatory', ['H21', 'H55'], 'aro'], \
+                    ['Xingming Observatory', ['C42', 'N86', 'N88', 'N89'], 'xmo']]
 
-dbFile = '../mpecwatch_v3.db'
+dbFile = '../mpecwatch_v4.db'
 mpccode = '../mpccode.json'
 #survey_data = '../survey_data.json'
 
