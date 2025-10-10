@@ -31,7 +31,7 @@ from rapidfuzz import fuzz, process
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Path to the database
-dbFile = 'mpecwatch_v4_201206.db'
+dbFile = '../mpecwatch_v4.db'
 db = sqlite3.connect(dbFile)
 cursor = db.cursor()
 
