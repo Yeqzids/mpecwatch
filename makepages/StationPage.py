@@ -684,7 +684,7 @@ else:
 if __name__ == "__main__":
     build_name_map()
 
-    process_choice = input("Choose a process (1: all stations, 2: stations needing update, 3: single station): ")
+    """process_choice = input("Choose a process (1: all stations, 2: stations needing update, 3: single station): ")
     while process_choice not in ['1', '2', '3']:
         process_choice = input("Invalid choice.\nChoose a process (1: all stations, 2: stations needing update, 3: single station): ")
     if process_choice == '3':
@@ -693,7 +693,8 @@ if __name__ == "__main__":
     elif process_choice == '2':
         stations_to_process = get_stations_needing_update()
     elif process_choice == '1':
-        stations_to_process = list(obscode.keys())
+        stations_to_process = list(obscode.keys())"""
+    stations_to_process = get_stations_needing_update()
 
     if stations_to_process is None:
         # If we couldn't determine which stations need updates, process all
