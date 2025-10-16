@@ -10,12 +10,14 @@ MPEC Watch is a Python project that processes, analyzes, and visualizes statisti
 
 ## Main Files and Their Purposes
 - `mpccode.py`: Processes Minor Planet Center observatory codes and location data
-- `proc.py`: Main MPEC data processing script that populates the database
+- `proc.py`: Main MPEC data processing script that populates the database by web scraping MPECs
 - `makepages/*.py`: Collection of scripts that generate different parts of the website
   - `home.py`: Generates the main index page
   - `Individual_OMF.py`: Creates figures for individual observatories (Observers, Measurers, Facilities)
   - `Overall_OMF.py`: Aggregates data across all observatories
-  - `StationMPECGraph.py`: Generates web pages for individual observatory stations
+  - `obscode_stat.py`: Generates statistics for observatory code for use by StationPage.py
+  - `StationPage.py`: Generates web pages for individual observatory stations
+  - `ObjectPage.py`: Creates pages for individual astronomical objects
 
 ## Code Structure and Style Guidelines
 - Python 3.x with standard indentation (4 spaces)
