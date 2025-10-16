@@ -137,76 +137,10 @@ def per_person_counts(counts: Counter) -> Counter:
             per_person[name] += cnt
     return per_person
 
-def generate_station_objects_table(station_code):
-    cursor.execute(f"""
-        SELECT s.Object, 
-                COUNT(*) as ObsCount,
-                SUM(s.Discovery) as Discoveries,
-                MIN(s.Time) as FirstObs,
-                MAX(s.Time) as LastObs,
-                o.Mag,
-                COUNT(DISTINCT mo.MPECId) as MPECCount
-        FROM station_{station_code} s
-        LEFT JOIN Objects o ON s.Object = o.ObjectId
-        LEFT JOIN MPECObjects mo ON s.Object = mo.ObjectId
-        GROUP BY s.Object
-        ORDER BY Discoveries DESC, ObsCount DESC
-    """)
-    objects = cursor.fetchall()
-    
-    if not objects:
-        # Display "no objects found"
-        return "<div class='row'><h4 style='padding-top: 20px;'>No Objects Found</h4></div>"
-
-    html = f"""
-        <div class="row">
-            <h4 style="padding-top: 20px;">Objects Observed by This Station ({len(objects)} total)</h4>
-            <table class="table table-striped table-bordered table-sm"
-                   data-toggle="table"
-                   data-search="true"
-                   data-pagination="true"
-                   data-show-columns="true">
-                <thead>
-                    <tr>
-                        <th data-field="object" data-sortable="true">Object</th>
-                        <th data-field="observations" data-sortable="true">Observations</th>
-                        <th data-field="discoveries" data-sortable="true">Discoveries</th>
-                        <th data-field="first-obs" data-sortable="true">First Obs</th>
-                        <th data-field="last-obs" data-sortable="true">Last Obs</th>
-                        <th data-field="magnitude" data-sortable="true">Magnitude</th>
-                        <th data-field="mpecs" data-sortable="true">MPECs</th>
-                    </tr>
-                </thead>
-                <tbody>
-    """
-    
-    for obj_id, obs_count, discoveries_count, first_obs, last_obs, mag, mpec_count in objects:
-        first_date = datetime.datetime.fromtimestamp(first_obs).strftime('%Y-%m-%d') if first_obs else 'N/A'
-        last_date = datetime.datetime.fromtimestamp(last_obs).strftime('%Y-%m-%d') if last_obs else 'N/A'
-        magnitude = f"{mag:.1f}" if mag else 'N/A'
-        discovery_badge = f'<span class="badge bg-success">{discoveries_count}</span>' if discoveries_count > 0 else '0'
-        
-        html += f"""
-                    <tr>
-                        <td><a href="../byObject/object_{obj_id}.html" class="text-decoration-none">{obj_id}</a></td>
-                        <td>{obs_count}</td>
-                        <td>{discovery_badge}</td>
-                        <td>{first_date}</td>
-                        <td>{last_date}</td>
-                        <td>{magnitude}</td>
-                        <td>{mpec_count}</td>
-                    </tr>
-        """
-    
-    html += """
-                </tbody>
-            </table>
-        </div>
-    """
-    
-    return html
-
-MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]
+MPEC_TYPES_plus = MPEC_TYPES + ["Followup", "FirstFollowup"]
+OBS_TYPES = ["Followup", "FirstFollowup", "Precovery"]
+MPEC_OBS_TYPES = MPEC_TYPES + OBS_TYPES
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -275,6 +209,7 @@ def make_monthly_page(df_monthly, station, year):
                 <thead>
                     <tr>
                         <th>Month</th>
+                        <th>Total MPECs</th>
                         <th>Editorial</th>
                         <th>Discovery</th>
                         <th>P/R/FU</th>
@@ -284,15 +219,17 @@ def make_monthly_page(df_monthly, station, year):
                         <th>Other</th>
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
+                        <th>Precovery</th>
                     </tr>
                 </thead>"""
     for month in MONTHS:
         o += f"""   
                 <tr>
-                    <td>{month}</td>"""
-        for mpecType in MPEC_TYPES:
+                    <td>{month}</td>
+                    <td>{sum([obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES])}</td>"""
+        for mpecType in MPEC_OBS_TYPES:
             o += f"""
-                    <td>{int(df_monthly.loc[(month, mpecType)]['#MPECs'])}</td>"""
+                    <td>{obscode[station_code][mpecType][str(year)][month]}</td>"""
         o+= """</tr>"""
     o += r"""
             </table>            
@@ -466,15 +403,17 @@ def make_station_page(station_code):
                         <th>Other</th>
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
+                        <th>Precovery</th>
                     </tr>
                 </thead>"""
     
+    # create dataframes for graphs
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
     disc_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
     OU_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         # yearly breakdown of MPEC types
-        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
+        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES_plus), "MPECType": MPEC_TYPES_plus, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES_plus]})])
         # edit the FU count just for the graph since First FU is a subset of FU
         df_yearly.loc[df_yearly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_yearly.loc[df_yearly['MPECType'] == 'First Follow-Up', '#MPECs']
         disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['Discovery'][str(year)][obj] for obj in OBJ_TYPES]})])
@@ -483,7 +422,7 @@ def make_station_page(station_code):
         df_monthly = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
         # monthly breakdown of MPEC types
         for month in MONTHS:
-            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
+            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES_plus), "MPECType": MPEC_TYPES_plus, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES_plus]})])
             # edit the FU count just for the graph since First FU is a subset of FU
             df_monthly.loc[df_monthly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_monthly.loc[df_monthly['MPECType'] == 'First Follow-Up', '#MPECs']
         make_monthly_page(df_monthly, station, year)
@@ -492,7 +431,7 @@ def make_station_page(station_code):
                 <tr>
                     <td><a href="monthly/{station}_{year}.html">{year}</a></td>
                     <td>{sum([obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES])}</td>"""
-        for mpecType in MPEC_TYPES:
+        for mpecType in MPEC_OBS_TYPES:
             o += f"""
                     <td>{obscode[station_code][mpecType][str(year)]['total']}</td>"""
         o += """
@@ -720,7 +659,7 @@ def make_station_page(station_code):
 </html>"""    
      
     ## figures ##
-     # figure: yearly breakdown of MPEC types   
+    # figure: yearly breakdown of MPEC types   
     fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType")
     fig.update_layout(barmode='stack')
     fig.write_html(f"../www/byStation/Graphs/{station}.html")
@@ -767,7 +706,7 @@ else:
 if __name__ == "__main__":
     build_name_map()
 
-    process_choice = input("Choose a process (1: all stations, 2: stations needing update, 3: single station): ")
+    """process_choice = input("Choose a process (1: all stations, 2: stations needing update, 3: single station): ")
     while process_choice not in ['1', '2', '3']:
         process_choice = input("Invalid choice.\nChoose a process (1: all stations, 2: stations needing update, 3: single station): ")
     if process_choice == '3':
@@ -776,7 +715,8 @@ if __name__ == "__main__":
     elif process_choice == '2':
         stations_to_process = get_stations_needing_update()
     elif process_choice == '1':
-        stations_to_process = list(obscode.keys())
+        stations_to_process = list(obscode.keys())"""
+    stations_to_process = get_stations_needing_update()
 
     if stations_to_process is None:
         # If we couldn't determine which stations need updates, process all

@@ -6,7 +6,7 @@ Pie/bar chart + break down table of how many times each object has been observed
 
 import sqlite3, pandas as pd, plotly.express as px
 
-mpecconn = sqlite3.connect("../mpecwatch_v3.db")
+mpecconn = sqlite3.connect("../mpecwatch_v4.db")
 cursor = mpecconn.cursor()
 
 #prints the content of a dictionary

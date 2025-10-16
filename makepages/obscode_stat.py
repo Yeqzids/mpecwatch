@@ -129,16 +129,16 @@ for s in mpccode:
         d[s][year] = 0
     d[s]['MPECId'] = {}
     
-    for obs_type in MPEC_TYPES: 
-        d[s][obs_type] = {'total': 0}
+    for mpec_type in MPEC_TYPES: 
+        d[s][mpec_type] = {'total': 0}
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1)):
             year = str(year)
-            d[s][obs_type][year] = {'total': 0}
+            d[s][mpec_type][year] = {'total': 0}
             for month in np.arange(1, 13, 1):
-                d[s][obs_type][year][getMonthName(month)] = 0
-            if obs_type in ["Discovery", "OrbitUpdate", "1stRecovery", "Followup", "FirstFollowup"]:
+                d[s][mpec_type][year][getMonthName(month)] = 0
+            if mpec_type in ["Discovery", "OrbitUpdate", "1stRecovery", "Followup", "FirstFollowup"]:
                 for obj_type in OBJ_TYPES:
-                    d[s][obs_type][year][obj_type] = 0
+                    d[s][mpec_type][year][obj_type] = 0
 
     # each station has its own OBS, MEA, FAC and OBJ and are initialized as empty dictionaries
     d[s]['OBS'] = {}
@@ -160,28 +160,61 @@ for s in mpccode:
     # Grab OBS, MEA, FAC, OBJ (respectiveley)
     # try/except blocks used in case of missing table or column
     try:
-        for obs in cursor.execute("SELECT Observer FROM station_{}".format(s)).fetchall():
-            if obs[0] != '':
-                #adds 1 or initializes to 1 (if current observer is not in dictionary)
-                d[s]['OBS'][obs[0]] = d[s]['OBS'].get(obs[0], 0) + 1
+        # Count unique MPECs per observer
+        cursor.execute(f"""
+            SELECT 
+                CASE WHEN Observer = '' OR Observer IS NULL 
+                    THEN 'Unknown' 
+                    ELSE Observer 
+                END as ObserverName,
+                COUNT(DISTINCT MPEC) as mpec_count 
+            FROM station_{s} 
+            GROUP BY ObserverName
+        """)
+
+        for obs in cursor.fetchall():
+            d[s]['OBS'][obs[0]] = obs[1]
     except:
         pass
 
     try:
-        for meas in cursor.execute("SELECT Measurer FROM station_{}".format(s)).fetchall():
-            if meas[0] != '':
-                d[s]['MEA'][meas[0]] = d[s]['MEA'].get(meas[0], 0) + 1
+        # Count unique MPECs per measurer
+        cursor.execute(f"""
+            SELECT 
+                CASE WHEN Measurer = '' OR Measurer IS NULL 
+                    THEN 'Unknown' 
+                    ELSE Measurer 
+                END as MeasurerName,
+                COUNT(DISTINCT MPEC) as mpec_count 
+            FROM station_{s} 
+            GROUP BY MeasurerName
+        """)
+
+        for meas in cursor.fetchall():
+            d[s]['MEA'][meas[0]] = meas[1]
     except:
         pass
 
     try:
-        for fac in cursor.execute("SELECT Facility FROM station_{}".format(s)).fetchall():
-            if fac[0] != '':
-                d[s]['FAC'][fac[0]] = d[s]['FAC'].get(fac[0], 0) + 1
+        # Count unique MPECs per facility
+        cursor.execute(f"""
+            SELECT 
+                CASE WHEN Facility = '' OR Facility IS NULL 
+                    THEN 'Unknown' 
+                    ELSE Facility 
+                END as FacilityName,
+                COUNT(DISTINCT MPEC) as mpec_count 
+            FROM station_{s} 
+            GROUP BY FacilityName
+        """)
+
+        for fac in cursor.fetchall():
+            d[s]['FAC'][fac[0]] = fac[1]
     except:
         pass
 
     try:
+        # This counts EVERY observation line, need to change (unused right now)
         for obj in cursor.execute("SELECT Object FROM station_{}".format(s)).fetchall():
             if obj[0] != '':
                 d[s]['OBJ'][obj[0]] = d[s]['OBJ'].get(obj[0], 0) + 1
@@ -265,7 +298,7 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
                 d[station]['OrbitUpdate'][year][mpec[7]] += 1 #object type
 
         temp = [] #[Name, unix timestamp, Discovery?, First Conf?, Object Type, CATCH]
-        name = mpec[0] + "\t" + mpec[1]
+        name = mpec[0] + "\t" + mpec[1] # MPECId + Title
         if name not in d[station]['MPECs']: #prevents duplication of the same MPEC object
                 id = mpec[0][5::]
                 packed_front = ""
@@ -291,12 +324,12 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
                 temp.append(mpec_url) #name w/ url embedded
                 temp.append(int(mpec[2])) #time: date and time
                 #Discovery?
-                if station == mpec[4]:
+                if station == mpec[4] and mpec[6] == 'Discovery':
                     temp.append("&#x2713") #check mark
                 else:
                     temp.append("")
                 #First Conf?
-                if station == mpec[5]:
+                if station == mpec[5] and mpec[6] == 'Discovery':
                     temp.append("&#x2713") #check mark
                 else:
                     temp.append("")
@@ -349,7 +382,7 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 # Print out missed stations
 if missed_stations:
     print("The following stations were not found in mpccode.json. Try rerunning mpccode.py:")
-    for station in missed_stations:
+    for station in sorted(missed_stations):
         print(f"  {station}")
 
 # After all data is collected, save it to file

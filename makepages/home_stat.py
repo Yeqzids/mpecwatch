@@ -10,7 +10,7 @@
 
 import sqlite3, datetime, re, json
 
-dbFile = '../mpecwatch_v3.db'
+dbFile = '../mpecwatch_v4.db'
 mpccode = '../mpccode.json'
 
 db = sqlite3.connect(dbFile)

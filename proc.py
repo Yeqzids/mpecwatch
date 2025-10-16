@@ -562,11 +562,6 @@ for halfmonth in month_to_letter(ym[4:6]):
             if existing_hash and existing_hash[0] == h: # page is identical to last run
                 print(f"{this_mpec} unchanged, skipping")
                 continue
-            
-            # check if this MPEC is in the database; if yes, pass this one
-            cursor.execute("SELECT 1 FROM MPEC WHERE MPECId = ?", (this_mpec,))
-            if cursor.fetchone(): # MPEC already exists in the database
-                continue
                 
             # Continue with existing code to process the MPEC
             soup = BeautifulSoup(html, features="lxml")

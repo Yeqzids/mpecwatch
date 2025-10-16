@@ -12,7 +12,7 @@ import sqlite3, datetime, json, numpy as np, plotly.express as px, pandas as pd,
 
 eastern = pytz.timezone('US/Eastern')
 
-dbFile = '../mpecwatch_v3.db'
+dbFile = '../mpecwatch_v4.db'
 
 db = sqlite3.connect(dbFile)
 cursor = db.cursor()
