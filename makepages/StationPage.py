@@ -137,7 +137,10 @@ def per_person_counts(counts: Counter) -> Counter:
             per_person[name] += cnt
     return per_person
 
-MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup"]
+MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other"]
+MPEC_TYPES_plus = MPEC_TYPES + ["Followup", "FirstFollowup"]
+OBS_TYPES = ["Followup", "FirstFollowup", "Precovery"]
+MPEC_OBS_TYPES = MPEC_TYPES + OBS_TYPES
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"]
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -206,6 +209,7 @@ def make_monthly_page(df_monthly, station, year):
                 <thead>
                     <tr>
                         <th>Month</th>
+                        <th>Total MPECs</th>
                         <th>Editorial</th>
                         <th>Discovery</th>
                         <th>P/R/FU</th>
@@ -215,15 +219,17 @@ def make_monthly_page(df_monthly, station, year):
                         <th>Other</th>
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
+                        <th>Precovery</th>
                     </tr>
                 </thead>"""
     for month in MONTHS:
         o += f"""   
                 <tr>
-                    <td>{month}</td>"""
-        for mpecType in MPEC_TYPES:
+                    <td>{month}</td>
+                    <td>{sum([obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES])}</td>"""
+        for mpecType in MPEC_OBS_TYPES:
             o += f"""
-                    <td>{int(df_monthly.loc[(month, mpecType)]['#MPECs'])}</td>"""
+                    <td>{obscode[station_code][mpecType][str(year)][month]}</td>"""
         o+= """</tr>"""
     o += r"""
             </table>            
@@ -397,15 +403,17 @@ def make_station_page(station_code):
                         <th>Other</th>
                         <th>Follow-Up</th>
                         <th>First Follow-Up</th>
+                        <th>Precovery</th>
                     </tr>
                 </thead>"""
     
+    # create dataframes for graphs
     df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
     disc_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
     OU_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
     for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
         # yearly breakdown of MPEC types
-        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
+        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES_plus), "MPECType": MPEC_TYPES_plus, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES_plus]})])
         # edit the FU count just for the graph since First FU is a subset of FU
         df_yearly.loc[df_yearly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_yearly.loc[df_yearly['MPECType'] == 'First Follow-Up', '#MPECs']
         disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['Discovery'][str(year)][obj] for obj in OBJ_TYPES]})])
@@ -414,7 +422,7 @@ def make_station_page(station_code):
         df_monthly = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
         # monthly breakdown of MPEC types
         for month in MONTHS:
-            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
+            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES_plus), "MPECType": MPEC_TYPES_plus, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES_plus]})])
             # edit the FU count just for the graph since First FU is a subset of FU
             df_monthly.loc[df_monthly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_monthly.loc[df_monthly['MPECType'] == 'First Follow-Up', '#MPECs']
         make_monthly_page(df_monthly, station, year)
@@ -423,7 +431,7 @@ def make_station_page(station_code):
                 <tr>
                     <td><a href="monthly/{station}_{year}.html">{year}</a></td>
                     <td>{sum([obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES])}</td>"""
-        for mpecType in MPEC_TYPES:
+        for mpecType in MPEC_OBS_TYPES:
             o += f"""
                     <td>{obscode[station_code][mpecType][str(year)]['total']}</td>"""
         o += """
@@ -637,7 +645,7 @@ def make_station_page(station_code):
 </html>"""    
      
     ## figures ##
-     # figure: yearly breakdown of MPEC types   
+    # figure: yearly breakdown of MPEC types   
     fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType")
     fig.update_layout(barmode='stack')
     fig.write_html(f"../www/byStation/Graphs/{station}.html")
