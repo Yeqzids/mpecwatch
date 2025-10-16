@@ -716,7 +716,8 @@ if __name__ == "__main__":
         stations_to_process = get_stations_needing_update()
     elif process_choice == '1':
         stations_to_process = list(obscode.keys())"""
-    stations_to_process = get_stations_needing_update()
+    #stations_to_process = get_stations_needing_update()
+    stations_to_process = list(obscode.keys())
 
     if stations_to_process is None:
         # If we couldn't determine which stations need updates, process all
