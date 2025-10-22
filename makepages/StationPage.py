@@ -479,15 +479,9 @@ def make_station_page(station_code):
         """
         index += 1
         
-    o += """    </tbody>
-            </table>
-        </div>"""
-    
-    objects_table_html = generate_station_objects_table(station_code)
-    o += objects_table_html
-    
     o += """
-        <div class="row">
+                </tbody>
+            </table>
             <h4>List of Observers</h4>
             <table id="OBS_table" 
                 class="table table-striped table-bordered table-sm"
@@ -525,8 +519,6 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
-        </div>
-        <div class="row">
             <table id="IND_OBS_table"
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
@@ -551,8 +543,6 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
-        </div>
-        <div class="row">
             <h4>List of Measurers</h4>
             <table id="MEA_table" 
                 class="table table-striped table-bordered table-sm"
@@ -578,8 +568,6 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
-        </div>
-        <div class="row">
             <table id="IND_MEA_table"
                 class="table table-striped table-bordered table-sm"
                 data-toggle="table"
@@ -604,8 +592,6 @@ def make_station_page(station_code):
     o += """
                 </tbody>
             </table>
-        </div>
-        <div class="row">
             <h4>List of Facilities</h4>
             <table id="FAC_table" 
                 class="table table-striped table-bordered table-sm"

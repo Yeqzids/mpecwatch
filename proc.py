@@ -44,22 +44,6 @@ TABLE Objects: Stores information about objects
     Band			TEXT				Band of the observation (e.g., 'R', 'V', 'I')
     Star_cat_code	TEXT				Catalog code of the star (https://minorplanetcenter.net/iau/info/CatalogueCodes.html)
 
-TABLE MPECObjects: Junction table to link MPEC and Objects
-    MPECId		TEXT				MPEC Number
-    ObjectId	TEXT				Object designation in packed form
-    PRIMARY KEY (MPECId, ObjectId)
-    FOREIGN KEY (MPECId) REFERENCES MPEC(MPECId)
-    FOREIGN KEY (ObjectId) REFERENCES Objects(ObjectId)
-
-TABLE DOUIdentifier: Stores DOU identification relationships
-    MPECId		TEXT				MPEC Number
-    DOU			TEXT				Designation of the object in the DOU
-    RelatedDOU	TEXT				Designation of the related object in the DOU
-    RelationType TEXT				Type of relationship: identification, double, erroneous
-    Author		TEXT				Author of the DOU entry
-    IsRetracted BOOLEAN DEFAULT 0	Flag indicating if the entry is retracted (1=retracted, 0=not retracted)
-    PRIMARY KEY (MPECId, DOU, RelatedDOU)
-
 TABLE LastRun: Tracks processing status of stations and other entities
     MPECId        TEXT PRIMARY KEY   Identifier (e.g., 'station_G96' for observatory code G96)
     LastRunTime   INTEGER            Unix timestamp of when the data was last processed (currently not used)
