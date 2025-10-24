@@ -544,8 +544,11 @@ def make_station_page(station_code):
             </table>
         </div>"""
     
-    objects_table_html = generate_station_objects_table(station_code)
-    o += objects_table_html
+    try:
+        objects_table_html = generate_station_objects_table(station_code)
+        o += objects_table_html
+    except:
+        pass
     
     o += """
         <div class="row">
