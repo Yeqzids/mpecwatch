@@ -799,7 +799,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     prevent_sleep()
-    max_workers = max(1, os.cpu_count()//2)
+    #max_workers = max(1, os.cpu_count()//2)
+    max_workers = 1
     time_start = datetime.datetime.now()
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         # submit only tasks for stations that need updating
