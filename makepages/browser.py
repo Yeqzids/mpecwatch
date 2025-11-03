@@ -26,10 +26,6 @@ pages.append('All time')
 years = pages[:-1]
 
 for p in pages:
-    # test only all time
-    if p != 'All time':
-        continue
-    
     o = """
     <!doctype html>
     <html lang="en">
