@@ -136,7 +136,7 @@ for s in mpccode:
             d[s][mpec_type][year] = {'total': 0}
             for month in np.arange(1, 13, 1):
                 d[s][mpec_type][year][getMonthName(month)] = 0
-            if mpec_type in ["Discovery", "OrbitUpdate", "1stRecovery", "Followup", "FirstFollowup"]:
+            if mpec_type in ["Discovery", "OrbitUpdate", "DOU", "1stRecovery", "Followup", "FirstFollowup"]:
                 for obj_type in OBJ_TYPES:
                     d[s][mpec_type][year][obj_type] = 0
 
