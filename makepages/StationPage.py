@@ -114,7 +114,7 @@ def build_name_map(threshold: int = 90):
         canonical.append(name)
         local_map[name] = name
 
-    print("Name map created with {} names.".format(len(local_map)))
+    logging.info("Name map created with %d names.", len(local_map))
     name_map = local_map
 
 def process_role(raw_counts: dict):
@@ -147,7 +147,8 @@ def generate_station_objects_table_rows(station_code):
         station = 'station_'+station_code
         # Some stations have no data, thus no table
         if station not in table_names:
-            return ""
+            logging.info(f"Station {station_code} has no station table; skipping objects table")
+            return "" # Automatically populated with bootstrap table "No matching records found"
         cursor.execute(f"""
             SELECT s.Object, 
                     COUNT(*) as ObsCount,
@@ -165,6 +166,7 @@ def generate_station_objects_table_rows(station_code):
         objects = cursor.fetchall()
         
         if not objects:
+            logging.info(f"Station {station_code} has no objects in station table; skipping objects table")
             return ""
 
         html = ""
@@ -186,8 +188,8 @@ def generate_station_objects_table_rows(station_code):
                         </tr>"""
         
         return html
-    except Exception as e:
-        logging.error(f"Error in generate_station_objects_table for station {station_code}: {e}")
+    except sqlite3.Error as e:
+        logging.error(f"SQLite error in generate_station_objects_table for station {station_code}: {e}")
         return ""
     finally:
         conn.close()
@@ -210,8 +212,12 @@ def make_monthly_page(df_monthly, station, year):
     station_code = station[-3:]
     station_year = station + "_" + str(year)
 
-    fig = px.bar(df_monthly, x="Month", y="#MPECs", color="MPECType")
-    fig.write_html(f"../www/byStation/monthly/graphs/{station_year}.html")
+    try:
+        fig = px.bar(df_monthly, x="Month", y="#MPECs", color="MPECType")
+        fig.write_html(f"../www/byStation/monthly/graphs/{station_year}.html")
+    except (ValueError, OSError) as e:
+        logging.error(f"Failed to generate/write monthly graph for {station_code} {year}: {e}")
+        return
     
     # Log DataFrame contents if it does not contain the expected columns
     if not all(col in df_monthly.columns for col in ["Month", "#MPECs", "MPECType"]):
@@ -308,6 +314,8 @@ def make_monthly_page(df_monthly, station, year):
 def make_station_page(station_code):
     if stop_event and stop_event.is_set():
         return
+    if not name_map:
+        build_name_map()
     logging.info(f"Starting processing for station: {station_code}")
     
     conn = _open_database()
@@ -462,7 +470,11 @@ def make_station_page(station_code):
         OU_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
         for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
             # yearly breakdown of MPEC types
-            df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
+            df_yearly = pd.concat([df_yearly, pd.DataFrame({
+                "Year": [year]*len(MPEC_TYPES), 
+                "MPECType": MPEC_TYPES, 
+                "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES] # use .get to avoid KeyError
+            })])
             # edit the FU count just for the graph since First FU is a subset of FU
             df_yearly.loc[df_yearly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_yearly.loc[df_yearly['MPECType'] == 'First Follow-Up', '#MPECs']
             disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['Discovery'][str(year)][obj] for obj in OBJ_TYPES]})])
