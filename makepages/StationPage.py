@@ -167,6 +167,7 @@ def generate_station_objects_table_rows(station_code):
         if not objects:
             return ""
 
+        html = ""
         for obj_id, obs_count, discoveries_count, first_obs, last_obs, mag, mpec_count in objects:
             first_date = datetime.datetime.fromtimestamp(first_obs).strftime('%Y-%m-%d') if first_obs else 'N/A'
             last_date = datetime.datetime.fromtimestamp(last_obs).strftime('%Y-%m-%d') if last_obs else 'N/A'
@@ -492,7 +493,7 @@ def make_station_page(station_code):
                 </table>
             </div>
             <div class="row my-4">
-                <h4 class ="mt-1" style="padding-top: 20px;">List of Individual MPECs</h4>
+                <h4 style="padding-top: 20px;">List of Individual MPECs</h4>
                 <table id="mpec_table" 
                     class="table table-striped table-bordered table-sm"
                     data-toggle="table"
@@ -530,7 +531,8 @@ def make_station_page(station_code):
             """
             index += 1
             
-        o += """    </tbody>
+        o += """    
+                    </tbody>
                 </table>
             </div>"""
         
@@ -538,16 +540,22 @@ def make_station_page(station_code):
         o += """
             <div class="row my-4">
                 <h4 class ="mt-3">Objects Observed by This Station</h4>
-                <table class="table table-striped table-bordered table-sm"
+                <table id="OBJ_table"
                     class="table table-striped table-bordered table-sm"
                     data-toggle="table"
                     data-search="true"
+                    data-show-columns="true"
                     data-pagination="true"
                     data-search-align="left">
                     <thead>
                         <tr>
-                            <th class="th-sm" data-field="observer" data-sortable="true">Observer Group</th>
-                            <th class="th-sm" data-field="count" data-sortable="true">Total MPECs</th>
+                            <th class="th-sm" data-field="object" data-sortable="true">Object</th>
+                            <th class="th-sm" data-field="observations" data-sortable="true">Observations</th>
+                            <th class="th-sm" data-field="discoveries" data-sortable="true">Discoveries</th>
+                            <th class="th-sm" data-field="first_obs" data-sortable="true">First Obs</th>
+                            <th class="th-sm" data-field="last_obs" data-sortable="true">Last Obs</th>
+                            <th class="th-sm" data-field="magnitude" data-sortable="true">Magnitude</th>
+                            <th class="th-sm" data-field="mpecs" data-sortable="true">MPECs</th>
                         </tr>
                     </thead>
                     <tbody>"""
@@ -558,7 +566,7 @@ def make_station_page(station_code):
         o += """
                     </tbody>
                 </table>
-            </div> <!-- End of row -->
+            </div>
             <div class="row my-4">
                 <h4 class ="mt-3">List of Observers</h4>
                 <table id="OBS_table" 
@@ -592,8 +600,7 @@ def make_station_page(station_code):
                 <tr>
                     <td>{observer}</td>
                     <td>{count}</td>
-                </tr>
-            """
+                </tr>"""
 
         o += """
                     </tbody>
@@ -617,8 +624,7 @@ def make_station_page(station_code):
                         <tr>
                             <td>{ind_observer}</td>
                             <td>{count}</td>
-                        </tr>
-            """
+                        </tr>"""
 
         o += """
                     </tbody>
@@ -645,8 +651,7 @@ def make_station_page(station_code):
                         <tr>
                             <td>{measurer}</td>
                             <td>{count}</td>
-                        </tr>
-        """
+                        </tr>"""
             
         o += """
                     </tbody>
@@ -670,8 +675,7 @@ def make_station_page(station_code):
                         <tr>
                             <td>{ind_measurer}</td>
                             <td>{count}</td>
-                        </tr>
-            """
+                        </tr>"""
         
         o += """
                     </tbody>
@@ -808,8 +812,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     prevent_sleep()
-    #max_workers = max(1, os.cpu_count()//2)
-    max_workers = 1
+    max_workers = max(1, os.cpu_count()//2)
+    #max_workers = 1
     time_start = datetime.datetime.now()
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         # submit only tasks for stations that need updating
