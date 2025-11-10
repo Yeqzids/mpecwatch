@@ -44,9 +44,21 @@ def get_stations_needing_update():
             cursor.execute("SELECT MPECId FROM LastRun WHERE MPECId LIKE 'station_%' AND Changed = 1")
             stations_to_update = [row[0].replace('station_', '') for row in cursor.fetchall()]
         return stations_to_update
+<<<<<<< HEAD
     except sqlite3.Error as e:
         logging.error(f"SQLite error in get_stations_needing_update: {e}")
         return []
+=======
+    except Exception as e:
+        logging.error(f"Error determining stations to update: {e}")
+        return None
+        
+# strip wrapping quotes if any
+def stripq(s):
+    if s and isinstance(s, str) and len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
+        return s[1:-1]
+    return s
+>>>>>>> 8d47bda (added station metadata)
 
 # Load necessary data files
 mpccode = '../mpccode.json'
@@ -318,7 +330,259 @@ def make_station_page(station_code):
         build_name_map()
     logging.info(f"Starting processing for station: {station_code}")
     
+<<<<<<< HEAD
     conn = _open_database()
+=======
+    station = 'station_'+station_code
+    page = f"../www/byStation/{station}.html"
+
+    o = f"""
+<!doctype html>
+<html lang="en">
+  <head>
+        <!-- Google tag (gtag.js) -->
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTXHKC28G9"></script>
+          <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){{dataLayer.push(arguments);}}
+            gtag('js', new Date());
+            gtag('config', 'G-WTXHKC28G9');
+          </script>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="../favicon.ico">
+
+    <title>MPEC Watch | Station Statistics {station_code}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="../dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Theme CSS -->
+    <link href="../dist/css/bootstrap-theme.min.css" rel="stylesheet">
+    <!-- Bootstrap Table CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.0/dist/bootstrap-table.min.css">
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <link href="../assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="../theme.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+<!-- Fixed navbar -->
+  <nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="#">MPEC Watch</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
+                <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+                <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
+                <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
+                <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
+                <li><a href="https://github.com/Yeqzids/mpecwatch/issues">Issue Tracker</a></li>
+                <li><a href="https://sbnmpc.astro.umd.edu">SBN-MPC Annex</a></li>
+            </ul>
+        </div><!--/.nav-collapse -->
+    </div>
+  </nav>
+  <body style="padding-top: 50px;">
+    <div class="container theme-showcase" role="main">
+        <div class="row">
+            <!-- Main jumbotron for a primary marketing message or call to action -->
+            <h2>{station_code} {mpccode[station_code]['name']}</h2><p>
+            Last update: UTC %s
+          </p>""" % (datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+              
+    if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '288', '289', '339', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
+        #print(station_code)
+        #print(mpccode[station_code])
+        
+        r = mpccode[station_code]
+        country = stripq(r.get("country"))
+        state = stripq(r.get("state"))
+        county = stripq(r.get("county"))
+        city = stripq(r.get("city"))
+        observations_type = stripq(r.get("observations_type"))
+        old_names = stripq(r.get("old_names"))
+        weblink = stripq(r.get("web_link"))
+
+        if weblink:
+            if not weblink.startswith(("http://", "https://")):
+                weblink = "https://" + weblink
+            weblink_html = f'<a href="{weblink}" target="_blank">{weblink}</a>'
+        else:
+            weblink_html = ""
+        
+        if mpccode[station_code]['lon'] > 180:
+            lon = mpccode[station_code]['lon'] - 360
+        else:
+            lon = mpccode[station_code]['lon']
+        
+        o += f"""
+            <ul>
+              <li>Country: {country}</li>
+              <li>State: {state}</li>
+              <li>County: {county}</li>
+              <li>City: {city}</li>
+              <li>Observatory Type: {observations_type}</li>
+              <li>Old Names: {old_names}</li>
+              <li>Web Link: <a href="{weblink}" target="_blank">{weblink}</a></li>
+              <li><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[station_code]['lat']};{lon}">Where is this observatory?</a></li>
+            </ul>
+            """    
+
+    o += f"""
+            <p>
+                <h3>Graphs</h3>
+                <h4>Yearly Breakdown of MPEC Types</h4>
+                <b>Term definition:</b>
+                <br>
+                Editorial - Editorial MPECs associated with this station.<br>
+                Discovery - MPECs associated with discovery made by this station.<br>
+                OrbitUpdate - MPECs associated with orbit updates involving observations made by this station. Typically, these are recoveries of single-opposition objects.<br>
+                DOU - Daily Orbit Update MPECs involving observations made by this station.<br>
+                ListUpdate - MPECs associated with list updates involving observations made by this station. This category has largely been retired since 2012.<br>
+                Retraction - Retracted MPECs involving observations made by this station.<br>
+                Followup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere.<br>
+                FirstFollowup - MPECs associated with follow-up observations made by this station to an object discovered elsewhere, with this station being the first station to follow-up.<br>
+                Other - MPECs that do not fit into categories listed above and involve observations made by this station.
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}.html" height="525" width="100%"></iframe>
+                <h4>Yearly Breakdown of Discovery Object Types</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_disc_obj.html" height="525" width="100%"></iframe>
+                <h4>Yearly Breakdown of Orbit Update Object Types</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="Graphs/{station}_OU_obj.html" height="525" width="100%"></iframe>
+                <h4>Breakdown by Observers</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_Top_Observers.html" height="525" width="100%"></iframe>
+                <h4>Breakdown by Measurers</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_Top_Measurers.html" height="525" width="100%"></iframe>
+                <h4>Breakdown by Facilities</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_Top_Facilities.html" height="525" width="100%"></iframe>
+                <h4>Breakdown by Objects</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_Top_Objects.html" height="525" width="100%"></iframe>
+                <h4>Annual Breakdown</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_yearly.html" height="525" width="100%"></iframe>
+                <h4>Weekly Breakdown</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_weekly.html" height="525" width="100%"></iframe>
+                <h4>Hourly Breakdown</h4>
+                <iframe id="igraph" scrolling="no" style="border:none;" seamless="seamless" src="OMF/{station_code}_hourly.html" height="525" width="100%"></iframe>
+            </p>
+        </div>
+        <div class="row">
+            <h3>Tables</h3>
+            <h4>Yearly Breakdown of MPEC Types</h4>
+            <table id="year_table" class="table table-striped table-sm" 
+                data-toggle="table"
+                data-show-export="true"
+                data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Total MPECs</th>
+                        <th>Editorial</th>
+                        <th>Discovery</th>
+                        <th>Orbit Update</th>
+                        <th>DOU</th>
+                        <th>List Update</th>
+                        <th>Retraction</th>
+                        <th>Other</th>
+                        <th>Follow-Up</th>
+                        <th>First Follow-Up</th>
+                    </tr>
+                </thead>"""
+    
+    df_yearly = pd.DataFrame({"Year": [], "MPECType": [], "#MPECs": []})
+    disc_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
+    OU_obj = pd.DataFrame({"Year": [], "ObjectType": [], "#MPECs": []})
+    for year in list(np.arange(1993, datetime.datetime.now().year+1, 1))[::-1]:
+        # yearly breakdown of MPEC types
+        df_yearly = pd.concat([df_yearly, pd.DataFrame({"Year": [year]*len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES]})])
+        # edit the FU count just for the graph since First FU is a subset of FU
+        df_yearly.loc[df_yearly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_yearly.loc[df_yearly['MPECType'] == 'First Follow-Up', '#MPECs']
+        disc_obj = pd.concat([disc_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['Discovery'][str(year)][obj] for obj in OBJ_TYPES]})])
+        OU_obj = pd.concat([OU_obj, pd.DataFrame({"Year": [year]*len(OBJ_TYPES), "ObjectType": OBJ_TYPES, "#MPECs": [obscode[station_code]['OrbitUpdate'][str(year)][obj] for obj in OBJ_TYPES]})])
+
+        df_monthly = pd.DataFrame({"Month": [], "MPECType": [], "#MPECs": []})
+        # monthly breakdown of MPEC types
+        for month in MONTHS:
+            df_monthly = pd.concat([df_monthly, pd.DataFrame({"Month": [month] * len(MPEC_TYPES), "MPECType": MPEC_TYPES, "#MPECs": [obscode[station_code][mpecType][str(year)][month] for mpecType in MPEC_TYPES]})])
+            # edit the FU count just for the graph since First FU is a subset of FU
+            df_monthly.loc[df_monthly['MPECType'] == 'Follow-Up', '#MPECs'] -= df_monthly.loc[df_monthly['MPECType'] == 'First Follow-Up', '#MPECs']
+        make_monthly_page(df_monthly, station, year)
+
+        o += f"""
+                <tr>
+                    <td><a href="monthly/{station}_{year}.html">{year}</a></td>
+                    <td>{sum([obscode[station_code][mpecType][str(year)]['total'] for mpecType in MPEC_TYPES])}</td>"""
+        for mpecType in MPEC_TYPES:
+            o += f"""
+                    <td>{obscode[station_code][mpecType][str(year)]['total']}</td>"""
+        o += """
+                </tr>"""            
+    
+    o += """
+            </table>
+        </div>
+        <div class="row">
+            <h4 style="padding-top: 20px;">List of Individual MPECs</h4>
+            <table id="mpec_table" 
+                class="table table-striped table-bordered table-sm"
+                data-height="460"
+                data-toggle="table"
+                data-pagination="true"
+                data-search="true"
+                data-show-export="true"
+                data-show-columns="true">
+                <thead>
+                    <tr>
+                        <th class="th-sm" data-field="index" data-sortable="true">Index</th>
+                        <th class="th-sm" data-field="name" data-sortable="true">Name</th>
+                        <th class="th-sm" data-field="date" data-sortable="true">Date/Time</th>
+                        <th class="th-sm" data-field="ds" data-sortable="true">Discoverer</th>
+                        <th class="th-sm" data-field="fs" data-sortable="true">First-responding Confirmer</th>
+                        <th class="th-sm" data-field="obj" data-sortable="true">Object Type</th>
+                        <th class="th-sm" data-field="catch" data-sortable="true">Search Archival Image</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """
+
+    index = 1
+    for i in obscode[station_code]['MPECs']:
+        o += f"""
+                    <tr>
+                        <td>{index}</td>
+                        <td>{i[0]}</td>
+                        <td>{datetime.datetime.fromtimestamp(i[1])}</td>
+                        <td>{i[2]}</td>
+                        <td>{i[3]}</td>
+                        <td>{i[4]}</td>
+                        <td>{i[5]}</td>
+                    </tr>
+        """
+        index += 1
+        
+    o += """    </tbody>
+            </table>
+        </div>"""
+    
+>>>>>>> 8d47bda (added station metadata)
     try:
         cursor = conn.cursor()
         station = 'station_'+station_code
