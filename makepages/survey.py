@@ -717,9 +717,6 @@ for p in pages:
         <div class="container theme-showcase" role="main">
         
         <!-- Main jumbotron for a primary marketing message or call to action -->
-      <div class="jumbotron">
-        <p>This page is still under active development and testing. Comments, suggestions and bug reports are welcome (via Issue Tracker or by email). Quanzhi 05/31/24</p>
-      </div>
     """
     
     # Table of MPECs by year and type
