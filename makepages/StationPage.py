@@ -418,6 +418,7 @@ def make_station_page(station_code):
             observations_type = stripq(r.get("observations_type"))
             old_names = stripq(r.get("old_names"))
             weblink = stripq(r.get("web_link"))
+            print(r, weblink)
 
             if weblink:
                 if not weblink.startswith(("http://", "https://")):
