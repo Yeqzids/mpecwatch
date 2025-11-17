@@ -406,7 +406,7 @@ def make_station_page(station_code):
                 <!-- Main jumbotron for a primary marketing message or call to action -->
                 <h2>{station_code} {mpccode[station_code]['name']}</h2>"""
                 
-        if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '288', '289', '339', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
+        if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '288', '289', '338', '339', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
             #print(station_code)
             #print(mpccode[station_code])
             
@@ -443,7 +443,7 @@ def make_station_page(station_code):
                   <li>Website: {weblink_html}</li>
                   <li><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[station_code]['lat']};{lon}">Where is this observatory?</a></li>
                 </ul>
-                """    
+                <p>Last update: UTC %s</p>""" % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")  
             
             if mpccode[station_code]['lon'] > 180:
                 lon = mpccode[station_code]['lon'] - 360
