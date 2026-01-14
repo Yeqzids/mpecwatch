@@ -119,8 +119,6 @@ OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar
 # potential improvement: use default dict to avoid checking if key exists
 d = dict()
 for s in mpccode:
-#for i in range(1):
-    #s = 'G96'
     print(s)
     d[s] = {}
     d[s]['total'] = 0
@@ -210,7 +208,41 @@ for s in mpccode:
 
         for fac in cursor.fetchall():
             d[s]['FAC'][fac[0]] = fac[1]
-    except:
+    except Exception as e:
+        print(f"Error processing FAC for {s}: {e}")
+        pass
+
+    # New: Calculate Time Frequencies from SQL directly (Observation Time)
+    try:
+        # Initialize arrays
+        d[s]['hourly_stats'] = [0] * 24
+        d[s]['weekly_stats'] = [0] * 7
+        d[s]['yearly_stats'] = [0] * 366
+        
+        # SQLite's strftime('%H') returns 00-23
+        cursor.execute(f"SELECT strftime('%H', datetime(Time, 'unixepoch')), count(*) FROM station_{s} WHERE Time IS NOT NULL GROUP BY 1")
+        for row in cursor.fetchall():
+            if row[0]:
+                d[s]['hourly_stats'][int(row[0])] = row[1]
+                
+        # SQLite's strftime('%w') returns 0-6 (Sunday=0), but Python's weekday() is Monday=0.
+        # Let's align with individual_OMF.py expectation (Mon=0..Sun=6)
+        # SQLite %w: 0=Sunday, 1=Monday... 6=Saturday
+        # Mapping: 1->0, 2->1 ... 6->5, 0->6
+        cursor.execute(f"SELECT strftime('%w', datetime(Time, 'unixepoch')), count(*) FROM station_{s} WHERE Time IS NOT NULL GROUP BY 1")
+        for row in cursor.fetchall():
+            if row[0] is not None:
+                sqlite_w = int(row[0])
+                py_w = (sqlite_w - 1) % 7
+                d[s]['weekly_stats'][py_w] = row[1]
+
+        # SQLite's strftime('%j') returns 001-366
+        cursor.execute(f"SELECT strftime('%j', datetime(Time, 'unixepoch')), count(*) FROM station_{s} WHERE Time IS NOT NULL GROUP BY 1")
+        for row in cursor.fetchall():
+            if row[0]:
+                d[s]['yearly_stats'][int(row[0]) - 1] = row[1]
+    except Exception as e:
+        print(f"Error processing time stats for {s}: {e}")
         pass
 
     try:

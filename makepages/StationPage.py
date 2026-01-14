@@ -44,21 +44,18 @@ def get_stations_needing_update():
             cursor.execute("SELECT MPECId FROM LastRun WHERE MPECId LIKE 'station_%' AND Changed = 1")
             stations_to_update = [row[0].replace('station_', '') for row in cursor.fetchall()]
         return stations_to_update
-<<<<<<< HEAD
     except sqlite3.Error as e:
         logging.error(f"SQLite error in get_stations_needing_update: {e}")
         return []
-=======
     except Exception as e:
         logging.error(f"Error determining stations to update: {e}")
-        return None
+        return []
         
 # strip wrapping quotes if any
 def stripq(s):
     if s and isinstance(s, str) and len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
         return s[1:-1]
     return s
->>>>>>> 8d47bda (added station metadata)
 
 # Load necessary data files
 mpccode = '../mpccode.json'
@@ -330,9 +327,7 @@ def make_station_page(station_code):
         build_name_map()
     logging.info(f"Starting processing for station: {station_code}")
     
-<<<<<<< HEAD
     conn = _open_database()
-=======
     station = 'station_'+station_code
     page = f"../www/byStation/{station}.html"
 
@@ -582,7 +577,6 @@ def make_station_page(station_code):
             </table>
         </div>"""
     
->>>>>>> 8d47bda (added station metadata)
     try:
         cursor = conn.cursor()
         station = 'station_'+station_code
