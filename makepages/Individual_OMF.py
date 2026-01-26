@@ -57,25 +57,7 @@ def generate_bar_chart(x_data, y_data, x_axis_title, y_axis_title, station_code,
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     fig.write_html(output_path)
 
-def process_time_frequencies(mpecs_data):
-    """Process MPEC data to extract observation time frequencies"""
-    yearly = np.zeros(366)
-    hourly = np.zeros(24)
-    weekly = np.zeros(7)
-    
-    for entry in mpecs_data:
-        if len(entry) > 1:  # Ensure entry has timestamp
-            timestamp = entry[1]  # Position based on obscode_stat.json structure
-            
-            day = datetime.date.fromtimestamp(timestamp).timetuple().tm_yday
-            hour = datetime.datetime.fromtimestamp(timestamp).hour
-            weekday = datetime.date.fromtimestamp(timestamp).weekday()
-            
-            yearly[day-1] += 1
-            hourly[hour] += 1
-            weekly[weekday] += 1
-    
-    return yearly, hourly, weekly
+
 
 def process_station(station_code, station_data):
     """Process a single station's data from obscode_stat.json"""
@@ -93,11 +75,12 @@ def process_station(station_code, station_data):
     sanitized_facilities = {sanitize_name(name): count for name, count in facilities.items()}
     sanitized_objects = {sanitize_name(name): count for name, count in objects.items()}
 
-    # Get MPECs data for time analysis
-    mpecs_data = station_data.get('MPECs', [])
+    # Get Time Frequency metrics from stats calculation (obscode_stat.py)
+    hourly = station_data.get('hourly_stats', [0]*24)
+    weekly = station_data.get('weekly_stats', [0]*7)
+    yearly = station_data.get('yearly_stats', [0]*366)
     
-    # Process time frequencies
-    yearly, hourly, weekly = process_time_frequencies(mpecs_data)
+    # Generate Pie Charts
     
     # Generate Pie Charts
     generate_pie_chart(sanitized_observers, station_code, "Top_Observers")
