@@ -47,9 +47,6 @@ def get_stations_needing_update():
     except sqlite3.Error as e:
         logging.error(f"SQLite error in get_stations_needing_update: {e}")
         return []
-    except Exception as e:
-        logging.error(f"Error determining stations to update: {e}")
-        return []
         
 # strip wrapping quotes if any
 def stripq(s):
@@ -182,7 +179,11 @@ def generate_station_objects_table_rows(station_code):
         for obj_id, obs_count, discoveries_count, first_obs, last_obs, mag, mpec_count in objects:
             first_date = datetime.datetime.fromtimestamp(first_obs).strftime('%Y-%m-%d') if first_obs else 'N/A'
             last_date = datetime.datetime.fromtimestamp(last_obs).strftime('%Y-%m-%d') if last_obs else 'N/A'
-            magnitude = f"{mag:.1f}" if mag else 'N/A'
+            try:
+                magnitude = f"{mag:.1f}" if mag else 'N/A'
+            except:
+                magnitude = 'N/A'
+                pass
             discovery_badge = f'<span class="badge bg-success">{discoveries_count}</span>' if discoveries_count > 0 else '0'
             
             html += f"""
@@ -654,15 +655,49 @@ def make_station_page(station_code):
                 <!-- Main jumbotron for a primary marketing message or call to action -->
                 <h2>{station_code} {mpccode[station_code]['name']}</h2>"""
                 
-        if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '288', '289', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
+        if station_code not in ['244', '245', '247', '248', '249', '250', '258', '270', '273', '274', '275', '288', '289', '338', '339', '500', 'C49', 'C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58', 'C59']:
             #print(station_code)
             #print(mpccode[station_code])
+            
+            r = mpccode[station_code]
+            country = stripq(r.get("country"))
+            state = stripq(r.get("state"))
+            county = stripq(r.get("county"))
+            city = stripq(r.get("city"))
+            observations_type = stripq(r.get("observations_type"))
+            old_names = stripq(r.get("old_names"))
+            weblink = stripq(r.get("web_link"))
+            print(r, weblink)
+
+            if weblink:
+                if not weblink.startswith(("http://", "https://")):
+                    weblink = "https://" + weblink
+                weblink_html = f'<a href="{weblink}" target="_blank">{weblink}</a>'
+            else:
+                weblink_html = ""
+            
             if mpccode[station_code]['lon'] > 180:
                 lon = mpccode[station_code]['lon'] - 360
             else:
                 lon = mpccode[station_code]['lon']
+            
             o += f"""
-                <p><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[station_code]['lat']};{lon}">Where is this observatory?</a></p>"""
+                <ul>
+                  <li>Country: {country}</li>
+                  <li>State: {state}</li>
+                  <li>County: {county}</li>
+                  <li>City: {city}</li>
+                  <li>Observatory Type: {observations_type}</li>
+                  <li>Old Names: {old_names}</li>
+                  <li>Website: {weblink_html}</li>
+                  <li><a href="https://geohack.toolforge.org/geohack.php?params={mpccode[station_code]['lat']};{lon}">Where is this observatory?</a></li>
+                </ul>
+                <p>Last update: UTC %s</p>""" % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")  
+            
+            if mpccode[station_code]['lon'] > 180:
+                lon = mpccode[station_code]['lon'] - 360
+            else:
+                lon = mpccode[station_code]['lon']
 
         o += f"""
                 <p>
@@ -1055,6 +1090,9 @@ if __name__ == "__main__":
             )
         def allow_sleep():
             ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+    else:
+        def prevent_sleep(): pass
+        def allow_sleep(): pass
 
     build_name_map()
     if (len(sys.argv) > 1):
@@ -1082,8 +1120,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     prevent_sleep()
-    max_workers = max(1, os.cpu_count()//2)
-    #max_workers = 1
+    #max_workers = max(1, os.cpu_count()//2)
+    max_workers = 1
     time_start = datetime.datetime.now()
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         # submit only tasks for stations that need updating
