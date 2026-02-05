@@ -820,9 +820,12 @@ for halfmonth in month_to_letter(ym[4:6]):
                                 cursor.execute("CREATE TABLE station_" + obs_code + "(Object TEXT, Time INTEGER, Observer TEXT, Measurer TEXT, Facility TEXT, MPEC TEXT, MPECType TEXT, ObjectType TEXT, Discovery INTEGER)")
                                 db.commit()
                             
-                            cursor.execute("INSERT INTO station_" + obs_code + "(Object, Time, Observer, Measurer, Facility, MPEC, MPECType, ObjectType, Discovery) VALUES(?,?,?,?,?,?,?,?,?)", \
-                            (obs_obj, obs_date_timestamp, observer, measurer, facility, mpec_id, mpec_type, mpec_obj_type, int(discovery_asterisk)))
-                            db.commit()
+                            # Check for duplicates before inserting
+                            cursor.execute("SELECT 1 FROM station_" + obs_code + " WHERE Object=? AND Time=? AND MPEC=?", (obs_obj, obs_date_timestamp, mpec_id))
+                            if not cursor.fetchone():
+                                cursor.execute("INSERT INTO station_" + obs_code + "(Object, Time, Observer, Measurer, Facility, MPEC, MPECType, ObjectType, Discovery) VALUES(?,?,?,?,?,?,?,?,?)", \
+                                (obs_obj, obs_date_timestamp, observer, measurer, facility, mpec_id, mpec_type, mpec_obj_type, int(discovery_asterisk)))
+                                db.commit()
 
                             ### write to TABLE Objects
                             cursor.execute("SELECT 1 FROM Objects WHERE ObjectId = ?", (obs_obj,))

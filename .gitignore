@@ -4,7 +4,7 @@ test.py
 run_proc.py
 makepages/*.html
 makepages/*.txt
-*.db
+*.db*
 www/
 mpccode_trim.txt
 proc_loop.*

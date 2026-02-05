@@ -74,9 +74,10 @@ Change Detection:
 # adjust queries to take full advantage of db indexes
 # --> tokenize station codes to avoid using LIKE
 # --> junction table for MPECs and stations (foreign keys) --> enables use of JOINs
+# allow single station processing (for testing)
 
 
-import sqlite3, datetime, re, json, numpy as np, calendar
+import sqlite3, datetime, re, json, numpy as np, calendar, argparse
 from datetime import date
 import time
 import hashlib
@@ -85,13 +86,39 @@ start_time = time.time()
 
 dbFile = '../mpecwatch_v4.db'
 mpccode = '../mpccode.json'
+outputFile = 'obscode_stat.json'
+
+# Argument parsing
+parser = argparse.ArgumentParser(description='Observatory Code Statistics Generator')
+parser.add_argument('-s', '--station', type=str, help='Process only a single station code')
+args = parser.parse_args()
 
 # Get current station hashes from LastRun table
 db = sqlite3.connect(dbFile)
 cursor = db.cursor()
 
-with open(mpccode) as mpccode:
-    mpccode = json.load(mpccode)
+with open(mpccode) as f:
+    mpccode_data = json.load(f)
+
+# If a single station is specified, validate it exists
+target_station = None
+if args.station:
+    target_station = args.station.upper()
+    if target_station not in mpccode_data:
+        print(f"Error: Station {target_station} not found in {mpccode}")
+        db.close()
+        exit(1)
+    print(f"Processing single station: {target_station}")
+
+# Load existing data if processing a single station
+d = {}
+if target_station:
+    try:
+        with open(outputFile, 'r') as f:
+            d = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        print(f"Warning: {outputFile} not found or invalid. Starting fresh for {target_station}.")
+        d = {}
 
 BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 def encode(num, alphabet=BASE62):
@@ -116,9 +143,11 @@ def getMonthName(month):
 # "Followup", "FirstFollowup", "Precovery", "Recovery", "1stRecovery" are not in database (calulated from other fields)
 MPEC_TYPES = ["Editorial", "Discovery", "OrbitUpdate", "DOU", "ListUpdate", "Retraction", "Other", "Followup", "FirstFollowup", "Precovery", "1stRecovery"]
 OBJ_TYPES = ["NEA", "PHA", "Comet", "Satellite", "TNO", "Unusual", "Interstellar", "Unknown"] #Only used when MPECType is Discovery or OrbitUpdate
-# potential improvement: use default dict to avoid checking if key exists
-d = dict()
-for s in mpccode:
+
+# Determine which stations to iterate over
+stations_to_process = [target_station] if target_station else mpccode_data.keys()
+
+for s in stations_to_process:
     print(s)
     d[s] = {}
     d[s]['total'] = 0
@@ -253,9 +282,15 @@ for s in mpccode:
     except:
         pass
 
+# Optimization: Filter MPEC query if a single station is targeted
+mpec_query = "SELECT * FROM MPEC"
+query_params = ()
+if target_station:
+    mpec_query += " WHERE Station LIKE ?"
+    query_params = (f'%{target_station}%',)
+
 missed_stations = set()
-for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
-#for mpec in cursor.execute("SELECT * FROM MPEC WHERE Station = 'G96'").fetchall():
+for mpec in cursor.execute(mpec_query, query_params).fetchall():
     year = str(date.fromtimestamp(mpec[2]).year)
     month = getMonthName(int(date.fromtimestamp(mpec[2]).month))
 
@@ -264,6 +299,10 @@ for mpec in cursor.execute("SELECT * FROM MPEC").fetchall():
 
     for station in mpec[3].split(', '):
         if station == '' or station == 'XXX':
+            continue
+            
+        # If we are targeting a single station, skip others in the MPEC's list
+        if target_station and station != target_station:
             continue
 
         try:
@@ -418,11 +457,11 @@ if missed_stations:
         print(f"  {station}")
 
 # After all data is collected, save it to file
-with open('obscode_stat.json', 'w') as o:
+with open(outputFile, 'w') as o:
     json.dump(d, o)
 
 # Update the LastRun table with current timestamps and hashes
-for station_code in d:
+for station_code in stations_to_process:
     station_id = f'station_{station_code}'
     # Create a hash of the station data to detect changes
     station_data_str = json.dumps(d[station_code], sort_keys=True)
