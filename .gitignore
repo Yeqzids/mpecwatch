@@ -15,4 +15,5 @@ proc_loop.*
 *.json
 logs/
 test
-venv
+venv*
+*.sh

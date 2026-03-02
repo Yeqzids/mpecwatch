@@ -534,6 +534,16 @@ else:
             Changed BOOLEAN DEFAULT 1
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS MPEC_Stations (
+            MPECId TEXT,
+            StationCode TEXT,
+            PRIMARY KEY (MPECId, StationCode),
+            FOREIGN KEY (MPECId) REFERENCES MPEC(MPECId)
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_mpec_stations_code ON MPEC_Stations(StationCode);")
+    db.commit()
 
 # Keep track of the current line being parsed for debugging
 current_line = ""
@@ -881,6 +891,12 @@ for halfmonth in month_to_letter(ym[4:6]):
                     # Non-observational MPECs
                     cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', \
                     (mpec_id, mpec_title, mpec_timestamp, '', '', '', mpec_type, '', '', issuer, h))
+                
+                # Update MPEC_Stations junction table for observational MPECs
+                if mpec_type in ('Discovery', 'OrbitUpdate', 'DOU') and obs_code_collection_uniq:
+                    for station_code in obs_code_collection_uniq:
+                        cursor.execute("INSERT OR IGNORE INTO MPEC_Stations (MPECId, StationCode) VALUES (?,?)", (mpec_id, station_code))
+                
                 db.commit()
             except sqlite3.IntegrityError as e:
                 error_message = f"Integrity error inserting MPEC {this_mpec}: {str(e)}"

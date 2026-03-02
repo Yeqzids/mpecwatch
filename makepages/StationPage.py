@@ -55,7 +55,7 @@ def stripq(s):
     return s
 
 # Load necessary data files
-mpccode = '../mpccode.json'
+mpccode = 'mpccode.json'
 with open(mpccode) as mpccode:
     mpccode = json.load(mpccode)
 
@@ -799,12 +799,12 @@ def make_station_page(station_code):
             </div>
             <div class="row my-4">
                 <h4 style="padding-top: 20px;">List of Individual MPECs</h4>
+                <button id="custom-export-btn" class="btn btn-primary btn-sm" style="margin-bottom: 10px;">Export to CSV</button>
                 <table id="mpec_table" 
                     class="table table-striped table-bordered table-sm"
                     data-toggle="table"
                     data-pagination="true"
                     data-search="true"
-                    data-show-export="true"
                     data-show-columns="true"
                     data-search-align="left">
                     <thead>
@@ -841,6 +841,83 @@ def make_station_page(station_code):
                 </table>
             </div>"""
         
+        mpecs_for_export = []
+        export_index = 1
+        for i in obscode[station_code]['MPECs']:
+            clean_name = re.sub(r'<[^>]+>', '', i[0]) if isinstance(i[0], str) else i[0]
+            disc = "Yes" if isinstance(i[2], str) and '&#x2713;' in i[2] else "No"
+            first_resp = "Yes" if isinstance(i[3], str) and '&#x2713;' in i[3] else "No"
+            clean_obj = re.sub(r'<[^>]+>', '', i[4]) if isinstance(i[4], str) else i[4]
+            clean_catch = ""
+            if isinstance(i[5], str):
+                catch_match = re.search(r'<a href=([^>]+)>CATCH</a>', i[5], re.IGNORECASE)
+                clean_catch = catch_match.group(1).strip("\"'") if catch_match else ""
+            else:
+                clean_catch = i[5]
+            
+            mpecs_for_export.append({
+                "Index": export_index,
+                "Name": clean_name,
+                "Date/Time": str(datetime.datetime.fromtimestamp(i[1])),
+                "Discoverer": disc,
+                "First-responding Confirmer": first_resp,
+                "Object Type": clean_obj,
+                "Search Archival Image": clean_catch
+            })
+            export_index += 1
+            
+        mpec_json_str = json.dumps(mpecs_for_export)
+
+        o += """
+            <script>
+                const mpecTableData = """ + mpec_json_str + """;
+                const stationCode = '""" + station_code + """';
+
+                function exportMPECsCSV() {
+                    if (!mpecTableData || !mpecTableData.length) {
+                        console.warn("No data available to export.");
+                        return;
+                    }
+
+                    const headers = Object.keys(mpecTableData[0]);
+
+                    const escapeCSV = (val) => {
+                        if (val === null || val === undefined) return '""';
+                        const str = String(val);
+                        if (str.includes(',') || str.includes('"') || str.includes('\\n')) {
+                            return '"' + str.replace(/"/g, '""') + '"';
+                        }
+                        return str;
+                    };
+
+                    const csvRows = [];
+                    csvRows.push(headers.map(escapeCSV).join(','));
+
+                    for (const row of mpecTableData) {
+                        const rowValues = headers.map(header => escapeCSV(row[header]));
+                        csvRows.push(rowValues.join(','));
+                    }
+
+                    const csvString = csvRows.join('\\r\\n');
+                    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', stationCode + '_mpec_export.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    const btn = document.getElementById('custom-export-btn');
+                    if(btn) {
+                        btn.addEventListener('click', exportMPECsCSV);
+                    }
+                });
+            </script>"""
+
         # Generate and insert the station objects table
         o += """
             <div class="row my-4">

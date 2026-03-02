@@ -84,8 +84,10 @@ import hashlib
 
 start_time = time.time()
 
-dbFile = '../mpecwatch_v4.db'
-mpccode = '../mpccode.json'
+dbFile = 'mpecwatch_v4.db'
+# Note: when running from the root directory, use 'mpecwatch_v4.db'. 
+# When running from makepages/, use '../mpecwatch_v4.db'.
+mpccode = 'mpccode.json'
 outputFile = 'obscode_stat.json'
 
 # Argument parsing
@@ -283,11 +285,11 @@ for s in stations_to_process:
         pass
 
 # Optimization: Filter MPEC query if a single station is targeted
-mpec_query = "SELECT * FROM MPEC"
+mpec_query = "SELECT MPEC.* FROM MPEC"
 query_params = ()
 if target_station:
-    mpec_query += " WHERE Station LIKE ?"
-    query_params = (f'%{target_station}%',)
+    mpec_query += " JOIN MPEC_Stations ON MPEC.MPECId = MPEC_Stations.MPECId WHERE MPEC_Stations.StationCode = ?"
+    query_params = (target_station,)
 
 missed_stations = set()
 for mpec in cursor.execute(mpec_query, query_params).fetchall():
