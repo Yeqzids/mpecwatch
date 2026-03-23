@@ -607,7 +607,7 @@ survey_def_table = [['Lincoln Near Earth Asteroid Research (LINEAR)', ['704'], '
                     ['Catalina Sky Survey (CSS)', ['703', 'E12', 'G96', 'I52', 'V00', 'V06'], 'css'], \
                     ['Panoramic Survey Telescope and Rapid Response System (Pan-STARRS)', ['F51', 'F52'], 'panstarrs'], \
                     ['Wide-field Infrared Survey Explorer (WISE_NEOWISE)', ['C51'], 'wise'], \
-                    ['Asteroid Terrestrial-impact Last Alert System (ATLAS)', ['T05', 'T08', 'M22', 'W68'], 'atlas'], \
+                    ['Asteroid Terrestrial-impact Last Alert System (ATLAS)', ['T05', 'T08', 'M22', 'W68', 'R17'], 'atlas'], \
                     ['Palomar Transient Factory (PTF) / Zwicky Transient Facility (ZTF)', ['I41'], 'ztf'], \
                     ['La Sagra Sky Survey (LSSS)', ['J75'], 'lsss'], \
                     ['Campo Imperatore Near Earth Object Survey (CINEOS)', ['599'], 'cineos'], \
@@ -617,7 +617,9 @@ survey_def_table = [['Lincoln Near Earth Asteroid Research (LINEAR)', ['704'], '
                     ['Chinese Near-Earth Object Survey (CNEOS)', ['D29', 'N54', 'O17', 'O38', 'O48', 'O49'], 'cneos'], \
                     ['Bisei Asteroid Tracking Telescope for Rapid Survey (BATTeRS)', ['300'], 'batters'], \
                     ['Astronomical Research Observatory', ['H21', 'H55'], 'aro'], \
-                    ['Xingming Observatory', ['C42', 'N86', 'N88', 'N89'], 'xmo']]
+                    ['Xingming Observatory', ['C42', 'N86', 'N88', 'N89'], 'xmo'], \
+                    ['Legacy Survey of Space and Time (LSST)', ['X05'], 'lsst'], \
+                    ['NEO Surveyor', ['C58'], 'neos']]
 
 dbFile = '../mpecwatch_v4.db'
 mpccode = '../mpccode.json'

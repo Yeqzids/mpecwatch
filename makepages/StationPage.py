@@ -55,7 +55,7 @@ def stripq(s):
     return s
 
 # Load necessary data files
-mpccode = 'mpccode.json'
+mpccode = '../mpccode.json'
 with open(mpccode) as mpccode:
     mpccode = json.load(mpccode)
 
