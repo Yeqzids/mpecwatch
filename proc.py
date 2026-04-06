@@ -66,6 +66,12 @@ TABLE LastRun: Tracks processing status of stations and other entities
     StationHash   TEXT               MD5 hash of the station's JSON data structure
     Changed       BOOLEAN            Flag indicating if data changed since last processing (1=changed, 0=unchanged)
 
+TABLE MPEC_Stations: Links MPECs to all associated observatory station codes
+    MPECId		TEXT		MPEC Number
+    StationCode	TEXT		Observatory station code (3-character)
+    PRIMARY KEY (MPECId, StationCode)
+    FOREIGN KEY (MPECId) REFERENCES MPEC(MPECId)
+
 LastRun Workflow:
     1. obscode_stat.py updates LastRunTime, StationHash, and Changed when processing station statistics
     2. StationMPECGraph.py queries for stations with Changed=1 to determine which pages need regeneration
@@ -470,80 +476,75 @@ elif ym[0:2] == '20':
 else:
     exit('Year needs to be 19xx or 20xx.')
 
-if os.path.isfile(dbFile):
-    db = sqlite3.connect(dbFile)
-    cursor = db.cursor()
-else:
-    db = sqlite3.connect(dbFile)
-    cursor = db.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS MPEC (
-            MPECId TEXT PRIMARY KEY,
-            Title TEXT,
-            Time INTEGER,
-            Station TEXT,
-            DiscStation TEXT,
-            FirstConf TEXT,
-            MPECType TEXT,
-            ObjectType TEXT,
-            OrbitComp TEXT,
-            Issuer TEXT,
-            ObjectId TEXT,
-            PageHash TEXT
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Objects (
-            ObjectId TEXT PRIMARY KEY,
-            Discovery BOOLEAN DEFAULT 0,
-            Note1 TEXT,
-            Note2 TEXT,
-            Timestamp INTEGER,
-            Mag REAL,
-            Band TEXT,
-            Star_cat_code TEXT
-        )
-    """)
-    # Junction table with the foreign keys
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS MPECObjects (
-            MPECId TEXT,
-            ObjectId TEXT,
-            PRIMARY KEY (MPECId, ObjectId),
-            FOREIGN KEY (MPECId) REFERENCES MPEC(MPECId),
-            FOREIGN KEY (ObjectId) REFERENCES Objects(ObjectId)
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS DOUIdentifier (
-            MPECId TEXT,
-            DOU TEXT,
-            RelatedDOU TEXT,
-            RelationType TEXT,
-            Author TEXT,
-            IsRetracted BOOLEAN DEFAULT 0,
-            PRIMARY KEY (MPECId, DOU, RelatedDOU)
-        )
-    """)
-    db.commit()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS LastRun (
-            MPECId TEXT PRIMARY KEY,
-            LastRunTime INTEGER,
-            StationHash TEXT,
-            Changed BOOLEAN DEFAULT 1
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS MPEC_Stations (
-            MPECId TEXT,
-            StationCode TEXT,
-            PRIMARY KEY (MPECId, StationCode),
-            FOREIGN KEY (MPECId) REFERENCES MPEC(MPECId)
-        )
-    """)
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_mpec_stations_code ON MPEC_Stations(StationCode);")
-    db.commit()
+db = sqlite3.connect(dbFile)
+cursor = db.cursor()
+# Always ensure all tables and indexes exist (idempotent)
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS MPEC (
+        MPECId TEXT PRIMARY KEY,
+        Title TEXT,
+        Time INTEGER,
+        Station TEXT,
+        DiscStation TEXT,
+        FirstConf TEXT,
+        MPECType TEXT,
+        ObjectType TEXT,
+        OrbitComp TEXT,
+        Issuer TEXT,
+        ObjectId TEXT,
+        PageHash TEXT
+    )
+""")
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Objects (
+        ObjectId TEXT PRIMARY KEY,
+        Discovery BOOLEAN DEFAULT 0,
+        Note1 TEXT,
+        Note2 TEXT,
+        Timestamp INTEGER,
+        Mag REAL,
+        Band TEXT,
+        Star_cat_code TEXT
+    )
+""")
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS MPECObjects (
+        MPECId TEXT,
+        ObjectId TEXT,
+        PRIMARY KEY (MPECId, ObjectId),
+        FOREIGN KEY (MPECId) REFERENCES MPEC(MPECId),
+        FOREIGN KEY (ObjectId) REFERENCES Objects(ObjectId)
+    )
+""")
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS DOUIdentifier (
+        MPECId TEXT,
+        DOU TEXT,
+        RelatedDOU TEXT,
+        RelationType TEXT,
+        Author TEXT,
+        IsRetracted BOOLEAN DEFAULT 0,
+        PRIMARY KEY (MPECId, DOU, RelatedDOU)
+    )
+""")
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS LastRun (
+        MPECId TEXT PRIMARY KEY,
+        LastRunTime INTEGER,
+        StationHash TEXT,
+        Changed BOOLEAN DEFAULT 1
+    )
+""")
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS MPEC_Stations (
+        MPECId TEXT,
+        StationCode TEXT,
+        PRIMARY KEY (MPECId, StationCode),
+        FOREIGN KEY (MPECId) REFERENCES MPEC(MPECId)
+    )
+""")
+cursor.execute("CREATE INDEX IF NOT EXISTS idx_mpec_stations_code ON MPEC_Stations(StationCode);")
+db.commit()
 
 # Keep track of the current line being parsed for debugging
 current_line = ""
