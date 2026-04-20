@@ -570,9 +570,12 @@ for halfmonth in month_to_letter(ym[4:6]):
             h = hashlib.md5(html).hexdigest()
             cursor.execute("SELECT PageHash FROM MPEC WHERE MPECId=?", (this_mpec,))
             existing_hash = cursor.fetchone()
-            if existing_hash and existing_hash[0] == h: # page is identical to last run
-                print(f"{this_mpec} unchanged, skipping")
-                continue
+            if existing_hash:
+                if existing_hash[0] == h: # page is identical to last run
+                    print(f"{this_mpec} unchanged, skipping")
+                    continue
+                else:
+                    print(f"{this_mpec} hash changed, updating record.")
                 
             # Continue with existing code to process the MPEC
             soup = BeautifulSoup(html, features="lxml")
@@ -886,21 +889,25 @@ for halfmonth in month_to_letter(ym[4:6]):
             try:
                 if mpec_type in ('Discovery', 'OrbitUpdate', 'DOU'):
                     # Observational MPECs
-                    cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', \
-                    (mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer, h))
+                    cursor.execute('''INSERT OR REPLACE INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', \
+                        (mpec_id, mpec_title, mpec_timestamp, obs_code_collection_string, disc_obs_code, firstconf, mpec_type, mpec_obj_type, orbit_comp, issuer, h))
                 else:
                     # Non-observational MPECs
-                    cursor.execute('''INSERT INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', \
-                    (mpec_id, mpec_title, mpec_timestamp, '', '', '', mpec_type, '', '', issuer, h))
-                
+                    cursor.execute('''INSERT OR REPLACE INTO MPEC(MPECId, Title, Time, Station, DiscStation, FirstConf, MPECType, ObjectType, OrbitComp, Issuer, PageHash) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', \
+                        (mpec_id, mpec_title, mpec_timestamp, '', '', '', mpec_type, '', '', issuer, h))
+
+                # Log update if this was a replacement
+                if existing_hash and existing_hash[0] != h:
+                    print(f"[LOG] MPEC {mpec_id} updated in DB due to hash change.")
+
                 # Update MPEC_Stations junction table for observational MPECs
                 if mpec_type in ('Discovery', 'OrbitUpdate', 'DOU') and obs_code_collection_uniq:
                     for station_code in obs_code_collection_uniq:
                         cursor.execute("INSERT OR IGNORE INTO MPEC_Stations (MPECId, StationCode) VALUES (?,?)", (mpec_id, station_code))
-                
+
                 db.commit()
             except sqlite3.IntegrityError as e:
-                error_message = f"Integrity error inserting MPEC {this_mpec}: {str(e)}"
+                error_message = f"Integrity error inserting/replacing MPEC {this_mpec}: {str(e)}"
                 log_error(mpec_id, e, error_message)
                 continue
 
