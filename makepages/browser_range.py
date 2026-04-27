@@ -134,7 +134,13 @@ o = """
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
-        <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+        <li class="dropdown active">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Observatory Browser <span class="caret"></span></a>
+          <ul class="dropdown-menu">
+            <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Classic (All-time + Year Pages)</a></li>
+            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs-range.html">Range Query</a></li>
+          </ul>
+        </li>
         <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
         <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
         <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
@@ -150,6 +156,7 @@ o = """
     <!-- Main jumbotron for a primary marketing message or call to action -->
       <div class="page-header">
         <h1>Statistics by Observatory</h1>
+        <p><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Switch to classic yearly pages</a></p>
         <div class="panel panel-default" style="margin-top: 20px;">
           <div class="panel-body">
             <form class="form-inline" onsubmit="return false;">
@@ -360,5 +367,5 @@ o += """
 </html>
 """
 
-with open('../www/obs.html', 'w', encoding='utf-8') as f:
+with open('../www/obs-range.html', 'w', encoding='utf-8') as f:
     f.write(o)

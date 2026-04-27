@@ -89,7 +89,13 @@ for p in pages:
             <div id="navbar" class="navbar-collapse collapse">
               <ul class="nav navbar-nav">
                 <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/index.html">Home</a></li>
-            <li class="active"><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Observatory Browser</a></li>
+            <li class="dropdown active">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Observatory Browser <span class="caret"></span></a>
+              <ul class="dropdown-menu">
+                <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">Classic (All-time + Year Pages)</a></li>
+                <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs-range.html">Range Query</a></li>
+              </ul>
+            </li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/survey.html">Survey Browser</a></li>
             <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/stats.html">Various Statistics</a></li>
             <!-- <li><a href="https://sbnmpc.astro.umd.edu/mpecwatch/mpc_stuff.html">MPC Stuff (non-public)</a></li> -->
@@ -110,7 +116,7 @@ for p in pages:
     o += """
           <div class="page-header">
             <h1>Statistics by Observatory - %s</h1>
-            <p><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">All time</a> """ % str(p)
+            <p><a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs.html">All time</a> | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs-range.html">Range query view</a> """ % str(p)
             
     for pp in pages[:-1]:
         o += """ | <a href="https://sbnmpc.astro.umd.edu/mpecwatch/obs-%s.html">%s</a>""" % (str(pp), str(pp))
