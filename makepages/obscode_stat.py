@@ -84,10 +84,10 @@ import hashlib
 
 start_time = time.time()
 
-dbFile = 'mpecwatch_v4.db'
+dbFile = '../mpecwatch_v4.db'
 # Note: when running from the root directory, use 'mpecwatch_v4.db'. 
 # When running from makepages/, use '../mpecwatch_v4.db'.
-mpccode = 'mpccode.json'
+mpccode = '../mpccode.json'
 outputFile = 'obscode_stat.json'
 
 # Argument parsing
