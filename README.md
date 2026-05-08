@@ -4,6 +4,7 @@
 
 ## Change log
 
+* 2026 May 8: added year range search to the observatory browser page.
 * 2025 Oct 1: a major upgrade -- detailed object data/breakdowns are now available; more survey programs are added to the survey page.
 * 2025 May 12: tables of individual observers/measurers are now available; formatting errors in some observer/measurer names are fixed.
 * 2024 Oct 5: statistics of individual survey program is now available.
@@ -42,7 +43,7 @@ This is the main script used to generate the webpages for each of the stations. 
 
 This project makes use of [Bootstrap](https://getbootstrap.com/), [Bootstrap Table](https://bootstrap-table.com/), data provided by the [International Astronomical Union's Minor Planet Center](https://minorplanetcenter.net/).
 
-## Author
+## Authors
 
 * [Quanzhi Ye](https://www.astro.umd.edu/~qye/)
 * [Taegon Hibbitts](https://github.com/Taeg03)
