@@ -5,6 +5,8 @@ Add additional information to MPC Code list and save it to a local file.
 Usage:
     mpccode.py
     mpccode.py --refresh-geocode
+    mpccode.py --clean-null-geocode-cache
+    mpccode.py --refresh-geocode --clean-null-geocode-cache
 
 Default:
     Uses cached geocoding only. No live reverse-geocoding requests are made.
@@ -12,7 +14,10 @@ Default:
 Optional:
     --refresh-geocode
         For entries missing from cache, perform live reverse geocoding
-        slowly/politely and save the results to cache.
+        slowly/politely and save successful results to cache.
+
+    --clean-null-geocode-cache
+        Remove old failed/None geocode entries from the cache before running.
 
 (C) Quanzhi Ye
 """
@@ -31,6 +36,7 @@ import time
 import requests
 from typing import Optional, Dict, Any
 
+
 # ============================================================================
 # Constants
 # ============================================================================
@@ -46,15 +52,12 @@ OUTPUT_JSON = "mpccode.json"
 GEOCODE_CACHE_FILE = "mpccode_geocode_cache.json"
 
 # Public Nominatim settings.
-# Keep these conservative. Even with this, live bulk refresh may still be throttled.
-GEOCODE_MIN_DELAY_SECONDS = 1.2
-GEOCODE_ERROR_WAIT_SECONDS = 10.0
+# Even with conservative settings, public Nominatim may reject bulk jobs.
+GEOCODE_MIN_DELAY_SECONDS = 2.0
+GEOCODE_ERROR_WAIT_SECONDS = 15.0
 GEOCODE_MAX_RETRIES = 1
 
-# Save cache every N new geocode lookups
 CACHE_SAVE_EVERY = 20
-
-# Light throttling for MPC API requests
 MPC_API_DELAY_SECONDS = 0.15
 
 
@@ -64,7 +67,7 @@ MPC_API_DELAY_SECONDS = 0.15
 
 def calculate_latitude(rho_sin_phi: float, rho_cos_phi: float) -> float:
     """
-    Convert MPC rho*sin(phi) and rho*cos(phi) values to geodetic latitude (deg).
+    Convert MPC rho*sin(phi) and rho*cos(phi) values to geodetic latitude in deg.
     """
     a = 1.0
     b = EARTH_MINOR_AXIS / EARTH_MAJOR_AXIS
@@ -131,6 +134,15 @@ def extract_city(address: Dict[str, Any]) -> str:
     return ""
 
 
+def empty_location_fields() -> Dict[str, str]:
+    return {
+        "country": "",
+        "state": "",
+        "county": "",
+        "city": "",
+    }
+
+
 def fetch_mpc_obscode_fields(
     session: requests.Session,
     obscode: str,
@@ -138,8 +150,7 @@ def fetch_mpc_obscode_fields(
     backoff_s: float = 0.5,
 ) -> Dict[str, Optional[str]]:
     """
-    Query MPC obscodes API for a single code and return only the requested fields.
-    Returns a dict with keys in API_FIELDS; values may be None if unavailable.
+    Query MPC obscodes API for a single code and return only requested fields.
     """
     payload = {"obscode": obscode}
 
@@ -176,12 +187,25 @@ class GeocodeCache:
         key = normalize_cache_key(latitude, longitude)
         return self.data.get(key)
 
-    def set(self, latitude: float, longitude: float, value: Optional[Dict[str, str]]) -> None:
+    def set(self, latitude: float, longitude: float, value: Dict[str, str]) -> None:
+        """
+        Save only successful geocode dictionaries.
+        Failed lookups should not be cached as None.
+        """
         key = normalize_cache_key(latitude, longitude)
         self.data[key] = value
         self.new_entries_since_save += 1
+
         if self.new_entries_since_save >= CACHE_SAVE_EVERY:
             self.save()
+
+    def clean_null_entries(self) -> int:
+        old_n = len(self.data)
+        self.data = {k: v for k, v in self.data.items() if v is not None}
+        removed = old_n - len(self.data)
+        if removed > 0:
+            self.save()
+        return removed
 
     def save(self) -> None:
         save_json_file(self.path, self.data)
@@ -194,14 +218,13 @@ def make_reverse_geocoder() -> RateLimiter:
         timeout=10,
     )
 
-    reverse = RateLimiter(
+    return RateLimiter(
         geolocator.reverse,
         min_delay_seconds=GEOCODE_MIN_DELAY_SECONDS,
         max_retries=GEOCODE_MAX_RETRIES,
         error_wait_seconds=GEOCODE_ERROR_WAIT_SECONDS,
         swallow_exceptions=False,
     )
-    return reverse
 
 
 def reverse_lookup(
@@ -214,14 +237,15 @@ def reverse_lookup(
     """
     Cache-first reverse lookup.
 
-    Behavior:
-      - If coordinate exists in cache, return cached value.
-      - If not in cache and live geocoding disabled, return None.
-      - If not in cache and live geocoding enabled, try reverse geocoding,
-        store result (or None) in cache, then return it.
+    Important:
+      - Successful geocode results are cached.
+      - Failed lookups are NOT cached.
+      - Default mode does not make live Nominatim requests.
     """
     if cache.has_key(latitude, longitude):
-        return cache.get(latitude, longitude)
+        cached = cache.get(latitude, longitude)
+        if cached:
+            return cached
 
     if not enable_live_geocoding or reverse_geocoder is None:
         return None
@@ -230,17 +254,21 @@ def reverse_lookup(
 
     try:
         location = reverse_geocoder(query, language="en")
+
         if location is None:
-            cache.set(latitude, longitude, None)
+            print(f"[WARN] No geocode result for {query}")
             return None
 
         address = location.raw.get("address", {})
+
         result = {
             "country": address.get("country", ""),
             "state": address.get("state", ""),
             "county": address.get("county", ""),
             "city": extract_city(address),
         }
+
+        # Cache only successful lookups.
         cache.set(latitude, longitude, result)
         return result
 
@@ -269,7 +297,10 @@ def parse_table_entry(
     if len(entry.strip()) < 3:
         return None
 
-    match = re.match(r'(\w{3})\s+(\d+\.\d+)\s*(\d+\.\d+)\s*(\+|-)?(0\.\d+)\s*(.*)', entry)
+    match = re.match(
+        r'(\w{3})\s+(\d+\.\d+)\s*(\d+\.\d+)\s*(\+|-)?(0\.\d+)\s*(.*)',
+        entry,
+    )
     match1 = re.match(r'(\w{3})\s+(\w+)', entry)
 
     if match:
@@ -282,19 +313,18 @@ def parse_table_entry(
         latitude = calculate_latitude(sin_val, cos_val)
 
         if longitude == 0 and latitude == 0:
-            return {
-                "name": entry[30:].strip()
+            result = {
+                "name": entry[30:].strip(),
             }
+            result.update(empty_location_fields())
+            return result
 
         result = {
             "name": name,
             "lon": longitude,
             "lat": latitude,
-            "country": "",
-            "state": "",
-            "county": "",
-            "city": "",
         }
+        result.update(empty_location_fields())
 
         geo = reverse_lookup(
             reverse_geocoder,
@@ -303,15 +333,18 @@ def parse_table_entry(
             longitude,
             enable_live_geocoding=enable_live_geocoding,
         )
+
         if geo:
             result.update(geo)
 
         return result
 
     elif match1:
-        return {
-            "name": entry[30:].strip()
+        result = {
+            "name": entry[30:].strip(),
         }
+        result.update(empty_location_fields())
+        return result
 
     else:
         print(entry)
@@ -326,22 +359,28 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Download and enrich MPC observatory codes."
     )
+
     parser.add_argument(
         "--refresh-geocode",
         action="store_true",
         help="Perform live reverse geocoding for cache misses.",
     )
+
+    parser.add_argument(
+        "--clean-null-geocode-cache",
+        action="store_true",
+        help="Remove old failed/None geocode cache entries before running.",
+    )
+
     args = parser.parse_args()
 
     enable_live_geocoding = args.refresh_geocode
 
-    # Download MPC code file
-    html = urlopen(MPCCODE_URL).read()
-    soup = BeautifulSoup(html, features="lxml")
-    mpccode_text = soup.get_text()
-    mpccode_lines = list(filter(None, mpccode_text.split('\n')))
-
     geocode_cache = GeocodeCache(GEOCODE_CACHE_FILE)
+
+    if args.clean_null_geocode_cache:
+        removed = geocode_cache.clean_null_entries()
+        print(f"Removed {removed} null geocode cache entries.")
 
     reverse_geocoder = None
     if enable_live_geocoding:
@@ -350,12 +389,20 @@ def main() -> None:
     else:
         print("Live reverse geocoding disabled. Using cache only.")
 
+    # Download MPC code file
+    print("Downloading MPC observatory list...")
+    html = urlopen(MPCCODE_URL).read()
+    soup = BeautifulSoup(html, features="lxml")
+    mpccode_text = soup.get_text()
+    mpccode_lines = list(filter(None, mpccode_text.split("\n")))
+
     d: Dict[str, Optional[Dict[str, Any]]] = {}
 
     # Build base dict from HTML list
     print("Parsing MPC observatory list...")
     for i, line in enumerate(mpccode_lines[1:], start=1):
         code = str(line[0:3])
+
         try:
             d[code] = parse_table_entry(
                 line,
@@ -370,13 +417,14 @@ def main() -> None:
         if i % 100 == 0:
             print(f"Parsed {i} observatories...")
 
-    # Save cache after parsing phase
     geocode_cache.save()
 
     # Enrich with MPC API fields
     print("Querying MPC API for additional observatory metadata...")
     with requests.Session() as session:
-        session.headers.update({"User-Agent": "MPCCodeEnricher/1.0 (qye@umd.edu)"})
+        session.headers.update(
+            {"User-Agent": "MPCCodeEnricher/1.0 (qye@umd.edu)"}
+        )
 
         for i, code in enumerate(d.keys(), start=1):
             if not code or len(code) != 3:
@@ -386,6 +434,7 @@ def main() -> None:
 
             if d[code] is None:
                 d[code] = {}
+                d[code].update(empty_location_fields())
 
             d[code].update(api_fields)
 
@@ -394,7 +443,6 @@ def main() -> None:
             if i % 100 == 0:
                 print(f"Processed {i} observatories in MPC API phase...")
 
-    # Final writes
     geocode_cache.save()
     save_json_file(OUTPUT_JSON, d)
 
