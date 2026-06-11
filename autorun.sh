@@ -1,4 +1,4 @@
-cd /geminid1nb/qye/mpec
+cd /elatus1/sbnmpc_file_prep/mpecwatch/
 python proc.py "$(date +'%Y%m')"
 python mpccode.py
 cd makepages
@@ -16,4 +16,4 @@ python stats.py
 python survey.py
 python ObjectPage.py
 cp *.html ../www
-cp -r /geminid1nb/qye/mpec/www/ /an/chiron~4/qye/mpecwatch
+cp -r /elatus1/sbnmpc_file_prep/mpecwatch/www/ /an/chiron~4/qye/mpecwatch
