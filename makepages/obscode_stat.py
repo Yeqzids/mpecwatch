@@ -79,16 +79,20 @@ Change Detection:
 
 import sqlite3, datetime, re, json, numpy as np, calendar, argparse
 from datetime import date
+from pathlib import Path
 import time
 import hashlib
 
 start_time = time.time()
-
-dbFile = '../mpecwatch_v4.db'
+# This should be fixed
 # Note: when running from the root directory, use 'mpecwatch_v4.db'. 
 # When running from makepages/, use '../mpecwatch_v4.db'.
-mpccode = '../mpccode.json'
-outputFile = 'obscode_stat.json'
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+
+dbFile = str(PROJECT_ROOT / 'mpecwatch_v4.db')
+mpccode = str(PROJECT_ROOT / 'mpccode.json')
+outputFile = str(BASE_DIR / 'obscode_stat.json')
 
 # Argument parsing
 parser = argparse.ArgumentParser(description='Observatory Code Statistics Generator')
@@ -99,7 +103,7 @@ args = parser.parse_args()
 db = sqlite3.connect(dbFile)
 cursor = db.cursor()
 
-with open(mpccode) as f:
+with open(mpccode, "r", encoding="cp437") as f:
     mpccode_data = json.load(f)
 
 # If a single station is specified, validate it exists

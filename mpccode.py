@@ -123,8 +123,16 @@ def save_json_file(path: str, data: Any) -> None:
     os.replace(tmp, path)
 
 
+def normalize_longitude(longitude: float) -> float:
+    """Convert MPC's 0–360° longitude convention to WGS84 -180°..+180°."""
+    normalized = float(longitude) % 360.0
+    if normalized > 180.0:
+        normalized -= 360.0
+    return normalized
+
+
 def normalize_cache_key(latitude: float, longitude: float) -> str:
-    return f"{latitude:.5f},{longitude:.5f}"
+    return f"{latitude:.5f},{normalize_longitude(longitude):.5f}"
 
 
 def extract_city(address: Dict[str, Any]) -> str:
@@ -242,6 +250,9 @@ def reverse_lookup(
       - Failed lookups are NOT cached.
       - Default mode does not make live Nominatim requests.
     """
+    latitude = float(latitude)
+    longitude = normalize_longitude(longitude)
+
     if cache.has_key(latitude, longitude):
         cached = cache.get(latitude, longitude)
         if cached:

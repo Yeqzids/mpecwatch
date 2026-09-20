@@ -22,6 +22,7 @@ import sqlite3
 import time
 import hashlib
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -30,8 +31,17 @@ from rapidfuzz import fuzz, process
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+
+OUTPUT_ROOT = PROJECT_ROOT / 'www' / 'byStation'
+MONTHLY_GRAPH_DIR = OUTPUT_ROOT / 'monthly' / 'graphs'
+GRAPH_DIR = OUTPUT_ROOT / 'Graphs'
+for directory in (OUTPUT_ROOT, MONTHLY_GRAPH_DIR, GRAPH_DIR):
+    directory.mkdir(parents=True, exist_ok=True)
+
 # Path to the database
-dbFile = '../mpecwatch_v4.db'
+dbFile = str(PROJECT_ROOT / 'mpecwatch_v4.db')
 
 # Get data about which stations need updating
 def get_stations_needing_update():
@@ -55,13 +65,13 @@ def stripq(s):
     return s
 
 # Load necessary data files
-mpccode = '../mpccode.json'
-with open(mpccode) as mpccode:
-    mpccode = json.load(mpccode)
+mpccode = str(PROJECT_ROOT / 'mpccode.json')
+with open(mpccode, "r", encoding="cp437") as mpccode_file:
+    mpccode = json.load(mpccode_file)
 
-obscode = 'obscode_stat.json'
-with open(obscode) as obscode:
-    obscode = json.load(obscode)
+obscode = str(BASE_DIR / 'obscode_stat.json')
+with open(obscode, encoding='utf-8') as obscode_file:
+    obscode = json.load(obscode_file)
 
 BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 def encode(num, alphabet=BASE62):
@@ -224,7 +234,7 @@ def make_monthly_page(df_monthly, station, year):
 
     try:
         fig = px.bar(df_monthly, x="Month", y="#MPECs", color="MPECType")
-        fig.write_html(f"../www/byStation/monthly/graphs/{station_year}.html")
+        fig.write_html(str(MONTHLY_GRAPH_DIR / f"{station_year}.html"))
     except (ValueError, OSError) as e:
         logging.error(f"Failed to generate/write monthly graph for {station_code} {year}: {e}")
         return
@@ -237,7 +247,7 @@ def make_monthly_page(df_monthly, station, year):
         return
 
     df_monthly.set_index(['Month', 'MPECType'], inplace=True) # set index after making the graph to avoid error
-    page_monthly = f"../www/byStation/monthly/{station_year}.html"
+    page_monthly = str(OUTPUT_ROOT / 'monthly' / f"{station_year}.html")
     o = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -330,7 +340,7 @@ def make_station_page(station_code):
     
     conn = _open_database()
     station = 'station_'+station_code
-    page = f"../www/byStation/{station}.html"
+    page = str(OUTPUT_ROOT / f"{station}.html")
 
     o = f"""
 <!doctype html>
@@ -581,7 +591,7 @@ def make_station_page(station_code):
     try:
         cursor = conn.cursor()
         station = 'station_'+station_code
-        page = f"../www/byStation/{station}.html"
+        page = str(OUTPUT_ROOT / f"{station}.html")
 
         o = f"""
     <!doctype html>
@@ -1121,23 +1131,23 @@ def make_station_page(station_code):
         # figure: yearly breakdown of MPEC types   
         fig = px.bar(df_yearly, x="Year", y="#MPECs", color="MPECType")
         fig.update_layout(barmode='stack')
-        fig.write_html(f"../www/byStation/Graphs/{station}.html")
+        fig.write_html(str(GRAPH_DIR / f"{station}.html"))
 
         # figure: yearly breakdown of Discovery object types
         fig = px.bar(disc_obj, x="Year", y="#MPECs", color="ObjectType")
         fig.update_layout(barmode='stack')
-        fig.write_html(f"../www/byStation/Graphs/{station}_disc_obj.html")
+        fig.write_html(str(GRAPH_DIR / f"{station}_disc_obj.html"))
 
         # figure: yearly breakdown of Orbit Update object types
         fig = px.bar(OU_obj, x="Year", y="#MPECs", color="ObjectType")
         fig.update_layout(barmode='stack')
-        fig.write_html(f"../www/byStation/Graphs/{station}_OU_obj.html")
+        fig.write_html(str(GRAPH_DIR / f"{station}_OU_obj.html"))
 
         if stop_event and stop_event.is_set():
             return
 
         #print(station)
-        with open(page, 'w') as f:
+        with open(page, 'w', encoding='utf-8') as f:
             f.write(o)
 
         logging.info(f"Finished processing for station: {station_code}")
