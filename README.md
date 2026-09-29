@@ -4,6 +4,7 @@
 
 ## Change log
 
+* 2026 Sep 29: normalized longitude to get valid longitudes for stations pages
 * 2026 May 8: added year range search to the observatory browser page.
 * 2025 Oct 1: a major upgrade -- detailed object data/breakdowns are now available; more survey programs are added to the survey page.
 * 2025 May 12: tables of individual observers/measurers are now available; formatting errors in some observer/measurer names are fixed.
