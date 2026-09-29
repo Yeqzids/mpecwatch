@@ -5,11 +5,15 @@ import numpy as np
 import datetime
 import os
 import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
 
 # --- Configuration/Constants ---
-MPC_CODE_PATH = '../mpccode.json'
-OBSCODE_STAT_PATH = 'obscode_stat.json'
-OUTPUT_BASE_DIR = "../www/byStation/OMF/"
+MPC_CODE_PATH = str(PROJECT_ROOT / 'mpccode.json')
+OBSCODE_STAT_PATH = str(BASE_DIR / 'obscode_stat.json')
+OUTPUT_BASE_DIR = str(PROJECT_ROOT / 'www' / 'byStation' / 'OMF')
 TOP_N_LIMIT = 10
 
 def sanitize_name(name, max_len=30):
@@ -96,11 +100,11 @@ def process_station(station_code, station_data):
 # --- Main Execution ---
 if __name__ == "__main__":
     print("Loading MPC codes...")
-    with open(MPC_CODE_PATH) as f:
+    with open(MPC_CODE_PATH, "r", encoding="cp437") as f:
         mpccode = json.load(f)
     
     print("Loading observatory statistics...")
-    with open(OBSCODE_STAT_PATH) as f:
+    with open(OBSCODE_STAT_PATH, "r", encoding="utf-8") as f:
         obscode_stat = json.load(f)
     
     print(f"Processing observatory OMF visualizations...")
